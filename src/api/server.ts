@@ -5,20 +5,37 @@
 
 import 'dotenv/config';
 import express from 'express';
+import { createServer } from 'http';
+import { Server as SocketIOServer } from 'socket.io';
 import path from 'path';
 import { logger } from '../utils/logger';
 import { TaskScheduler, scrapeQueue, processQueue, ratingQueue, automationQueue } from '../queue';
 import { db } from '../db';
 import { companies, ratings } from '../db/schema';
 import { desc, sql } from 'drizzle-orm';
+import { eventEmitter } from '../utils/event-emitter';
 
 const app = express();
+const httpServer = createServer(app);
+const io = new SocketIOServer(httpServer, {
+    cors: { origin: '*', methods: ['GET', 'POST'] }
+});
+
 app.use(express.json());
 
 // 托管静态文件
 app.use(express.static(path.join(process.cwd(), 'public')));
 
 const scheduler = new TaskScheduler();
+
+// WebSocket实时推送
+io.on('connection', (socket) => {
+    logger.info(`[WebSocket] 客户端连接: ${socket.id}`);
+    socket.on('disconnect', () => logger.info(`[WebSocket] 客户端断开: ${socket.id}`));
+});
+
+// 订阅Redis事件并转发到前端
+eventEmitter.subscribe((event) => io.emit('progress', event));
 
 // ============ 健康检查 ============
 app.get('/health', (req, res) => {
@@ -137,8 +154,9 @@ app.get('/api/ratings', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
     logger.info(`✓ API 服务已启动: http://localhost:${PORT}`);
+    logger.info(`✓ WebSocket 服务已启动`);
     logger.info(`  健康检查: http://localhost:${PORT}/health`);
     logger.info(`  队列状态: http://localhost:${PORT}/api/queues/stats`);
 });
@@ -146,5 +164,7 @@ app.listen(PORT, () => {
 // 优雅关闭
 process.on('SIGTERM', async () => {
     logger.info('收到 SIGTERM，关闭服务...');
+    await eventEmitter.close();
+    io.close();
     process.exit(0);
 });

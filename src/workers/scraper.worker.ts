@@ -12,6 +12,7 @@ import { db } from '../db';
 import { companies } from '../db/schema';
 import { GoogleMapsAdapter } from '../scraper/adapters/google-maps.adapter';
 import type { ScrapeParams } from '../scraper/base.adapter';
+import { eventEmitter } from '../utils/event-emitter';
 
 const redisConfig = configLoader.get('database.redis');
 const queueConfig = configLoader.get('queue.queues.scrape');
@@ -66,6 +67,14 @@ class ScraperWorker {
             throw new Error(`未找到适配器: ${source}`);
         }
 
+        // 发送任务开始事件
+        await eventEmitter.emit({
+            type: 'task_start',
+            jobId: job.id!,
+            timestamp: new Date().toISOString(),
+            data: { source, query, totalCount: limit }
+        });
+
         // 执行爬取
         const rawData = await adapter.scrape({ query, limit } as ScrapeParams);
 
@@ -114,6 +123,21 @@ class ScraperWorker {
 
                 // 显示保存的线索关键信息
                 logger.info(`[线索 ${savedCount}] ${standardData.name}`);
+
+                // 每5条或第1条发送进度事件
+                if (savedCount % 5 === 0 || savedCount === 1) {
+                    await eventEmitter.emit({
+                        type: 'progress',
+                        jobId: job.id!,
+                        timestamp: new Date().toISOString(),
+                        data: {
+                            message: `正在保存: ${standardData.name}`,
+                            currentIndex: savedCount,
+                            totalCount: rawData.length,
+                            currentItem: standardData.name
+                        }
+                    });
+                }
                 logger.info(`  ├─ 网站: ${standardData.website || '(无)'}`);
                 logger.info(`  ├─ 地址: ${standardData.region || '(无)'}`);
                 logger.info(`  ├─ 电话: ${standardData.phone || '(无)'}`);
@@ -135,6 +159,21 @@ class ScraperWorker {
         logger.info(`  成功保存: ${savedCount} 条`);
         logger.info(`  成功率: ${rawData.length > 0 ? ((savedCount / rawData.length) * 100).toFixed(1) : 0}%`);
         logger.info(`${'='.repeat(60)}\n`);
+
+        // 发送任务完成事件
+        await eventEmitter.emit({
+            type: 'task_complete',
+            jobId: job.id!,
+            timestamp: new Date().toISOString(),
+            data: {
+                message: `任务完成,成功保存 ${savedCount}/${rawData.length} 条`,
+                stats: {
+                    scraped: rawData.length,
+                    saved: savedCount,
+                    failed: validationFailedCount
+                }
+            }
+        });
 
         return {
             scraped: rawData.length,

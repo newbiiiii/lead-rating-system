@@ -2,316 +2,500 @@
 <html lang="zh-CN">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lead Rating System - 管理后台</title>
-    <link rel="stylesheet" href="/assets/css/dashboard.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-</head>
+    <!-- 侧边栏 -->
+    <aside class="sidebar">
+        <div class="logo">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                <rect width="32" height="32" rx="8" fill="url(#gradient)" />
+                <path d="M16 8L22 14L16 20L10 14L16 8Z" fill="white" />
+                <defs>
+                    <linearGradient id="gradient" x1="0" y1="0" x2="32" y2="32">
+                        <stop offset="0%" stop-color="#667eea" />
+                        <stop offset="100%" stop-color="#764ba2" />
+                    </linearGradient>
+                </defs>
+            </svg>
+            <span>Lead Rating</span>
+        </div>
 
-<body>
-    <div class="app">
-        <!-- 侧边栏 -->
-        <aside class="sidebar">
-            <div class="logo">
-                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                    <rect width="32" height="32" rx="8" fill="url(#gradient)" />
-                    <path d="M16 8L22 14L16 20L10 14L16 8Z" fill="white" />
-                    <defs>
-                        <linearGradient id="gradient" x1="0" y1="0" x2="32" y2="32">
-                            <stop offset="0%" stop-color="#667eea" />
-                            <stop offset="100%" stop-color="#764ba2" />
-                        </linearGradient>
-                    </defs>
+        <nav class="nav">
+            <a href="#dashboard" class="nav-item active" data-page="dashboard">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path
+                        d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
                 </svg>
-                <span>Lead Rating</span>
+                <span>数据概览</span>
+            </a>
+            <a href="#tasks" class="nav-item" data-page="tasks">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                    <path fill-rule="evenodd"
+                        d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm9.707 5.707a1 1 0 00-1.414-1.414L9 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clip-rule="evenodd" />
+                </svg>
+                <span>搜索线索</span>
+            </a>
+            <a href="#companies" class="nav-item" data-page="companies">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path
+                        d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 01-1.414.707L10 14.414l-4.586 2.293A1 1 0 014 16V4z" />
+                </svg>
+                <span>客户线索</span>
+            </a>
+            <a href="#ratings" class="nav-item" data-page="ratings">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path
+                        d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+                <span>优质客户</span>
+            </a>
+        </nav>
+    </aside>
+
+    <!-- 主内容区 -->
+    <main class="main-content">
+        <!-- 顶部栏 -->
+        <header class="header">
+            <div class="header-left">
+                <h1 id="page-title">仪表盘</h1>
+            </div>
+            <div class="header-right">
+                <div class="status-indicator">
+                    <div class="status-dot"></div>
+                    <span>系统运行中</span>
+                </div>
+                <button class="btn-icon">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                        <path
+                            d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- 页面内容 -->
+        <div class="content">
+            <!-- 仪表盘页面 -->
+            <div id="dashboard-page" class="page active">
+                <!-- 统计卡片 -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon purple">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                            </svg>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="total-companies">-</div>
+                            <div class="stat-label">总线索数</div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon blue">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                            </svg>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="high-score-leads">-</div>
+                            <div class="stat-label">优质客户</div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon green">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="tasks-completed">-</div>
+                            <div class="stat-label">已完成</div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon orange">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="tasks-pending">-</div>
+                            <div class="stat-label">进行中</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 图表区域 -->
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>搜索进度</h3>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="queueChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>评分分布</h3>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="scoreChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 最新高分线索 -->
+                <div class="section-card">
+                    <div class="section-header">
+                        <h3>最新优质客户</h3>
+                        <button class="btn-secondary btn-sm" onclick="loadRatings()">刷新</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="recent-leads-table">
+                            <thead>
+                                <tr>
+                                    <th>客户名称</th>
+                                    <th>行业</th>
+                                    <th>评分</th>
+                                    <th>发现时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recent-leads-body">
+                                <tr>
+                                    <td colspan="5" class="empty-state">暂无数据</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
-            <nav class="nav">
-                <a href="#dashboard" class="nav-item active" data-page="dashboard">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                        <path
-                            d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
-                    </svg>
-                    <span>数据概览</span>
-                </a>
-                <a href="#tasks" class="nav-item" data-page="tasks">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                        <path fill-rule="evenodd"
-                            d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm9.707 5.707a1 1 0 00-1.414-1.414L9 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                            clip-rule="evenodd" />
-                    </svg>
-                    <span>搜索线索</span>
-                </a>
-                <a href="#companies" class="nav-item" data-page="companies">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                        <path
-                            d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 01-1.414.707L10 14.414l-4.586 2.293A1 1 0 014 16V4z" />
-                    </svg>
-                    <span>客户线索</span>
-                </a>
-                <a href="#ratings" class="nav-item" data-page="ratings">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                        <path
-                            d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                    <span>优质客户</span>
-                </a>
-            </nav>
-        </aside>
-
-        <!-- 主内容区 -->
-        <main class="main-content">
-            <!-- 顶部栏 -->
-            <header class="header">
-                <div class="header-left">
-                    <h1 id="page-title">仪表盘</h1>
+            <!-- 任务管理页面 -->
+            <div id="tasks-page" class="page">
+                <div class="section-card">
+                    <div class="section-header">
+                        <h3>搜索新客户</h3>
+                    </div>
+                    <form id="add-task-form" class="task-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>搜索来源</label>
+                                <select name="source" required>
+                                    <option value="google_maps">Google地图</option>
+                                    <option value="linkedin">领英</option>
+                                    <option value="qichacha">企查查</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>搜索关键词 <span style="color: #888; font-size: 12px;">(例如: 美国 LED灯具
+                                        进口商)</span></label>
+                                <input type="text" name="query" placeholder="例如：上海 电商公司" required>
+                            </div>
+                            <div class="form-group">
+                                <label>搜索数量</label>
+                                <input type="number" name="limit" value="30" min="1" max="100" required>
+                            </div>
+                            <div class="form-group">
+                                <label>优先级</label>
+                                <select name="priority">
+                                    <option value="1">高</option>
+                                    <option value="5" selected>中</option>
+                                    <option value="10">低</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary">开始搜索</button>
+                    </form>
                 </div>
-                <div class="header-right">
-                    <div class="status-indicator">
-                        <div class="status-dot"></div>
-                        <span>系统运行中</span>
+
+                <div class="section-card">
+                    <div class="section-header">
+                        <h3>搜索进度</h3>
+                        <button class="btn-secondary btn-sm" onclick="loadQueueStats()">刷新</button>
                     </div>
-                    <button class="btn-icon">
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                            <path
-                                d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
-                        </svg>
-                    </button>
+                    <div id="queue-stats-container"></div>
                 </div>
-            </header>
+            </div>
 
-            <!-- 页面内容 -->
-            <div class="content">
-                <!-- 仪表盘页面 -->
-                <div id="dashboard-page" class="page active">
-                    <!-- 统计卡片 -->
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-icon purple">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-                                </svg>
-                            </div>
-                            <div class="stat-content">
-                                <div class="stat-value" id="total-companies">-</div>
-                                <div class="stat-label">总线索数</div>
-                            </div>
-                        </div>
-
-                        <div class="stat-card">
-                            <div class="stat-icon blue">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-                                </svg>
-                            </div>
-                            <div class="stat-content">
-                                <div class="stat-value" id="high-score-leads">-</div>
-                                <div class="stat-label">优质客户</div>
-                            </div>
-                        </div>
-
-                        <div class="stat-card">
-                            <div class="stat-icon green">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </div>
-                            <div class="stat-content">
-                                <div class="stat-value" id="tasks-completed">-</div>
-                                <div class="stat-label">已完成</div>
-                            </div>
-                        </div>
-
-                        <div class="stat-card">
-                            <div class="stat-icon orange">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </div>
-                            <div class="stat-content">
-                                <div class="stat-value" id="tasks-pending">-</div>
-                                <div class="stat-label">进行中</div>
-                            </div>
+            <!-- 公司数据页面 -->
+            <div id="companies-page" class="page">
+                <div class="section-card">
+                    <div class="section-header">
+                        <h3>客户线索列表</h3>
+                        <div class="header-actions">
+                            <input type="search" placeholder="搜索客户名称、行业..." class="search-input">
+                            <button class="btn-secondary btn-sm" onclick="loadCompanies()">刷新</button>
                         </div>
                     </div>
-
-                    <!-- 图表区域 -->
-                    <div class="charts-grid">
-                        <div class="chart-card">
-                            <div class="chart-header">
-                                <h3>搜索进度</h3>
-                            </div>
-                            <div class="chart-body">
-                                <canvas id="queueChart"></canvas>
-                            </div>
-                        </div>
-
-                        <div class="chart-card">
-                            <div class="chart-header">
-                                <h3>评分分布</h3>
-                            </div>
-                            <div class="chart-body">
-                                <canvas id="scoreChart"></canvas>
-                            </div>
-                        </div>
+                    <div class="table-container">
+                        <table class="data-table" id="companies-table">
+                            <thead>
+                                <tr>
+                                    <th>客户名称</th>
+                                    <th>行业</th>
+                                    <th>官网</th>
+                                    <th>联系电话</th>
+                                    <th>邮箱</th>
+                                    <th>地址</th>
+                                    <th>公司规模</th>
+                                    <th>来源</th>
+                                    <th>采集时间</th>
+                                </tr>
+                            </thead>
+                            <tbody id="companies-body">
+                                <tr>
+                                    <td colspan="9" class="empty-state">暂无数据</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
+                    <div class="pagination" id="companies-pagination"></div>
+                </div>
+            </div>
 
-                    <!-- 最新高分线索 -->
-                    <div class="section-card">
-                        <div class="section-header">
-                            <h3>最新优质客户</h3>
+            <!-- 评级结果页面 -->
+            <div id="ratings-page" class="page">
+                <div class="section-card">
+                    <div class="section-header">
+                        <h3>优质客户推荐</h3>
+                        <div class="header-actions">
+                            <select id="score-filter" class="filter-select">
+                                <option value="0">全部评分</option>
+                                <option value="9">高分 (≥9)</option>
+                                <option value="6">中分 (6-9)</option>
+                            </select>
                             <button class="btn-secondary btn-sm" onclick="loadRatings()">刷新</button>
                         </div>
-                        <div class="table-container">
-                            <table class="data-table" id="recent-leads-table">
-                                <thead>
-                                    <tr>
-                                        <th>客户名称</th>
-                                        <th>行业</th>
-                                        <th>评分</th>
-                                        <th>发现时间</th>
-                                        <th>操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="recent-leads-body">
-                                    <tr>
-                                        <td colspan="5" class="empty-state">暂无数据</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="ratings-table">
+                            <thead>
+                                <tr>
+                                    <th>公司名称</th>
+                                    <th>总分</th>
+                                    <th>基础匹配</th>
+                                    <th>意向信号</th>
+                                    <th>痛点关联</th>
+                                    <th>评分理由</th>
+                                    <th>评分时间</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ratings-body">
+                                <tr>
+                                    <td colspan="7" class="empty-state">暂无数据</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
+                <div class="stat-label">优质客户</div>
+            </div>
+        </div>
 
-                <!-- 任务管理页面 -->
-                <div id="tasks-page" class="page">
-                    <div class="section-card">
-                        <div class="section-header">
-                            <h3>搜索新客户</h3>
-                        </div>
-                        <form id="add-task-form" class="task-form">
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>搜索来源</label>
-                                    <select name="source" required>
-                                        <option value="google_maps">Google地图</option>
-                                        <option value="linkedin">领英</option>
-                                        <option value="qichacha">企查查</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label>搜索关键词 <span style="color: #888; font-size: 12px;">(例如: 美国 LED灯具
-                                            进口商)</span></label>
-                                    <input type="text" name="query" placeholder="例如：上海 电商公司" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>搜索数量</label>
-                                    <input type="number" name="limit" value="30" min="1" max="100" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>优先级</label>
-                                    <select name="priority">
-                                        <option value="1">高</option>
-                                        <option value="5" selected>中</option>
-                                        <option value="10">低</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <button type="submit" class="btn-primary">开始搜索</button>
-                        </form>
-                    </div>
+        <div class="stat-card">
+            <div class="stat-icon green">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value" id="tasks-completed">-</div>
+                <div class="stat-label">已完成</div>
+            </div>
+        </div>
 
-                    <div class="section-card">
-                        <div class="section-header">
-                            <h3>搜索进度</h3>
-                            <button class="btn-secondary btn-sm" onclick="loadQueueStats()">刷新</button>
-                        </div>
-                        <div id="queue-stats-container"></div>
-                    </div>
+        <div class="stat-card">
+            <div class="stat-icon orange">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value" id="tasks-pending">-</div>
+                <div class="stat-label">进行中</div>
+            </div>
+        </div>
+        </div>
+
+        <!-- 图表区域 -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3>搜索进度</h3>
                 </div>
-
-                <!-- 公司数据页面 -->
-                <div id="companies-page" class="page">
-                    <div class="section-card">
-                        <div class="section-header">
-                            <h3>客户线索列表</h3>
-                            <div class="header-actions">
-                                <input type="search" placeholder="搜索客户名称、行业..." class="search-input">
-                                <button class="btn-secondary btn-sm" onclick="loadCompanies()">刷新</button>
-                            </div>
-                        </div>
-                        <div class="table-container">
-                            <table class="data-table" id="companies-table">
-                                <thead>
-                                    <tr>
-                                        <th>客户名称</th>
-                                        <th>行业</th>
-                                        <th>官网</th>
-                                        <th>联系电话</th>
-                                        <th>邮箱</th>
-                                        <th>地址</th>
-                                        <th>公司规模</th>
-                                        <th>来源</th>
-                                        <th>采集时间</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="companies-body">
-                                    <tr>
-                                        <td colspan="9" class="empty-state">暂无数据</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="pagination" id="companies-pagination"></div>
-                    </div>
-                </div>
-
-                <!-- 评级结果页面 -->
-                <div id="ratings-page" class="page">
-                    <div class="section-card">
-                        <div class="section-header">
-                            <h3>优质客户推荐</h3>
-                            <div class="header-actions">
-                                <select id="score-filter" class="filter-select">
-                                    <option value="0">全部评分</option>
-                                    <option value="9">高分 (≥9)</option>
-                                    <option value="6">中分 (6-9)</option>
-                                </select>
-                                <button class="btn-secondary btn-sm" onclick="loadRatings()">刷新</button>
-                            </div>
-                        </div>
-                        <div class="table-container">
-                            <table class="data-table" id="ratings-table">
-                                <thead>
-                                    <tr>
-                                        <th>公司名称</th>
-                                        <th>总分</th>
-                                        <th>基础匹配</th>
-                                        <th>意向信号</th>
-                                        <th>痛点关联</th>
-                                        <th>评分理由</th>
-                                        <th>评分时间</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="ratings-body">
-                                    <tr>
-                                        <td colspan="7" class="empty-state">暂无数据</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                <div class="chart-body">
+                    <canvas id="queueChart"></canvas>
                 </div>
             </div>
-        </main>
+
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3>评分分布</h3>
+                </div>
+                <div class="chart-body">
+                    <canvas id="scoreChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 最新高分线索 -->
+        <div class="section-card">
+            <div class="section-header">
+                <h3>最新优质客户</h3>
+                <button class="btn-secondary btn-sm" onclick="loadRatings()">刷新</button>
+            </div>
+            <div class="table-container">
+                <table class="data-table" id="recent-leads-table">
+                    <thead>
+                        <tr>
+                            <th>客户名称</th>
+                            <th>行业</th>
+                            <th>评分</th>
+                            <th>发现时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recent-leads-body">
+                        <tr>
+                            <td colspan="5" class="empty-state">暂无数据</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        </div>
+
+        <!-- 任务管理页面 -->
+        <div id="tasks-page" class="page">
+            <div class="section-card">
+                <div class="section-header">
+                    <h3>搜索新客户</h3>
+                </div>
+                <form id="add-task-form" class="task-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>搜索来源</label>
+                            <select name="source" required>
+                                <option value="google_maps">Google地图</option>
+                                <option value="linkedin">领英</option>
+                                <option value="qichacha">企查查</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>搜索关键词 <span style="color: #888; font-size: 12px;">(例如: 美国 LED灯具
+                                    进口商)</span></label>
+                            <input type="text" name="query" placeholder="例如：上海 电商公司" required>
+                        </div>
+                        <div class="form-group">
+                            <label>搜索数量</label>
+                            <input type="number" name="limit" value="30" min="1" max="100" required>
+                        </div>
+                        <div class="form-group">
+                            <label>优先级</label>
+                            <select name="priority">
+                                <option value="1">高</option>
+                                <option value="5" selected>中</option>
+                                <option value="10">低</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary">开始搜索</button>
+                </form>
+            </div>
+
+            <div class="section-card">
+                <div class="section-header">
+                    <h3>搜索进度</h3>
+                    <button class="btn-secondary btn-sm" onclick="loadQueueStats()">刷新</button>
+                </div>
+                <div id="queue-stats-container"></div>
+            </div>
+        </div>
+
+        <!-- 公司数据页面 -->
+        <div id="companies-page" class="page">
+            <div class="section-card">
+                <div class="section-header">
+                    <h3>客户线索列表</h3>
+                    <div class="header-actions">
+                        <input type="search" placeholder="搜索客户名称、行业..." class="search-input">
+                        <button class="btn-secondary btn-sm" onclick="loadCompanies()">刷新</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="data-table" id="companies-table">
+                        <thead>
+                            <tr>
+                                <th>客户名称</th>
+                                <th>行业</th>
+                                <th>官网</th>
+                                <th>联系电话</th>
+                                <th>邮箱</th>
+                                <th>地址</th>
+                                <th>公司规模</th>
+                                <th>来源</th>
+                                <th>采集时间</th>
+                            </tr>
+                        </thead>
+                        <tbody id="companies-body">
+                            <tr>
+                                <td colspan="9" class="empty-state">暂无数据</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="companies-pagination"></div>
+            </div>
+        </div>
+
+        <!-- 评级结果页面 -->
+        <div id="ratings-page" class="page">
+            <div class="section-card">
+                <div class="section-header">
+                    <h3>优质客户推荐</h3>
+                    <div class="header-actions">
+                        <select id="score-filter" class="filter-select">
+                            <option value="0">全部评分</option>
+                            <option value="9">高分 (≥9)</option>
+                            <option value="6">中分 (6-9)</option>
+                        </select>
+                        <button class="btn-secondary btn-sm" onclick="loadRatings()">刷新</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="data-table" id="ratings-table">
+                        <thead>
+                            <tr>
+                                <th>公司名称</th>
+                                <th>总分</th>
+                                <th>基础匹配</th>
+                                <th>意向信号</th>
+                                <th>痛点关联</th>
+                                <th>评分理由</th>
+                                <th>评分时间</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ratings-body">
+                            <tr>
+                                <td colspan="7" class="empty-state">暂无数据</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        </div>
+    </main>
     </div>
 
     <script src="/assets/js/dashboard.js"></script>
-</body>
+    <script src="/assets/js/realtime.js"></script>
+    </body>
 
 </html>
