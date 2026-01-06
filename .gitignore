@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.env
+logs/
+*.log
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+config.yaml
+cookies/

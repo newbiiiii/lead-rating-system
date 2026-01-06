@@ -1,0 +1,420 @@
+# 爬虫 + AI 评级系统配置文件
+# 所有配置采用声明式定义，支持环境变量覆盖
+
+# ============ 数据源配置 ============
+scraper:
+  # 启用的数据源
+  sources:
+    - name: google_maps
+      enabled: true
+      adapter: GoogleMapsAdapter
+      rate_limit: 100/hour  # 每小时最多 100 次请求
+      priority: 5           # 优先级 1-10
+      config:
+        headless: true
+        timeout: 30000      # 30 秒超时
+        
+    - name: linkedin
+      enabled: false
+      adapter: LinkedInAdapter
+      rate_limit: 50/hour
+      priority: 8
+      config:
+        require_login: true
+        cookies_file: ./cookies/linkedin.json
+        
+    - name: qichacha
+      enabled: true
+      adapter: QichachaAdapter
+      rate_limit: 200/hour
+      priority: 6
+      config:
+        api_key: ${QICHACHA_API_KEY}
+        
+  # 反爬策略
+  anti_scraping:
+    # 代理池
+    proxy:
+      enabled: true
+      provider: bright_data  # bright_data | oxylabs | custom
+      config:
+        username: ${PROXY_USERNAME}
+        password: ${PROXY_PASSWORD}
+        endpoint: brd.superproxy.io:33335
+        
+    # 请求间隔
+    delay:
+      min: 1000   # 最小 1 秒
+      max: 5000   # 最大 5 秒
+      
+    # 浏览器指纹伪装
+    stealth:
+      enabled: true
+      randomize_viewport: true
+      randomize_user_agent: true
+
+# ============ 数据处理配置 ============
+processor:
+  # 处理管道（按顺序执行）
+  pipeline:
+    - name: HtmlCleaner
+      enabled: true
+      
+    - name: TextNormalizer
+      enabled: true
+      
+    - name: ContactExtractor
+      enabled: true
+      config:
+        extract_email: true
+        extract_phone: true
+        
+    - name: DomainDeduplicator
+      enabled: true
+      config:
+        ttl: 604800  # 去重缓存 7 天
+        
+    - name: TokenEstimator
+      enabled: true
+      config:
+        model: gpt-4o
+  
+  # 去重策略
+  deduplication:
+    strategy: multi_level  # bloom_filter | exact | multi_level
+    keys:
+      - domain
+      - usci  # 统一社会信用代码
+      - company_name_region_hash
+
+# ============ AI 评级配置 ============
+rating:
+  # LLM 设置
+  llm:
+    provider: openai  # openai | anthropic
+    model: gpt-4o
+    fallback_model: gpt-4o-mini  # 降级模型
+    temperature: 0.3
+    max_tokens: 1000
+    
+  # 批量处理
+  batch:
+    enabled: true
+    size: 5  # 每批 5 家公司
+    
+  # Token 优化
+  optimization:
+    cache_similar: true
+    max_description_length: 500
+    max_job_postings: 5
+    max_news: 3
+    
+  # 评分维度
+  dimensions:
+    - name: firmographics
+      display_name: 基础匹配度
+      weight: 0.3
+      max_score: 3
+      rules:
+        - condition: industry in ['电商', '物流', '金融', 'SaaS']
+          score: 3
+          reason: 属于目标行业
+          
+        - condition: estimated_size == 'large'
+          score: 2
+          reason: 企业规模达标
+          
+        - condition: estimated_size == 'small'
+          score: -5
+          reason: 规模过小，客单价低
+          
+    - name: intent_signals
+      display_name: 意向信号
+      weight: 0.4
+      max_score: 4
+      rules:
+        - condition: has_job_posting(['客服', '售后', 'Customer Service'])
+          score: 3
+          reason: 正在招聘相关岗位
+          
+        - condition: recent_funding_within_months(6)
+          score: 1
+          reason: 近期获得融资
+          
+        - condition: mentioned_pain_point(['效率', '成本', '自动化'])
+          score: 1
+          reason: 社交媒体提及痛点
+          
+    - name: pain_points
+      display_name: 痛点关联度
+      weight: 0.3
+      max_score: 3
+      rules:
+        - condition: legacy_tech_stack()
+          score: 1.5
+          reason: 技术栈落后
+          
+        - condition: slow_growth()
+          score: 1.5
+          reason: 用户增长缓慢
+  
+  # 评分阈值
+  thresholds:
+    high: 9      # >= 9 分为高优
+    medium: 6    # 6-8 分为中优
+    low: 6       # < 6 分为低优
+    
+  # 产品信息（用于 Prompt）
+  product:
+    name: 全自动AI客服系统
+    description: |
+      帮助企业实现客服自动化，通过 AI 技术减少 80% 人力成本，
+      新员工 3 天即可上岗，支持多渠道接入（网页、微信、APP）。
+    target_industries:
+      - 电商
+      - 物流
+      - 金融
+      - 在线教育
+    target_size: medium,large
+    target_regions:
+      - 北京
+      - 上海
+      - 深圳
+      - 杭州
+
+# ============ 自动化流转配置 ============
+automation:
+  # 路由规则（按优先级执行）
+  rules:
+    - name: 高优线索（9-10分）
+      priority: 1
+      condition: score >= 9
+      actions:
+        - type: notify
+          channels:
+            - wechat
+            - dingtalk
+            
+        - type: generate_email
+          template: personalized_outreach
+          
+        - type: crm_push
+          priority: high
+          stage: qualified_lead
+          owner: auto_assign
+          
+    - name: 中优线索（6-8分）
+      priority: 2
+      condition: score >= 6 and score < 9
+      actions:
+        - type: email_sequence
+          campaign: nurture_6month
+          
+        - type: crm_push
+          priority: medium
+          stage: lead
+          
+    - name: 低分线索（<6分）
+      priority: 3
+      condition: score < 6
+      actions:
+        - type: archive
+          reason: low_score
+          
+    # 特殊规则
+    - name: 招聘信号强烈
+      priority: 0  # 最高优先级
+      condition: intent_signals >= 3 and job_postings_count > 2
+      actions:
+        - type: notify
+          channels:
+            - wechat
+          message_template: |
+            🔥 招聘信号强烈！
+            公司 {{company_name}} 正在大量招聘客服岗位（{{job_count}}个），
+            建议立即跟进。
+            
+        - type: crm_push
+          priority: urgent
+          stage: hot_lead
+
+# ============ 集成服务配置 ============
+integrations:
+  # CRM
+  crm:
+    provider: hubspot  # hubspot | salesforce | custom
+    config:
+      api_key: ${HUBSPOT_API_KEY}
+      default_owner_id: ${HUBSPOT_DEFAULT_OWNER}
+      custom_fields:
+        ai_rating_score: ai_rating_score
+        ai_rating_confidence: ai_rating_confidence
+        ai_icebreaker: ai_icebreaker
+        
+  # 通知服务
+  notifications:
+    wechat:
+      enabled: true
+      webhook_url: ${WECHAT_WEBHOOK_URL}
+      
+    dingtalk:
+      enabled: true
+      webhook_url: ${DINGTALK_WEBHOOK_URL}
+      secret: ${DINGTALK_SECRET}
+      
+    email:
+      enabled: true
+      smtp:
+        host: smtp.gmail.com
+        port: 587
+        secure: false
+        auth:
+          user: ${EMAIL_USER}
+          pass: ${EMAIL_PASS}
+      from: sales@example.com
+      to:
+        - sales-team@example.com
+        
+  # 邮件营销
+  email_marketing:
+    provider: mailchimp  # mailchimp | sendgrid | custom
+    config:
+      api_key: ${MAILCHIMP_API_KEY}
+      audience_id: ${MAILCHIMP_AUDIENCE_ID}
+      campaigns:
+        nurture_6month:
+          id: campaign_123
+          tags:
+            - medium_priority
+            - auto_generated
+
+# ============ 数据库配置 ============
+database:
+  postgres:
+    host: ${POSTGRES_HOST:-localhost}
+    port: ${POSTGRES_PORT:-5432}
+    database: ${POSTGRES_DB:-lead_rating}
+    username: ${POSTGRES_USER:-postgres}
+    password: ${POSTGRES_PASSWORD}
+    pool:
+      min: 2
+      max: 10
+      
+  redis:
+    host: ${REDIS_HOST:-localhost}
+    port: ${REDIS_PORT:-6379}
+    password: ${REDIS_PASSWORD}
+    db: 0
+    
+  # 对象存储（存储原始 HTML、截图）
+  storage:
+    provider: minio  # minio | s3
+    config:
+      endpoint: ${MINIO_ENDPOINT:-localhost:9000}
+      access_key: ${MINIO_ACCESS_KEY}
+      secret_key: ${MINIO_SECRET_KEY}
+      bucket: lead-scraper-raw-data
+      use_ssl: false
+
+# ============ 任务队列配置 ============
+queue:
+  # BullMQ 配置
+  bullmq:
+    connection:
+      host: ${REDIS_HOST:-localhost}
+      port: ${REDIS_PORT:-6379}
+      
+  # 各队列配置
+  queues:
+    scrape:
+      concurrency: 5
+      rate_limit:
+        max: 100
+        duration: 60000  # 1 分钟
+      retry:
+        attempts: 3
+        backoff:
+          type: exponential
+          delay: 5000
+          
+    process:
+      concurrency: 10
+      rate_limit:
+        max: 500
+        duration: 60000
+        
+    rating:
+      concurrency: 3   # 控制 AI API 并发
+      rate_limit:
+        max: 60
+        duration: 60000
+      retry:
+        attempts: 5
+        backoff:
+          type: exponential
+          delay: 10000
+          
+    automation:
+      concurrency: 5
+      rate_limit:
+        max: 200
+        duration: 60000
+
+# ============ 监控与日志 ============
+monitoring:
+  # 日志
+  logging:
+    level: info  # debug | info | warn | error
+    format: json
+    outputs:
+      - console
+      - file
+    file:
+      path: ./logs/app.log
+      max_size: 100mb
+      max_files: 10
+      
+  # 指标
+  metrics:
+    enabled: true
+    provider: prometheus
+    port: 9090
+    
+  # 追踪
+  tracing:
+    enabled: false
+    provider: opentelemetry
+    
+  # 告警
+  alerts:
+    enabled: true
+    channels:
+      - type: webhook
+        url: ${ALERT_WEBHOOK_URL}
+    rules:
+      - name: 爬虫失败率过高
+        condition: scrape_error_rate > 0.3
+        message: 爬虫失败率超过 30%
+        
+      - name: AI API 成本超预算
+        condition: daily_ai_cost > 200
+        message: 今日 AI API 成本超过 $200
+
+# ============ 开发与部署 ============
+environment: development  # development | staging | production
+
+# 定时任务
+cron:
+  - name: daily_scrape
+    schedule: "0 9 * * *"  # 每天 9:00
+    timezone: Asia/Shanghai
+    task: scrape
+    params:
+      source: google_maps
+      query: 北京 软件公司
+      limit: 50
+      
+  - name: weekly_report
+    schedule: "0 18 * * 5"  # 每周五 18:00
+    timezone: Asia/Shanghai
+    task: generate_report

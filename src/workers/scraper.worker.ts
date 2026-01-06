@@ -1,0 +1,188 @@
+/**
+ * 爬虫 Worker
+ * 消费爬取任务并将数据推送到处理队列
+ */
+
+import 'dotenv/config';
+import { Worker, Job } from 'bullmq';
+import { randomUUID } from 'crypto';
+import { logger } from '../utils/logger';
+import { configLoader } from '../config/config-loader';
+import { db } from '../db';
+import { companies } from '../db/schema';
+import { GoogleMapsAdapter } from '../scraper/adapters/google-maps.adapter';
+import type { ScrapeParams } from '../scraper/base.adapter';
+
+const redisConfig = configLoader.get('database.redis');
+const queueConfig = configLoader.get('queue.queues.scrape');
+
+const redis = {
+    host: redisConfig.host,
+    port: redisConfig.port,
+    password: redisConfig.password,
+};
+
+interface ScrapeJobData {
+    source: 'google_maps' | 'linkedin' | 'qichacha';
+    query: string;
+    limit: number;
+    priority?: number;
+}
+
+class ScraperWorker {
+    private worker: Worker;
+    private adapters: Record<string, any> = {};
+
+    constructor() {
+        // 初始化适配器
+        this.adapters['google_maps'] = new GoogleMapsAdapter();
+
+        // 创建 Worker
+        this.worker = new Worker<ScrapeJobData>(
+            'scrape',
+            async (job: Job<ScrapeJobData>) => {
+                return await this.processJob(job);
+            },
+            {
+                connection: redis,
+                concurrency: queueConfig.concurrency || 5,
+                limiter: queueConfig.rate_limit
+            }
+        );
+
+        this.setupEventHandlers();
+    }
+
+    private async processJob(job: Job<ScrapeJobData>) {
+        const { source, query, limit } = job.data;
+
+        logger.info(`\n${'='.repeat(60)}`);
+        logger.info(`[任务开始] ${source} - "${query}"`);
+        logger.info(`[目标数量] ${limit} 条线索`);
+        logger.info(`${'='.repeat(60)}\n`);
+
+        const adapter = this.adapters[source];
+        if (!adapter) {
+            throw new Error(`未找到适配器: ${source}`);
+        }
+
+        // 执行爬取
+        const rawData = await adapter.scrape({ query, limit } as ScrapeParams);
+
+        logger.info(`\n[爬取完成] 共找到 ${rawData.length} 条线索`);
+        logger.info(`${'─'.repeat(60)}`);
+
+        let savedCount = 0;
+        let validationFailedCount = 0;
+
+        // 保存到数据库并推送到处理队列
+        for (const raw of rawData) {
+            if (!adapter.validate(raw)) {
+                validationFailedCount++;
+                continue;
+            }
+
+            const standardData = adapter.transform(raw);
+
+            try {
+                // 保存到数据库
+                const companyId = standardData.domain || randomUUID();
+
+                await db.insert(companies).values({
+                    id: companyId,
+                    name: standardData.name,
+                    domain: standardData.domain,
+                    website: standardData.website,
+                    industry: standardData.industry,
+                    region: standardData.region,
+                    email: standardData.email,
+                    phone: standardData.phone,
+                    employeeCount: standardData.employeeCount,
+                    estimatedSize: standardData.estimatedSize,
+                    rawData: raw.data as any,
+                    source: source,
+                    sourceUrl: standardData.sourceUrl,
+                    scrapedAt: standardData.scrapedAt,
+                }).onConflictDoUpdate({
+                    target: companies.id,
+                    set: {
+                        updatedAt: new Date(),
+                    }
+                });
+
+                savedCount++;
+
+                // 显示保存的线索关键信息
+                logger.info(`[线索 ${savedCount}] ${standardData.name}`);
+                logger.info(`  ├─ 网站: ${standardData.website || '(无)'}`);
+                logger.info(`  ├─ 地址: ${standardData.region || '(无)'}`);
+                logger.info(`  ├─ 电话: ${standardData.phone || '(无)'}`);
+                logger.info(`  └─ 邮箱: ${standardData.email || '(无)'}`);
+
+                // TODO: 推送到处理队列
+                // await processQueue.add('process', { companyId, data: standardData });
+
+            } catch (error: any) {
+                logger.error(`[保存失败] ${standardData.name}:`, error.message);
+            }
+        }
+
+        // 显示统计摘要
+        logger.info(`\n${'─'.repeat(60)}`);
+        logger.info(`[统计摘要]`);
+        logger.info(`  总计搜索: ${rawData.length} 条`);
+        logger.info(`  验证失败: ${validationFailedCount} 条`);
+        logger.info(`  成功保存: ${savedCount} 条`);
+        logger.info(`  成功率: ${rawData.length > 0 ? ((savedCount / rawData.length) * 100).toFixed(1) : 0}%`);
+        logger.info(`${'='.repeat(60)}\n`);
+
+        return {
+            scraped: rawData.length,
+            saved: savedCount,
+            failed: validationFailedCount
+        };
+    }
+
+    private setupEventHandlers() {
+        this.worker.on('completed', (job) => {
+            logger.info(`✓ 任务完成: ${job.id}`);
+        });
+
+        this.worker.on('failed', (job, err) => {
+            logger.error(`✗ 任务失败: ${job?.id}`, err.message);
+        });
+
+        this.worker.on('error', (err) => {
+            logger.error('Worker 错误:', err);
+        });
+
+        logger.info('✓ Scraper Worker 已启动');
+    }
+
+    async close() {
+        logger.info('关闭 Scraper Worker...');
+        await this.worker.close();
+
+        for (const adapter of Object.values(this.adapters)) {
+            if (adapter.close) {
+                await adapter.close();
+            }
+        }
+    }
+}
+
+// 启动 Worker
+const worker = new ScraperWorker();
+
+// 优雅关闭
+process.on('SIGTERM', async () => {
+    logger.info('收到 SIGTERM 信号');
+    await worker.close();
+    process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+    logger.info('收到 SIGINT 信号');
+    await worker.close();
+    process.exit(0);
+});

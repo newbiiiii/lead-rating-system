@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>测试 - 公司数据加载</title>
+    <style>
+        body {
+            font-family: Arial;
+            padding: 20px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        #status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>公司数据加载测试</h1>
+    <button onclick="loadData()">加载数据</button>
+    <div id="status"></div>
+    <div id="result"></div>
+
+    <script>
+        async function loadData() {
+            const status = document.getElementById('status');
+            const result = document.getElementById('result');
+
+            try {
+                status.innerHTML = '正在加载...';
+                status.className = '';
+
+                const response = await fetch('http://localhost:3000/api/companies?limit=20');
+                const data = await response.json();
+
+                status.innerHTML = `成功! 共 ${data.data.length} 条记录`;
+                status.className = 'success';
+
+                let html = '<table><thead><tr>';
+                html += '<th>名称</th><th>行业</th><th>网站</th><th>电话</th><th>地址</th>';
+                html += '</tr></thead><tbody>';
+
+                data.data.forEach(company => {
+                    html += '<tr>';
+                    html += `<td>${company.name}</td>`;
+                    html += `<td>${company.industry || '-'}</td>`;
+                    html += `<td>${company.website || '-'}</td>`;
+                    html += `<td>${company.phone || '-'}</td>`;
+                    html += `<td>${company.region || '-'}</td>`;
+                    html += '</tr>';
+                });
+
+                html += '</tbody></table>';
+                result.innerHTML = html;
+
+            } catch (error) {
+                status.innerHTML = '错误: ' + error.message;
+                status.className = 'error';
+                console.error('详细错误:', error);
+            }
+        }
+
+        // 自动加载
+        window.onload = () => loadData();
+    </script>
+</body>
+
+</html>

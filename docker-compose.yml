@@ -1,0 +1,242 @@
+version: '3.8'
+
+services:
+  # ============ 数据库 ============
+  postgres:
+    image: postgres:16-alpine
+    container_name: lead-rating-postgres
+    environment:
+      POSTGRES_DB: lead_rating
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lead-rating-network
+
+  # ============ 缓存与队列 ============
+  redis:
+    image: redis:7-alpine
+    container_name: lead-rating-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lead-rating-network
+
+  # ============ 对象存储 ============
+  minio:
+    image: minio/minio:latest
+    container_name: lead-rating-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"  # Web UI
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin123}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - lead-rating-network
+
+  # ============ 应用服务 ============
+  
+  # API 服务
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lead-rating-api
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: lead_rating
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      HUBSPOT_API_KEY: ${HUBSPOT_API_KEY}
+      WECHAT_WEBHOOK_URL: ${WECHAT_WEBHOOK_URL}
+      DINGTALK_WEBHOOK_URL: ${DINGTALK_WEBHOOK_URL}
+      DINGTALK_SECRET: ${DINGTALK_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: npm run start:api
+    networks:
+      - lead-rating-network
+    restart: unless-stopped
+
+  # 爬虫 Worker
+  scraper-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    deploy:
+      replicas: 3  # 3 个实例
+    environment:
+      NODE_ENV: production
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: lead_rating
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+      PROXY_USERNAME: ${PROXY_USERNAME}
+      PROXY_PASSWORD: ${PROXY_PASSWORD}
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    command: npm run worker:scraper
+    networks:
+      - lead-rating-network
+    restart: unless-stopped
+
+  # 数据处理 Worker
+  processor-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    deploy:
+      replicas: 2
+    environment:
+      NODE_ENV: production
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: lead_rating
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: npm run worker:processor
+    networks:
+      - lead-rating-network
+    restart: unless-stopped
+
+  # AI 评级 Worker
+  rating-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    deploy:
+      replicas: 2
+    environment:
+      NODE_ENV: production
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: lead_rating
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: npm run worker:rating
+    networks:
+      - lead-rating-network
+    restart: unless-stopped
+
+  # 自动化流转 Worker
+  automation-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    deploy:
+      replicas: 2
+    environment:
+      NODE_ENV: production
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: lead_rating
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+      HUBSPOT_API_KEY: ${HUBSPOT_API_KEY}
+      WECHAT_WEBHOOK_URL: ${WECHAT_WEBHOOK_URL}
+      DINGTALK_WEBHOOK_URL: ${DINGTALK_WEBHOOK_URL}
+      DINGTALK_SECRET: ${DINGTALK_SECRET}
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PASS: ${EMAIL_PASS}
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: npm run worker:automation
+    networks:
+      - lead-rating-network
+    restart: unless-stopped
+
+  # ============ 监控（可选） ============
+  
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: lead-rating-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - lead-rating-network
+    profiles:
+      - monitoring
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: lead-rating-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin123}
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - lead-rating-network
+    profiles:
+      - monitoring
+
+networks:
+  lead-rating-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  prometheus_data:
+  grafana_data:
