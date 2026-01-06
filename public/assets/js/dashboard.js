@@ -52,10 +52,10 @@ function showPage(pageName) {
 
     // 更新标题
     const titles = {
-        dashboard: '仪表盘',
-        tasks: '任务管理',
-        companies: '公司数据',
-        ratings: '评级结果'
+        dashboard: '数据概览',
+        tasks: '搜索线索',
+        companies: '客户线索',
+        ratings: '优质客户'
     };
     document.querySelector('#page-title').textContent = titles[pageName] || '仪表盘';
 
@@ -178,7 +178,7 @@ async function fetchAPI(endpoint) {
         return await response.json();
     } catch (error) {
         console.error('API Error:', error);
-        showNotification('数据加载失败', 'error');
+        showNotification('数据加载失败,请稍后重试', 'error');
         return null;
     }
 }
@@ -196,7 +196,7 @@ async function postAPI(endpoint, data) {
         return await response.json();
     } catch (error) {
         console.error('API Error:', error);
-        showNotification('操作失败', 'error');
+        showNotification('操作失败,请稍后重试', 'error');
         return null;
     }
 }
@@ -265,7 +265,7 @@ function updateTaskStats(stats) {
 function updateRecentLeads(data) {
     const tbody = document.querySelector('#recent-leads-body');
     if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">暂无高分线索</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">暂无优质客户</td></tr>';
         return;
     }
 
@@ -301,7 +301,7 @@ function setupFormHandlers() {
 
             const result = await postAPI('/tasks/scrape', data);
             if (result && result.success) {
-                showNotification('任务添加成功', 'success');
+                showNotification('搜索任务添加成功!正在后台搜索...', 'success');
                 form.reset();
                 loadQueueStats();
             }
@@ -345,10 +345,10 @@ async function loadQueueStats() {
 
 function getQueueName(key) {
     const names = {
-        scrape: '爬取队列',
-        process: '处理队列',
-        rating: '评级队列',
-        automation: '自动化队列'
+        scrape: '搜索任务',
+        process: '处理任务',
+        rating: '评分任务',
+        automation: '自动化任务'
     };
     return names[key] || key;
 }
@@ -360,7 +360,7 @@ async function loadCompanies(page = 1) {
 
     const tbody = document.querySelector('#companies-body');
     if (!data.data || data.data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="empty-state">暂无公司数据</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="empty-state">暂无客户数据,请先添加搜索任务</td></tr>';
         return;
     }
 
