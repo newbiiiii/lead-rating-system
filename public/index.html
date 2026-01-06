@@ -9,7 +9,56 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        .terminal-window {
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #333;
+        }
+
+        .terminal-content {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .log-line {
+            font-size: 13px;
+            line-height: 1.4;
+            color: #d4d4d4;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .log-line.info {
+            color: #9cdcfe;
+        }
+
+        .log-line.warn {
+            color: #ce9178;
+        }
+
+        .log-line.error {
+            color: #f44747;
+        }
+
+        .log-line.system {
+            color: #6a9955;
+            font-style: italic;
+        }
+
+        .log-timestamp {
+            color: #569cd6;
+            margin-right: 8px;
+            opacity: 0.7;
+        }
+    </style>
 </head>
 
 <body>
@@ -232,6 +281,20 @@
                             <button class="btn-secondary btn-sm" onclick="loadQueueStats()">刷新</button>
                         </div>
                         <div id="queue-stats-container"></div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="section-header">
+                            <h3>实时日志</h3>
+                            <div class="header-actions">
+                                <button class="btn-secondary btn-sm" onclick="clearLogs()">清空</button>
+                            </div>
+                        </div>
+                        <div class="terminal-window" id="log-terminal">
+                            <div class="terminal-content" id="log-content">
+                                <div class="log-line system">等待日志连接...</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

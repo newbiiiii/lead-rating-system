@@ -17,7 +17,61 @@ document.addEventListener('DOMContentLoaded', () => {
             loadDashboardData();
         }
     }, 30000); // 每30秒刷新
+
+    initSocket();
 });
+
+// ===== Socket.IO & 日志 =====
+let socket;
+
+function initSocket() {
+    socket = io();
+
+    const logContent = document.getElementById('log-content');
+
+    socket.on('connect', () => {
+        appendLog({ level: 'system', message: '已连接到实时日志服务器' });
+    });
+
+    socket.on('disconnect', () => {
+        appendLog({ level: 'system', message: '与日志服务器断开连接' });
+    });
+
+    socket.on('log', (data) => {
+        appendLog(data);
+    });
+}
+
+function appendLog(data) {
+    const logContent = document.getElementById('log-content');
+    if (!logContent) return;
+
+    const line = document.createElement('div');
+    line.className = `log-line ${data.level || 'info'}`;
+
+    const timestamp = new Date().toLocaleTimeString();
+    line.innerHTML = `<span class="log-timestamp">[${timestamp}]</span>${data.message}`;
+
+    logContent.appendChild(line);
+
+    // 保持最多 1000 行日志
+    if (logContent.children.length > 1000) {
+        logContent.removeChild(logContent.firstChild);
+    }
+
+    // 自动滚动到底部
+    const terminal = document.getElementById('log-terminal');
+    if (terminal) {
+        terminal.scrollTop = terminal.scrollHeight;
+    }
+}
+
+function clearLogs() {
+    const logContent = document.getElementById('log-content');
+    if (logContent) {
+        logContent.innerHTML = '<div class="log-line system">日志已清空</div>';
+    }
+}
 
 // ===== 导航 =====
 function initNavigation() {
@@ -467,3 +521,4 @@ window.loadCompanies = loadCompanies;
 window.loadRatings = loadRatings;
 window.loadQueueStats = loadQueueStats;
 window.viewDetail = viewDetail;
+window.clearLogs = clearLogs;

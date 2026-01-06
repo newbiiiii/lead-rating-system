@@ -6,6 +6,7 @@
 import winston from 'winston';
 import path from 'path';
 import { configLoader } from '../config/config-loader';
+import { RedisTransport } from './redis-transport';
 
 const logConfig = configLoader.get('monitoring.logging', {
     level: 'info',
@@ -46,6 +47,11 @@ const logger = winston.createLogger({
             level: 'error',
             maxsize: 100 * 1024 * 1024,
             maxFiles: 10
+        }),
+
+        // Redis 实时日志流
+        new RedisTransport({
+            channel: 'logs'
         })
     ]
 });

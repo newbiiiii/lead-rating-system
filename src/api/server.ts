@@ -11,8 +11,53 @@ import { TaskScheduler, scrapeQueue, processQueue, ratingQueue, automationQueue 
 import { db } from '../db';
 import { companies, ratings } from '../db/schema';
 import { desc, sql } from 'drizzle-orm';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import Redis from 'ioredis';
+import { configLoader } from '../config/config-loader';
 
 const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+    cors: {
+        origin: '*',
+    }
+});
+
+// Redis 订阅客户端
+const redisConfig = configLoader.get('database.redis');
+const redisSub = new Redis({
+    host: redisConfig.host,
+    port: redisConfig.port,
+    password: redisConfig.password,
+});
+
+redisSub.subscribe('logs', (err, count) => {
+    if (err) {
+        logger.error('Redis 订阅失败:', err);
+    } else {
+        logger.info(`已订阅 ${count} 个 Redis 频道`);
+    }
+});
+
+redisSub.on('message', (channel, message) => {
+    if (channel === 'logs') {
+        try {
+            const logEntry = JSON.parse(message);
+            io.emit('log', logEntry);
+        } catch (e) {
+            // 忽略解析错误
+        }
+    }
+});
+
+io.on('connection', (socket) => {
+    logger.info(`客户端已连接: ${socket.id}`);
+    socket.on('disconnect', () => {
+        logger.info(`客户端已断开: ${socket.id}`);
+    });
+});
+
 app.use(express.json());
 
 // 托管静态文件
@@ -137,7 +182,7 @@ app.get('/api/ratings', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
     logger.info(`✓ API 服务已启动: http://localhost:${PORT}`);
     logger.info(`  健康检查: http://localhost:${PORT}/health`);
     logger.info(`  队列状态: http://localhost:${PORT}/api/queues/stats`);
