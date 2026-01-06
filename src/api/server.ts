@@ -5,15 +5,15 @@
 
 import 'dotenv/config';
 import express from 'express';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import Redis from 'ioredis';
 import path from 'path';
 import { logger } from '../utils/logger';
 import { TaskScheduler, scrapeQueue, processQueue, ratingQueue, automationQueue } from '../queue';
 import { db } from '../db';
 import { companies, ratings } from '../db/schema';
 import { desc, sql } from 'drizzle-orm';
-import { createServer } from 'http';
-import { Server } from 'socket.io';
-import Redis from 'ioredis';
 import { configLoader } from '../config/config-loader';
 
 const app = express();
@@ -184,6 +184,7 @@ const PORT = process.env.PORT || 3000;
 
 httpServer.listen(PORT, () => {
     logger.info(`✓ API 服务已启动: http://localhost:${PORT}`);
+    logger.info(`✓ WebSocket 服务已启动`);
     logger.info(`  健康检查: http://localhost:${PORT}/health`);
     logger.info(`  队列状态: http://localhost:${PORT}/api/queues/stats`);
 });
@@ -191,5 +192,6 @@ httpServer.listen(PORT, () => {
 // 优雅关闭
 process.on('SIGTERM', async () => {
     logger.info('收到 SIGTERM，关闭服务...');
+    io.close();
     process.exit(0);
 });
