@@ -98,19 +98,12 @@ class ScraperWorker {
         });
 
         let rawData: any[] = [];
+        let savedCount = 0;
+        let validationFailedCount = 0;
 
-        try {
-            // 执行爬取
-            rawData = await adapter.scrape({ query, limit, config } as ScrapeParams);
-
-            logger.info(`\n[爬取完成] 共找到 ${rawData.length} 条线索`);
-            logger.info(`${'─'.repeat(60)}`);
-
-            let savedCount = 0;
-            let validationFailedCount = 0;
-
-            // 保存到数据库 - 使用新的leads和contacts表
-            for (const [index, raw] of rawData.entries()) {
+        // 增量保存回调函数
+        const onBatchComplete = async (batch: any[]) => {
+            for (const raw of batch) {
                 if (!adapter.validate(raw)) {
                     validationFailedCount++;
                     await db.update(tasks)
@@ -121,6 +114,10 @@ class ScraperWorker {
 
                 const standardData = adapter.transform(raw);
 
+                // 辅助函数：截断字符串以适应数据库字段长度
+                const truncate = (str: string | undefined, maxLen: number) =>
+                    str ? (str.length > maxLen ? str.substring(0, maxLen) : str) : undefined;
+
                 try {
                     // 1. 保存Lead
                     const leadId = randomUUID();
@@ -129,13 +126,13 @@ class ScraperWorker {
                         id: leadId,
                         taskId,
                         companyName: standardData.name,
-                        domain: standardData.domain,
+                        domain: truncate(standardData.domain, 255),
                         website: standardData.website,
-                        industry: standardData.industry,
-                        region: standardData.region,
-                        address: standardData.region,  // 临时使用region
+                        industry: truncate(standardData.industry, 100),
+                        region: truncate(standardData.region, 100),
+                        address: standardData.region,  // address is text, no limit
                         employeeCount: standardData.employeeCount,
-                        estimatedSize: standardData.estimatedSize,
+                        estimatedSize: truncate(standardData.estimatedSize, 20),
                         rating: raw.data.rating ? parseFloat(raw.data.rating) : null,
                         reviewCount: raw.data.reviewCount ? parseInt(raw.data.reviewCount.replace(/[^\d]/g, '')) : null,
                         rawData: raw.data as any,
@@ -160,49 +157,40 @@ class ScraperWorker {
                     savedCount++;
 
                     // 3. 更新任务进度
-                    const progress = Math.floor((index + 1) / rawData.length * 100);
                     await db.update(tasks)
                         .set({
                             totalLeads: sql`${tasks.totalLeads} + 1`,
-                            successLeads: sql`${tasks.successLeads} + 1`,
-                            progress
+                            successLeads: sql`${tasks.successLeads} + 1`
                         })
                         .where(eq(tasks.id, taskId));
 
                     // 显示保存的线索关键信息
                     logger.info(`[线索 ${savedCount}] ${standardData.name}`);
-
-                    // 每5条或第1条发送进度事件
-                    if (savedCount % 5 === 0 || savedCount === 1) {
-                        await eventEmitter.emit({
-                            type: 'progress',
-                            jobId: job.id!,
-                            timestamp: new Date().toISOString(),
-                            data: {
-                                message: `正在保存: ${standardData.name}`,
-                                currentIndex: savedCount,
-                                totalCount: rawData.length,
-                                currentItem: standardData.name,
-                                progress,
-                                taskId
-                            }
-                        });
-                    }
                     logger.info(`  ├─ 网站: ${standardData.website || '(无)'}`);
                     logger.info(`  ├─ 地址: ${standardData.region || '(无)'}`);
                     logger.info(`  ├─ 电话: ${standardData.phone || '(无)'}`);
                     logger.info(`  └─ 邮箱: ${standardData.email || '(无)'}`);
 
-                    // TODO: 触发AI评级
-                    // await ratingQueue.add('rate', { leadId });
-
                 } catch (error: any) {
-                    logger.error(`[保存失败] ${standardData.name}:`, error.message);
+                    logger.error(`[保存失败] ${standardData.name}:`, error?.message || error?.toString() || 'Unknown error');
+                    if (error?.stack) {
+                        logger.debug(`错误详情:`, error.stack);
+                    }
                     await db.update(tasks)
                         .set({ failedLeads: sql`${tasks.failedLeads} + 1` })
                         .where(eq(tasks.id, taskId));
                 }
             }
+        };
+
+        try {
+            // 执行爬取 - 使用增量保存回调
+            rawData = await adapter.scrape({ query, limit, config, onBatchComplete } as ScrapeParams);
+
+            logger.info(`\n[爬取完成] 共找到 ${rawData.length} 条线索`);
+            logger.info(`${'─'.repeat(60)}`);
+
+            // 注意：数据已通过 onBatchComplete 回调增量保存，无需再次保存
 
             // 4. 标记任务完成
             await db.update(tasks)

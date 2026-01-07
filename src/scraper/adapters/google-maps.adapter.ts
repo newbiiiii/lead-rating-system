@@ -152,6 +152,10 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
         const step = config.geolocation?.step || 0.01;
         const zoom = config.geolocation?.zoom || 15;
 
+        // 优化搜索词：添加城市名以强制本地化结果
+        const cityName = config.geolocation?.city || '';
+        const optimizedQuery = cityName ? `${params.query} ${cityName}` : params.query;
+
         // 生成网格点
         const gridPoints = this.generateGridPoints(
             area.center.lat,
@@ -161,7 +165,10 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
         );
 
         logger.info(`[GoogleMaps] ========== 开始网格搜索 ==========`);
-        logger.info(`[GoogleMaps] 查询: "${params.query}"`);
+        logger.info(`[GoogleMaps] 原始查询: "${params.query}"`);
+        if (cityName) {
+            logger.info(`[GoogleMaps] 优化查询: "${optimizedQuery}" (添加城市名以强制本地化)`);
+        }
         logger.info(`[GoogleMaps] 网格点数: ${gridPoints.length}`);
         logger.info(`[GoogleMaps] 缩放级别: ${zoom}z, 步长: ${step}度`);
         logger.info(`[GoogleMaps] 预计耗时: ${Math.ceil(gridPoints.length * 60 / 60)} 分钟`);
@@ -175,7 +182,7 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
             for (const [index, point] of gridPoints.entries()) {
                 logger.info(`[GoogleMaps] [${index + 1}/${gridPoints.length}] 搜索点: (${point.lat.toFixed(4)}, ${point.lng.toFixed(4)})`);
 
-                const searchUrl = `https://www.google.com/maps/search/${encodeURIComponent(params.query)}/@${point.lat},${point.lng},${zoom}z`;
+                const searchUrl = `https://www.google.com/maps/search/${encodeURIComponent(optimizedQuery)}/@${point.lat},${point.lng},${zoom}z`;
 
                 try {
                     await page.goto(searchUrl, {
@@ -193,6 +200,7 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
 
                     const listings = await page.$$('[role="article"]');
                     let newCount = 0;
+                    const batchResults: RawData[] = [];  // 本点新增的数据
 
                     for (const listing of listings) {
                         try {
@@ -208,12 +216,14 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
                             }
 
                             seenKeys.add(uniqueKey);
-                            allResults.push({
+                            const rawData: RawData = {
                                 source: this.source,
                                 url: page.url(),
                                 scrapedAt: new Date(),
                                 data
-                            });
+                            };
+                            allResults.push(rawData);
+                            batchResults.push(rawData);  // 也添加到批次
                             newCount++;
                         } catch (error: any) {
                             logger.debug(`[GoogleMaps] 提取详情失败:`, error.message);
@@ -221,6 +231,12 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
                     }
 
                     logger.info(`[GoogleMaps] [${index + 1}/${gridPoints.length}] 完成，本点找到 ${listings.length} 个列表项，新增 ${newCount} 条数据，总计 ${allResults.length} 条`);
+
+                    // 增量保存：每个点完成后立即保存新数据
+                    if (params.onBatchComplete && batchResults.length > 0) {
+                        await params.onBatchComplete(batchResults);
+                        logger.info(`[GoogleMaps] [${index + 1}/${gridPoints.length}] 已增量保存 ${batchResults.length} 条数据`);
+                    }
 
                     // 添加延迟避免被封
                     if (index < gridPoints.length - 1) {

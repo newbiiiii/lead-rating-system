@@ -9,6 +9,7 @@ export interface ScrapeParams {
   limit?: number;
   offset?: number;
   config?: Record<string, any>;
+  onBatchComplete?: (results: RawData[]) => Promise<void>;  // 增量保存回调
 }
 
 export interface RawData {
