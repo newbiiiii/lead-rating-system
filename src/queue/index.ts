@@ -49,6 +49,7 @@ export class TaskScheduler {
         query: string;
         limit: number;
         priority?: number;
+        config?: any;  // 支持geolocation等配置
     }) {
         await scrapeQueue.add('scrape', params, {
             priority: params.priority || 5,

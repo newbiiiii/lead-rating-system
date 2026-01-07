@@ -109,7 +109,8 @@ function showPage(pageName) {
         dashboard: '数据概览',
         tasks: '搜索线索',
         companies: '客户线索',
-        ratings: '优质客户'
+        ratings: '优质客户',
+        history: '任务历史'  // 添加
     };
     document.querySelector('#page-title').textContent = titles[pageName] || '仪表盘';
 
@@ -126,6 +127,9 @@ function showPage(pageName) {
             break;
         case 'ratings':
             loadRatings();
+            break;
+        case 'history':
+            loadTaskHistory();
             break;
     }
 }
@@ -660,3 +664,67 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// ===== 任务历史 =====
+async function loadTaskHistory() {
+    const data = await fetchAPI('/tasks?page=1&limit=50');
+    const tbody = document.querySelector('#task-history-body');
+
+    if (!data || !data.tasks || data.tasks.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">暂无任务</td></tr>';
+        return;
+    }
+    tbody.innerHTML = data.tasks.map(task => {
+        const statusMap = { pending: ['等待中', '#fbbf24'], running: ['运行中', '#3b82f6'], completed: ['已完成', '#10b981'], failed: ['失败', '#ef4444'] };
+        const [statusName, statusColor] = statusMap[task.status] || [task.status, '#6b7280'];
+        return `<tr>
+            <td><strong>${task.name}</strong></td>
+            <td>${task.source === 'google_maps' ? 'Google Maps' : task.source}</td>
+            <td><span style="padding: 4px 12px; border-radius: 12px; background: ${statusColor}22; color: ${statusColor}; font-size: 12px;">${statusName}</span></td>
+            <td><div style="display: flex; gap: 8px; align-items: center;">
+                <div style="flex: 1; background: #374151; height: 6px; border-radius: 3px;"><div style="width: ${task.progress || 0}%; height: 100%; background: #667eea;"></div></div>
+                <span style="color: #9ca3af; font-size: 12px;">${task.progress || 0}%</span>
+            </div></td>
+            <td><strong>${task.totalLeads || 0}</strong> <span style="color: #6b7280; font-size: 12px;">(${task.successLeads || 0}/${task.failedLeads || 0})</span></td>
+            <td>${formatDate(task.createdAt)}</td>
+            <td><button class="btn-secondary btn-sm" onclick="viewTaskDetail('${task.id}')">详情</button></td>
+        </tr>`;
+    }).join('');
+}
+async function viewTaskDetail(taskId) {
+    const task = await fetchAPI(`/tasks/${taskId}`);
+    if (!task) return;
+    document.getElementById('task-detail-modal').style.display = 'block';
+    document.getElementById('modal-task-name').textContent = task.name;
+    const statusMap = { pending: ['等待中', '#fbbf24'], running: ['运行中', '#3b82f6'], completed: ['已完成', '#10b981'], failed: ['失败', '#ef4444'] };
+    const [statusName, statusColor] = statusMap[task.status] || [task.status, '#6b7280'];
+    document.getElementById('task-detail-info').innerHTML = `
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 16px; background: #0f1623; border-radius: 8px;">
+            <div><div style="color: #6b7280; font-size: 12px;">任务ID</div><div style="color: #cbd5e1; font-family: monospace; font-size: 11px;">${task.id}</div></div>
+            <div><div style="color: #6b7280; font-size: 12px;">关键词</div><div style="color: #cbd5e1;">${task.query}</div></div>
+            <div><div style="color: #6b7280; font-size: 12px;">状态</div><span style="padding: 4px 12px; border-radius: 12px; background: ${statusColor}22; color: ${statusColor}; font-size: 12px;">${statusName}</span></div>
+            <div><div style="color: #6b7280; font-size: 12px;">线索数</div><div style="color: #cbd5e1; font-size: 20px; font-weight: 600;">${task.totalLeads || 0}</div></div>
+            <div><div style="color: #6b7280; font-size: 12px;">成功/失败</div><div style="color: #cbd5e1;"><span style="color: #10b981;">${task.successLeads || 0}</span>/<span style="color: #ef4444;">${task.failedLeads || 0}</span></div></div>
+            <div><div style="color: #6b7280; font-size: 12px;">创建时间</div><div style="color: #cbd5e1;">${formatDate(task.createdAt)}</div></div>
+        </div>`;
+    const leadsBody = document.getElementById('task-leads-body');
+    if (!task.leads || task.leads.length === 0) {
+        leadsBody.innerHTML = '<tr><td colspan="6" class="empty-state">暂无线索</td></tr>';
+        return;
+    }
+    leadsBody.innerHTML = task.leads.map(lead => {
+        const contacts = (lead.contacts || []).map(c => c.phone || c.email).filter(Boolean).join(', ') || '-';
+        return `<tr>
+            <td><strong>${lead.companyName}</strong></td>
+            <td>${lead.website ? `<a href="${lead.website}" target="_blank" style="color: #667eea;">${lead.website.substring(0, 30)}...</a>` : '-'}</td>
+            <td>${lead.industry || '-'}</td>
+            <td>${lead.rating ? `<span class="score-badge">${lead.rating.toFixed(1)}</span>` : '-'}</td>
+            <td style="font-size: 12px; max-width: 200px;">${contacts}</td>
+            <td><span style="padding: 4px 8px; border-radius: 8px; background: ${lead.ratingStatus === 'rated' ? '#10b98122' : '#fbbf2422'}; color: ${lead.ratingStatus === 'rated' ? '#10b981' : '#fbbf24'}; font-size: 11px;">${lead.ratingStatus === 'pending' ? '待评级' : '已评级'}</span></td>
+        </tr>`;
+    }).join('');
+}
+function closeTaskDetail() { document.getElementById('task-detail-modal').style.display = 'none'; }
+window.loadTaskHistory = loadTaskHistory;
+window.viewTaskDetail = viewTaskDetail;
+window.closeTaskDetail = closeTaskDetail;

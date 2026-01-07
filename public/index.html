@@ -110,6 +110,14 @@
                     </svg>
                     <span>优质客户</span>
                 </a>
+                <a href="#history" class="nav-item" data-page="history">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                            clip-rule="evenodd" />
+                    </svg>
+                    <span>任务历史</span>
+                </a>
             </nav>
         </aside>
 
@@ -385,6 +393,65 @@
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+            <!-- 任务历史页面 -->
+            <div id="history-page" class="page">
+                <div class="section-card">
+                    <div class="section-header">
+                        <h3>任务历史</h3>
+                        <button class="btn-secondary btn-sm" onclick="loadTaskHistory()">刷新</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>任务名称</th>
+                                    <th>来源</th>
+                                    <th>状态</th>
+                                    <th>进度</th>
+                                    <th>线索数</th>
+                                    <th>创建时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="task-history-body">
+                                <tr>
+                                    <td colspan="7" class="empty-state">加载中...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <!-- 任务详情弹窗 -->
+                <div id="task-detail-modal"
+                    style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; padding: 40px;">
+                    <div
+                        style="max-width: 1200px; margin: 0 auto; background: #1a1a2e; border-radius: 12px; padding: 24px; max-height: 90vh; overflow-y: auto;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h2 id="modal-task-name" style="color: #fff; margin: 0;">任务详情</h2>
+                            <button onclick="closeTaskDetail()"
+                                style="background: #374151; border: none; color: #fff; padding: 8px 16px; border-radius: 6px; cursor: pointer;">关闭</button>
+                        </div>
+                        <div id="task-detail-info" style="margin-bottom: 24px;"></div>
+                        <h3 style="color: #cbd5e1; margin-bottom: 16px;">关联线索</h3>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>公司名称</th>
+                                        <th>网站</th>
+                                        <th>行业</th>
+                                        <th>评分</th>
+                                        <th>联系人</th>
+                                        <th>评级状态</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="task-leads-body"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>

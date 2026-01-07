@@ -9,7 +9,8 @@ import { randomUUID } from 'crypto';
 import { logger } from '../utils/logger';
 import { configLoader } from '../config/config-loader';
 import { db } from '../db';
-import { companies } from '../db/schema';
+import { tasks, leads, contacts, companies } from '../db/schema';
+import { eq, sql } from 'drizzle-orm';
 import { GoogleMapsAdapter } from '../scraper/adapters/google-maps.adapter';
 import type { ScrapeParams } from '../scraper/base.adapter';
 import { eventEmitter } from '../utils/event-emitter';
@@ -28,6 +29,7 @@ interface ScrapeJobData {
     query: string;
     limit: number;
     priority?: number;
+    config?: any;  // 包含geolocation等配置
 }
 
 class ScraperWorker {
@@ -55,15 +57,35 @@ class ScraperWorker {
     }
 
     private async processJob(job: Job<ScrapeJobData>) {
-        const { source, query, limit } = job.data;
+        const { source, query, limit, config } = job.data;
+
+        // 1. 创建Task记录
+        const taskId = randomUUID();
+        const cityName = config?.geolocation?.city || config?.geolocation?.country || '全国';
+        const taskName = `${query} - ${cityName}`;
+
+        await db.insert(tasks).values({
+            id: taskId,
+            name: taskName,
+            source,
+            query,
+            targetCount: limit,
+            config: config || {},
+            status: 'running',
+            startedAt: new Date()
+        });
 
         logger.info(`\n${'='.repeat(60)}`);
         logger.info(`[任务开始] ${source} - "${query}"`);
+        logger.info(`[任务ID] ${taskId}`);
         logger.info(`[目标数量] ${limit} 条线索`);
         logger.info(`${'='.repeat(60)}\n`);
 
         const adapter = this.adapters[source];
         if (!adapter) {
+            await db.update(tasks)
+                .set({ status: 'failed', error: `未找到适配器: ${source}`, completedAt: new Date() })
+                .where(eq(tasks.id, taskId));
             throw new Error(`未找到适配器: ${source}`);
         }
 
@@ -72,114 +94,170 @@ class ScraperWorker {
             type: 'task_start',
             jobId: job.id!,
             timestamp: new Date().toISOString(),
-            data: { source, query, totalCount: limit }
+            data: { source, query, totalCount: limit, taskId }
         });
 
-        // 执行爬取
-        const rawData = await adapter.scrape({ query, limit } as ScrapeParams);
+        let rawData: any[] = [];
 
-        logger.info(`\n[爬取完成] 共找到 ${rawData.length} 条线索`);
-        logger.info(`${'─'.repeat(60)}`);
+        try {
+            // 执行爬取
+            rawData = await adapter.scrape({ query, limit } as ScrapeParams);
 
-        let savedCount = 0;
-        let validationFailedCount = 0;
+            logger.info(`\n[爬取完成] 共找到 ${rawData.length} 条线索`);
+            logger.info(`${'─'.repeat(60)}`);
 
-        // 保存到数据库并推送到处理队列
-        for (const raw of rawData) {
-            if (!adapter.validate(raw)) {
-                validationFailedCount++;
-                continue;
-            }
+            let savedCount = 0;
+            let validationFailedCount = 0;
 
-            const standardData = adapter.transform(raw);
+            // 保存到数据库 - 使用新的leads和contacts表
+            for (const [index, raw] of rawData.entries()) {
+                if (!adapter.validate(raw)) {
+                    validationFailedCount++;
+                    await db.update(tasks)
+                        .set({ failedLeads: sql`${tasks.failedLeads} + 1` })
+                        .where(eq(tasks.id, taskId));
+                    continue;
+                }
 
-            try {
-                // 保存到数据库
-                const companyId = standardData.domain || randomUUID();
+                const standardData = adapter.transform(raw);
 
-                await db.insert(companies).values({
-                    id: companyId,
-                    name: standardData.name,
-                    domain: standardData.domain,
-                    website: standardData.website,
-                    industry: standardData.industry,
-                    region: standardData.region,
-                    email: standardData.email,
-                    phone: standardData.phone,
-                    employeeCount: standardData.employeeCount,
-                    estimatedSize: standardData.estimatedSize,
-                    rawData: raw.data as any,
-                    source: source,
-                    sourceUrl: standardData.sourceUrl,
-                    scrapedAt: standardData.scrapedAt,
-                }).onConflictDoUpdate({
-                    target: companies.id,
-                    set: {
-                        updatedAt: new Date(),
-                    }
-                });
+                try {
+                    // 1. 保存Lead
+                    const leadId = randomUUID();
 
-                savedCount++;
-
-                // 显示保存的线索关键信息
-                logger.info(`[线索 ${savedCount}] ${standardData.name}`);
-
-                // 每5条或第1条发送进度事件
-                if (savedCount % 5 === 0 || savedCount === 1) {
-                    await eventEmitter.emit({
-                        type: 'progress',
-                        jobId: job.id!,
-                        timestamp: new Date().toISOString(),
-                        data: {
-                            message: `正在保存: ${standardData.name}`,
-                            currentIndex: savedCount,
-                            totalCount: rawData.length,
-                            currentItem: standardData.name
-                        }
+                    await db.insert(leads).values({
+                        id: leadId,
+                        taskId,
+                        companyName: standardData.name,
+                        domain: standardData.domain,
+                        website: standardData.website,
+                        industry: standardData.industry,
+                        region: standardData.region,
+                        address: standardData.region,  // 临时使用region
+                        employeeCount: standardData.employeeCount,
+                        estimatedSize: standardData.estimatedSize,
+                        rating: raw.data.rating ? parseFloat(raw.data.rating) : null,
+                        reviewCount: raw.data.reviewCount ? parseInt(raw.data.reviewCount.replace(/[^\d]/g, '')) : null,
+                        rawData: raw.data as any,
+                        source,
+                        sourceUrl: standardData.sourceUrl,
+                        ratingStatus: 'pending',
+                        scrapedAt: standardData.scrapedAt
                     });
+
+                    // 2. 如果有联系信息，创建Contact
+                    if (standardData.phone || standardData.email) {
+                        await db.insert(contacts).values({
+                            id: randomUUID(),
+                            leadId,
+                            phone: standardData.phone,
+                            email: standardData.email,
+                            isPrimary: true,
+                            source: 'scraped'
+                        });
+                    }
+
+                    savedCount++;
+
+                    // 3. 更新任务进度
+                    const progress = Math.floor((index + 1) / rawData.length * 100);
+                    await db.update(tasks)
+                        .set({
+                            totalLeads: sql`${tasks.totalLeads} + 1`,
+                            successLeads: sql`${tasks.successLeads} + 1`,
+                            progress
+                        })
+                        .where(eq(tasks.id, taskId));
+
+                    // 显示保存的线索关键信息
+                    logger.info(`[线索 ${savedCount}] ${standardData.name}`);
+
+                    // 每5条或第1条发送进度事件
+                    if (savedCount % 5 === 0 || savedCount === 1) {
+                        await eventEmitter.emit({
+                            type: 'progress',
+                            jobId: job.id!,
+                            timestamp: new Date().toISOString(),
+                            data: {
+                                message: `正在保存: ${standardData.name}`,
+                                currentIndex: savedCount,
+                                totalCount: rawData.length,
+                                currentItem: standardData.name,
+                                progress,
+                                taskId
+                            }
+                        });
+                    }
+                    logger.info(`  ├─ 网站: ${standardData.website || '(无)'}`);
+                    logger.info(`  ├─ 地址: ${standardData.region || '(无)'}`);
+                    logger.info(`  ├─ 电话: ${standardData.phone || '(无)'}`);
+                    logger.info(`  └─ 邮箱: ${standardData.email || '(无)'}`);
+
+                    // TODO: 触发AI评级
+                    // await ratingQueue.add('rate', { leadId });
+
+                } catch (error: any) {
+                    logger.error(`[保存失败] ${standardData.name}:`, error.message);
+                    await db.update(tasks)
+                        .set({ failedLeads: sql`${tasks.failedLeads} + 1` })
+                        .where(eq(tasks.id, taskId));
                 }
-                logger.info(`  ├─ 网站: ${standardData.website || '(无)'}`);
-                logger.info(`  ├─ 地址: ${standardData.region || '(无)'}`);
-                logger.info(`  ├─ 电话: ${standardData.phone || '(无)'}`);
-                logger.info(`  └─ 邮箱: ${standardData.email || '(无)'}`);
-
-                // TODO: 推送到处理队列
-                // await processQueue.add('process', { companyId, data: standardData });
-
-            } catch (error: any) {
-                logger.error(`[保存失败] ${standardData.name}:`, error.message);
             }
+
+            // 4. 标记任务完成
+            await db.update(tasks)
+                .set({
+                    status: 'completed',
+                    completedAt: new Date(),
+                    progress: 100
+                })
+                .where(eq(tasks.id, taskId));
+
+            // 显示统计摘要
+            logger.info(`\n${'─'.repeat(60)}`);
+            logger.info(`[统计摘要]`);
+            logger.info(`  任务ID: ${taskId}`);
+            logger.info(`  总计搜索: ${rawData.length} 条`);
+            logger.info(`  验证失败: ${validationFailedCount} 条`);
+            logger.info(`  成功保存: ${savedCount} 条`);
+            logger.info(`  成功率: ${rawData.length > 0 ? ((savedCount / rawData.length) * 100).toFixed(1) : 0}%`);
+            logger.info(`${'='.repeat(60)}\n`);
+
+            // 发送任务完成事件
+            await eventEmitter.emit({
+                type: 'task_complete',
+                jobId: job.id!,
+                timestamp: new Date().toISOString(),
+                data: {
+                    message: `任务完成,成功保存 ${savedCount}/${rawData.length} 条`,
+                    taskId,
+                    stats: {
+                        scraped: rawData.length,
+                        saved: savedCount,
+                        failed: validationFailedCount
+                    }
+                }
+            });
+
+            return {
+                taskId,
+                scraped: rawData.length,
+                saved: savedCount,
+                failed: validationFailedCount
+            };
+        } catch (error: any) {
+            // 5. 处理错误 - 标记任务失败
+            await db.update(tasks)
+                .set({
+                    status: 'failed',
+                    error: error.message,
+                    completedAt: new Date()
+                })
+                .where(eq(tasks.id, taskId));
+
+            logger.error(`[任务失败] ${taskId}:`, error.message);
+            throw error;
         }
-
-        // 显示统计摘要
-        logger.info(`\n${'─'.repeat(60)}`);
-        logger.info(`[统计摘要]`);
-        logger.info(`  总计搜索: ${rawData.length} 条`);
-        logger.info(`  验证失败: ${validationFailedCount} 条`);
-        logger.info(`  成功保存: ${savedCount} 条`);
-        logger.info(`  成功率: ${rawData.length > 0 ? ((savedCount / rawData.length) * 100).toFixed(1) : 0}%`);
-        logger.info(`${'='.repeat(60)}\n`);
-
-        // 发送任务完成事件
-        await eventEmitter.emit({
-            type: 'task_complete',
-            jobId: job.id!,
-            timestamp: new Date().toISOString(),
-            data: {
-                message: `任务完成,成功保存 ${savedCount}/${rawData.length} 条`,
-                stats: {
-                    scraped: rawData.length,
-                    saved: savedCount,
-                    failed: validationFailedCount
-                }
-            }
-        });
-
-        return {
-            scraped: rawData.length,
-            saved: savedCount,
-            failed: validationFailedCount
-        };
     }
 
     private setupEventHandlers() {

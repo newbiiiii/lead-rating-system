@@ -12,8 +12,8 @@ import path from 'path';
 import { logger } from '../utils/logger';
 import { TaskScheduler, scrapeQueue, processQueue, ratingQueue, automationQueue } from '../queue';
 import { db } from '../db';
-import { companies, ratings } from '../db/schema';
-import { desc, sql } from 'drizzle-orm';
+import { tasks, leads, contacts, companies, ratings } from '../db/schema';
+import { desc, sql, eq, and } from 'drizzle-orm';
 import { configLoader } from '../config/config-loader';
 import citiesRoutes from './cities.routes';
 
@@ -79,13 +79,131 @@ app.use('/api/cities', citiesRoutes);
 // 添加爬取任务
 app.post('/api/tasks/scrape', async (req, res) => {
     try {
-        const { source, query, limit, priority } = req.body;
+        const { source, query, limit, priority, config } = req.body;
 
-        await scheduler.scheduleScrapeTask({ source, query, limit, priority });
+        // 传递config到scheduler
+        await scheduler.scheduleScrapeTask({ source, query, limit, priority, config });
 
         res.json({ success: true, message: '任务已添加' });
     } catch (error: any) {
         logger.error('添加任务失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 查询任务列表
+app.get('/api/tasks', async (req, res) => {
+    try {
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 20;
+        const offset = (page - 1) * limit;
+        const status = req.query.status as string;
+
+        const tasksList = await db.query.tasks.findMany({
+            where: status ? eq(tasks.status, status) : undefined,
+            orderBy: desc(tasks.createdAt),
+            limit,
+            offset
+        });
+
+        // 获取总数
+        const total = await db.select({ count: sql<number>`count(*)` })
+            .from(tasks)
+            .where(status ? eq(tasks.status, status) : undefined);
+
+        res.json({
+            tasks: tasksList,
+            total: Number(total[0].count),
+            page,
+            pageSize: limit
+        });
+    } catch (error: any) {
+        logger.error('查询任务列表失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 查询任务详情
+app.get('/api/tasks/:id', async (req, res) => {
+    try {
+        const task = await db.query.tasks.findFirst({
+            where: eq(tasks.id, req.params.id),
+            with: {
+                leads: {
+                    with: {
+                        contacts: true,
+                        rating: true
+                    },
+                    limit: 100  // 限制返回的leads数量
+                }
+            }
+        });
+
+        if (!task) {
+            return res.status(404).json({ error: '任务未找到' });
+        }
+
+        res.json(task);
+    } catch (error: any) {
+        logger.error('查询任务详情失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 查询线索列表
+app.get('/api/leads', async (req, res) => {
+    try {
+        const taskId = req.query.taskId as string;
+        const ratingStatus = req.query.ratingStatus as string;
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 50;
+        const offset = (page - 1) * limit;
+
+        const whereConditions = [];
+        if (taskId) whereConditions.push(eq(leads.taskId, taskId));
+        if (ratingStatus) whereConditions.push(eq(leads.ratingStatus, ratingStatus));
+
+        const leadsList = await db.query.leads.findMany({
+            where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
+            with: {
+                contacts: true,
+                rating: true
+            },
+            limit,
+            offset,
+            orderBy: desc(leads.createdAt)
+        });
+
+        res.json({
+            leads: leadsList,
+            page,
+            pageSize: limit
+        });
+    } catch (error: any) {
+        logger.error('查询线索列表失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 查询单个线索详情
+app.get('/api/leads/:id', async (req, res) => {
+    try {
+        const lead = await db.query.leads.findFirst({
+            where: eq(leads.id, req.params.id),
+            with: {
+                contacts: true,
+                rating: true,
+                task: true
+            }
+        });
+
+        if (!lead) {
+            return res.status(404).json({ error: '线索未找到' });
+        }
+
+        res.json(lead);
+    } catch (error: any) {
+        logger.error('查询线索详情失败:', error);
         res.status(500).json({ error: error.message });
     }
 });

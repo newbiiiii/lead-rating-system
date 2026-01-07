@@ -1,36 +1,47 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
-import { configLoader } from '../config/config-loader';
-import { logger } from '../utils/logger';
+import dotenv from 'dotenv';
+import * as schema from './schema';
 
-async function runMigrations() {
-    const dbConfig = configLoader.get('database.postgres');
+dotenv.config();
+
+async function runMigration() {
+    console.log('🚀 开始执行数据库migration...');
 
     const pool = new Pool({
-        host: dbConfig.host,
-        port: dbConfig.port,
-        database: dbConfig.database,
-        user: dbConfig.username,
-        password: dbConfig.password,
+        host: process.env.POSTGRES_HOST || 'localhost',
+        port: parseInt(process.env.POSTGRES_PORT || '5432'),
+        user: process.env.POSTGRES_USER || 'postgres',
+        password: process.env.POSTGRES_PASSWORD || '',
+        database: process.env.POSTGRES_DB || 'lead_rating',
     });
 
-    const db = drizzle(pool);
-
-    logger.info('开始执行数据库迁移...');
+    const db = drizzle(pool, { schema });
 
     try {
+        console.log('📊 执行migration文件...');
         await migrate(db, { migrationsFolder: './drizzle' });
-        logger.info('✓ 数据库迁移完成');
+        console.log('✅ Migration执行成功！');
+        console.log('📋 新增表:');
+        console.log('  - tasks (任务表)');
+        console.log('  - leads (线索表)');
+        console.log('  - contacts (联系人表)');
+        console.log('  - lead_ratings (AI评级表)');
     } catch (error) {
-        logger.error('✗ 数据库迁移失败:', error);
+        console.error('❌ Migration失败:', error);
         throw error;
     } finally {
         await pool.end();
     }
 }
 
-runMigrations().catch((err) => {
-    logger.error('迁移脚本执行失败:', err);
-    process.exit(1);
-});
+runMigration()
+    .then(() => {
+        console.log('✨ 数据库更新完成');
+        process.exit(0);
+    })
+    .catch((error) => {
+        console.error('Migration错误:', error);
+        process.exit(1);
+    });
