@@ -8,6 +8,7 @@ export interface ScrapeParams {
   filters?: Record<string, any>;
   limit?: number;
   offset?: number;
+  config?: Record<string, any>;
 }
 
 export interface RawData {
@@ -24,15 +25,15 @@ export interface StandardData {
   website?: string;
   industry?: string;
   region?: string;
-  
+
   // 联系信息
   email?: string;
   phone?: string;
-  
+
   // 规模信息
   employeeCount?: number;
   estimatedSize?: 'small' | 'medium' | 'large';
-  
+
   // 意向信号
   jobPostings?: Array<{
     title: string;
@@ -48,11 +49,11 @@ export interface StandardData {
     amount?: number;
     date?: Date;
   };
-  
+
   // 产品与痛点
   productDescription?: string;
   painPoints?: string[];
-  
+
   // 元数据
   sourceUrl: string;
   scrapedAt: Date;
@@ -61,22 +62,22 @@ export interface StandardData {
 
 export abstract class BaseScraperAdapter {
   abstract readonly source: string;
-  
+
   /**
    * 执行爬取
    */
   abstract scrape(params: ScrapeParams): Promise<RawData[]>;
-  
+
   /**
    * 验证数据完整性
    */
   abstract validate(data: RawData): boolean;
-  
+
   /**
    * 转换为标准格式
    */
   abstract transform(data: RawData): StandardData;
-  
+
   /**
    * 估算数据规模（用于判断公司大小）
    */
@@ -86,7 +87,7 @@ export abstract class BaseScraperAdapter {
     if (employeeCount < 500) return 'medium';
     return 'large';
   }
-  
+
   /**
    * 提取域名
    */

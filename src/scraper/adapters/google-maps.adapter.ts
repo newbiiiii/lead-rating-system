@@ -57,22 +57,37 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
     async scrape(params: ScrapeParams): Promise<RawData[]> {
         if (!this.browser) await this.initialize();
 
-        const searchArea = this.getSearchArea();
+        // 合并请求级配置
+        const effectiveConfig = {
+            ...this.config,
+            ...(params.config || {})
+        } as GoogleMapsAdapterConfig;
+
+        // 确保geolocation也被正确合并
+        if (params.config?.geolocation) {
+            effectiveConfig.geolocation = {
+                ...(this.config.geolocation || {}),
+                ...params.config.geolocation
+            };
+            logger.info(`[GoogleMaps] 收到地理位置配置: country="${effectiveConfig.geolocation.country}", city="${effectiveConfig.geolocation.city}", lat=${effectiveConfig.geolocation.latitude}, lng=${effectiveConfig.geolocation.longitude}`);
+        }
+
+        const searchArea = this.getSearchArea(effectiveConfig);
 
         // 如果配置了地理位置，使用网格搜索
         if (searchArea) {
-            return await this.gridScrape(params, searchArea);
+            return await this.gridScrape(params, searchArea, effectiveConfig);
         }
 
         // 否则使用原有的单次搜索（带深度滚动）
-        return await this.singlePointScrape(params);
+        return await this.singlePointScrape(params, effectiveConfig);
     }
 
     /**
      * 解析搜索区域配置 - 支持全球城市数据库
      */
-    private getSearchArea(): { center: { lat: number; lng: number }; radius: number } | null {
-        const geo = this.config.geolocation;
+    private getSearchArea(config: GoogleMapsAdapterConfig): { center: { lat: number; lng: number }; radius: number } | null {
+        const geo = config.geolocation;
         if (!geo) return null;
 
         // 方式1: 使用全球城市数据库
@@ -126,12 +141,16 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
     /**
      * 网格搜索 - 覆盖整个城市区域
      */
+    /**
+     * 网格搜索 - 覆盖整个城市区域
+     */
     private async gridScrape(
         params: ScrapeParams,
-        area: { center: { lat: number; lng: number }; radius: number }
+        area: { center: { lat: number; lng: number }; radius: number },
+        config: GoogleMapsAdapterConfig
     ): Promise<RawData[]> {
-        const step = this.config.geolocation?.step || 0.01;
-        const zoom = this.config.geolocation?.zoom || 15;
+        const step = config.geolocation?.step || 0.01;
+        const zoom = config.geolocation?.zoom || 15;
 
         // 生成网格点
         const gridPoints = this.generateGridPoints(
@@ -168,7 +187,9 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
                     await page.waitForSelector('[role="article"]', { timeout: 15000 });
 
                     // 深度滚动，获取尽可能多的结果
-                    await this.scrollResults(page, 999);
+                    // 如果limit未设置或为0，则尝试获取尽可能多（例如1000）
+                    const limit = params.limit && params.limit > 0 ? params.limit : 1000;
+                    await this.scrollResults(page, limit);
 
                     const listings = await page.$$('[role="article"]');
                     let newCount = 0;
@@ -224,18 +245,35 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
     /**
      * 单点搜索 - 带深度滚动
      */
-    private async singlePointScrape(params: ScrapeParams): Promise<RawData[]> {
+    private async singlePointScrape(params: ScrapeParams, config: GoogleMapsAdapterConfig): Promise<RawData[]> {
         const page = await this.browser!.newPage();
         const results: RawData[] = [];
 
         try {
             logger.info(`[GoogleMaps] 搜索: ${params.query}`);
-            const searchUrl = `https://www.google.com/maps/search/${encodeURIComponent(params.query)}`;
-            logger.info(`[GoogleMaps] 使用关键词搜索`);
+
+            let searchUrl = `https://www.google.com/maps/search/${encodeURIComponent(params.query)}`;
+
+            // Fix: Append coordinates if available to force location
+            if (config.geolocation?.latitude && config.geolocation?.longitude) {
+                const { latitude, longitude, zoom = 14, city } = config.geolocation;
+
+                // Double Fix: Append city name to query to prevent Google from jumping to other locations
+                let query = params.query;
+                if (city) {
+                    query = `${query} ${city}`;
+                    logger.info(`[GoogleMaps] 优化搜索词: "${query}"`);
+                }
+
+                searchUrl = `https://www.google.com/maps/search/${encodeURIComponent(query)}/@${latitude},${longitude},${zoom}z`;
+                logger.info(`[GoogleMaps] 使用指定坐标定位: ${latitude}, ${longitude} (Zoom: ${zoom})`);
+            }
+
+            logger.info(`[GoogleMaps] 访问 URL: ${searchUrl}`);
 
             await page.goto(searchUrl, {
                 waitUntil: 'domcontentloaded',
-                timeout: this.config.timeout || 60000
+                timeout: config.timeout || 60000
             });
 
             await page.waitForSelector('[role="feed"]', { timeout: 15000 });
@@ -243,7 +281,8 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
             await page.waitForSelector('[role="article"]', { timeout: 15000 });
 
             // 深度滚动 - 获取尽可能多的结果
-            await this.scrollResults(page, 999);
+            const limit = params.limit && params.limit > 0 ? params.limit : 1000;
+            await this.scrollResults(page, limit);
 
             const listings = await page.$$('[role="article"]');
             logger.info(`[GoogleMaps] 找到 ${listings.length} 个结果`);
@@ -278,6 +317,7 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
             await page.close();
         }
     }
+
 
     /**
      * 深度滚动 - 最大化数据采集

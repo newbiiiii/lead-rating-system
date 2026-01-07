@@ -101,7 +101,7 @@ class ScraperWorker {
 
         try {
             // 执行爬取
-            rawData = await adapter.scrape({ query, limit } as ScrapeParams);
+            rawData = await adapter.scrape({ query, limit, config } as ScrapeParams);
 
             logger.info(`\n[爬取完成] 共找到 ${rawData.length} 条线索`);
             logger.info(`${'─'.repeat(60)}`);

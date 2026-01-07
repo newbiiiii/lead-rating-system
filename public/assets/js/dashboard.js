@@ -354,18 +354,32 @@ function setupFormHandlers() {
                 source: formData.get('source'),
                 query: formData.get('query'),
                 limit: parseInt(formData.get('limit')),
-                priority: parseInt(formData.get('priority'))
+                priority: parseInt(formData.get('priority')),
+                config: {}
             };
 
-            // 如果选择了城市,添加地理位置信息
+            /// 如果选择了城市,添加地理位置信息
             const lat = formData.get('latitude');
             const lng = formData.get('longitude');
             const radius = formData.get('radius');
-
             if (lat && lng && radius) {
-                // 注意：这里传递geolocation参数
-                // 后端worker会根据geolocation自动进行网格搜索
-                console.log('已添加地理位置:', { lat, lng, radius });
+                // 获取城市和国家名称
+                const citySelect = document.getElementById('city-select');
+                const countrySelect = document.getElementById('country-select');
+                const city = citySelect?.value || '';
+                const country = countrySelect?.value || '';
+                console.log('已添加地理位置:', { country, city, lat, lng, radius });
+                taskData.config = {
+                    geolocation: {
+                        country: country,
+                        city: city,
+                        latitude: parseFloat(lat),
+                        longitude: parseFloat(lng),
+                        radius: parseFloat(radius),
+                        step: 0.01,
+                        zoom: 15
+                    }
+                };
             }
 
             try {
