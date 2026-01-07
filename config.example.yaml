@@ -13,6 +13,28 @@ scraper:
       config:
         headless: true
         timeout: 30000      # 30 秒超时
+        # 地理位置搜索配置 (可选，如果不设置则使用普通关键词搜索)
+        geolocation:
+          # === 方式1: 使用预定义城市 (推荐) ===
+          city: "北京"         # 支持：北京、上海、广州、深圳、杭州、成都等
+          zoom: 15            # 缩放级别 (1-21)
+          step: 0.02          # 网格步长，约2km，值越小覆盖越密集但耗时越长
+          
+          # === 方式2: 手动指定中心点和半径 ===
+          # latitude: 39.9042
+          # longitude: 116.4074
+          # radius: 0.2        # 搜索半径(度)，约22km
+          # zoom: 15
+          # step: 0.01
+          
+          # === 方式3: 手动指定矩形边界 ===
+          # bounds:
+          #   north: 40.2
+          #   south: 39.6
+          #   east: 116.8
+          #   west: 115.9
+          # zoom: 15
+          # step: 0.01
         
     - name: linkedin
       enabled: false

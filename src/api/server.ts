@@ -15,6 +15,7 @@ import { db } from '../db';
 import { companies, ratings } from '../db/schema';
 import { desc, sql } from 'drizzle-orm';
 import { configLoader } from '../config/config-loader';
+import citiesRoutes from './cities.routes';
 
 const app = express();
 const httpServer = createServer(app);
@@ -69,6 +70,9 @@ const scheduler = new TaskScheduler();
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// ============ 城市数据 ============
+app.use('/api/cities', citiesRoutes);
 
 // ============ 任务管理 ============
 

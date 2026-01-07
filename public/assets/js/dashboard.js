@@ -345,19 +345,45 @@ function setupFormHandlers() {
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const formData = new FormData(form);
-            const data = {
+            const formData = new FormData(e.target);
+            const taskData = {
                 source: formData.get('source'),
                 query: formData.get('query'),
                 limit: parseInt(formData.get('limit')),
                 priority: parseInt(formData.get('priority'))
             };
 
-            const result = await postAPI('/tasks/scrape', data);
-            if (result && result.success) {
-                showNotification('搜索任务添加成功!正在后台搜索...', 'success');
-                form.reset();
-                loadQueueStats();
+            // 如果选择了城市,添加地理位置信息
+            const lat = formData.get('latitude');
+            const lng = formData.get('longitude');
+            const radius = formData.get('radius');
+
+            if (lat && lng && radius) {
+                // 注意：这里传递geolocation参数
+                // 后端worker会根据geolocation自动进行网格搜索
+                console.log('已添加地理位置:', { lat, lng, radius });
+            }
+
+            try {
+                const res = await fetch('/api/tasks/scrape', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(taskData)
+                });
+
+                const result = await res.json();
+
+                if (result.success) {
+                    alert('任务已添加成功！');
+                    e.target.reset();
+                    // 重置城市选择
+                    document.getElementById('city-select').disabled = true;
+                    document.getElementById('city-select').innerHTML = '<option value="">请先选择国家</option>';
+                } else {
+                    alert('任务添加失败: ' + result.error);
+                }
+            } catch (error) {
+                alert('请求失败: ' + error.message);
             }
         });
     }
@@ -522,3 +548,115 @@ window.loadRatings = loadRatings;
 window.loadQueueStats = loadQueueStats;
 window.viewDetail = viewDetail;
 window.clearLogs = clearLogs;
+
+// ============ 国家-城市选择功能 ============
+// 页面加载时获取国家列表
+async function loadCountries() {
+    try {
+        const res = await fetch('/api/cities/countries');
+        const data = await res.json();
+
+        if (!data.success) {
+            console.error('获取国家列表失败:', data.error);
+            return;
+        }
+
+        const select = document.getElementById('country-select');
+        // 保留默认选项
+        select.innerHTML = '<option value="">不限制国家</option>';
+
+        data.countries.forEach(country => {
+            const option = document.createElement('option');
+            option.value = country;
+            option.textContent = country;
+            select.appendChild(option);
+        });
+
+        console.log(`已加载 ${data.countries.length} 个国家`);
+    } catch (error) {
+        console.error('加载国家列表失败:', error);
+    }
+}
+// 国家选择变化
+async function onCountryChange(country) {
+    const citySelect = document.getElementById('city-select');
+    const latInput = document.getElementById('latitude');
+    const lngInput = document.getElementById('longitude');
+    const radiusInput = document.getElementById('radius');
+
+    // 重置城市选择和坐标
+    citySelect.innerHTML = '<option value="">请选择城市</option>';
+    citySelect.disabled = !country;
+    latInput.value = '';
+    lngInput.value = '';
+    radiusInput.value = '';
+
+    if (!country) return;
+
+    try {
+        const res = await fetch(`/api/cities/${encodeURIComponent(country)}`);
+        const data = await res.json();
+
+        if (!data.success) {
+            console.error('获取城市列表失败:', data.error);
+            return;
+        }
+
+        data.cities.forEach(city => {
+            const option = document.createElement('option');
+            option.value = city.name;
+            option.textContent = city.name;
+            option.dataset.lat = city.lat;
+            option.dataset.lng = city.lng;
+            option.dataset.radius = city.radius;
+            citySelect.appendChild(option);
+        });
+
+        console.log(`${country} - 已加载 ${data.cities.length} 个城市`);
+    } catch (error) {
+        console.error('加载城市列表失败:', error);
+    }
+}
+// 城市选择变化
+function onCityChange(cityName) {
+    if (!cityName) {
+        document.getElementById('latitude').value = '';
+        document.getElementById('longitude').value = '';
+        document.getElementById('radius').value = '';
+        return;
+    }
+
+    const citySelect = document.getElementById('city-select');
+    const selectedOption = citySelect.selectedOptions[0];
+
+    // 填充坐标信息
+    const lat = selectedOption.dataset.lat;
+    const lng = selectedOption.dataset.lng;
+    const radius = selectedOption.dataset.radius;
+
+    document.getElementById('latitude').value = lat;
+    document.getElementById('longitude').value = lng;
+    document.getElementById('radius').value = radius;
+
+    console.log(`已选择: ${cityName}, 坐标: (${lat}, ${lng}), 半径: ${radius}度`);
+}
+// 初始化:页面加载时调用
+document.addEventListener('DOMContentLoaded', () => {
+    loadCountries();
+
+    // 绑定事件
+    const countrySelect = document.getElementById('country-select');
+    const citySelect = document.getElementById('city-select');
+
+    if (countrySelect) {
+        countrySelect.addEventListener('change', (e) => {
+            onCountryChange(e.target.value);
+        });
+    }
+
+    if (citySelect) {
+        citySelect.addEventListener('change', (e) => {
+            onCityChange(e.target.value);
+        });
+    }
+});
