@@ -50,7 +50,7 @@ class RatingWorker {
             },
             {
                 connection: redis,
-                concurrency: 2, // 并发处理评分
+                concurrency: 1, // 并发处理评分
                 limiter: {
                     max: 10,      // 限制速率，避免 API 超限
                     duration: 1000
@@ -188,7 +188,7 @@ class RatingWorker {
 
     private setupEventHandlers() {
         this.worker.on('completed', (job) => {
-            // logger.debug(`Rating Job ${job.id} completed`);
+            logger.debug(`Rating Job ${job.id} completed`);
         });
 
         this.worker.on('failed', (job, err) => {

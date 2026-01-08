@@ -4,7 +4,7 @@
  */
 
 import 'dotenv/config';
-import { Worker, Job } from 'bullmq';
+import { Worker, Job, Queue } from 'bullmq';
 import { randomUUID } from 'crypto';
 import { logger } from '../utils/logger';
 import { configLoader } from '../config/config-loader';
@@ -36,6 +36,7 @@ class ScraperWorker {
     private worker: Worker;
     private adapters: Record<string, any> = {};
     private scrapeQueue: any;
+    private ratingQueue: any;
 
     constructor() {
         // 初始化适配器
@@ -44,6 +45,9 @@ class ScraperWorker {
         // 创建队列引用（用于恢复任务）
         const Queue = require('bullmq').Queue;
         this.scrapeQueue = new Queue('scrape', { connection: redis });
+
+        // 初始化评分队列
+        this.ratingQueue = new Queue('rating', { connection: redis });
 
         // 创建 Worker
         this.worker = new Worker<ScrapeJobData>(
@@ -264,6 +268,19 @@ class ScraperWorker {
                         });
                     }
 
+                    // 推送到评分队列
+                    try {
+                        await this.ratingQueue.add('rate-lead', {
+                            leadId: leadId
+                        }, {
+                            priority: 10, // 优先级略低，不阻塞爬虫
+                            removeOnComplete: true,
+                            removeOnFail: { count: 100 } // 保留最近100条失败记录供排查
+                        });
+                    } catch (err) {
+                        logger.warn(`[队列推送失败] 无法将 Lead ${leadId} 推送到评分队列`, err);
+                    }
+
                     savedCount++;
 
                     // 3. 更新任务进度
@@ -387,6 +404,7 @@ class ScraperWorker {
     async close() {
         logger.info('关闭 Scraper Worker...');
         await this.worker.close();
+        await this.ratingQueue.close();
 
         for (const adapter of Object.values(this.adapters)) {
             if (adapter.close) {
