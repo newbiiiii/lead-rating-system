@@ -9,7 +9,7 @@ import { logger } from '../../utils/logger';
 import { configLoader } from '../../config/config-loader';
 import { GLOBAL_CITIES, CityData } from '../../data/cities';
 import { db } from '../../db';
-import { searchPoints } from '../../db/schema';
+import { searchPoints, tasks } from '../../db/schema';
 import { eq, and, or } from 'drizzle-orm';
 
 interface GoogleMapsAdapterConfig {
@@ -239,6 +239,18 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
 
         try {
             for (const [index, point] of pendingPoints.entries()) {
+                // 检查任务是否被取消
+                if (params.taskId) {
+                    const currentTask = await db.query.tasks.findFirst({
+                        where: eq(tasks.id, params.taskId)
+                    });
+
+                    if (currentTask?.status === 'cancelled') {
+                        logger.info(`[GoogleMaps] 任务 ${params.taskId} 已被取消，停止执行`);
+                        break;
+                    }
+                }
+
                 logger.info(`[GoogleMaps] [#${point.sequenceNumber}/${totalPoints}] 处理搜索点 #${point.sequenceNumber}: (${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)})`);
 
                 // 更新搜索点状态为 running

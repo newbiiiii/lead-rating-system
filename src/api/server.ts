@@ -12,7 +12,7 @@ import path from 'path';
 import { logger } from '../utils/logger';
 import { TaskScheduler, scrapeQueue, processQueue, ratingQueue, automationQueue } from '../queue';
 import { db } from '../db';
-import { tasks, leads, contacts, companies, ratings } from '../db/schema';
+import { tasks, leads, contacts, companies, ratings, searchPoints } from '../db/schema';
 import { desc, sql, eq, and } from 'drizzle-orm';
 import { configLoader } from '../config/config-loader';
 import citiesRoutes from './cities.routes';
@@ -162,6 +162,41 @@ app.get('/api/tasks', async (req, res) => {
         });
     } catch (error: any) {
         logger.error('查询任务列表失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 终止任务
+app.post('/api/tasks/:id/terminate', async (req, res) => {
+    try {
+        const taskId = req.params.id;
+        // 更新任务状态为cancelled
+        await db.update(tasks)
+            .set({ status: 'cancelled' })
+            .where(eq(tasks.id, taskId));
+        // 取消所有pending和running状态的search points
+        await db.update(searchPoints)
+            .set({
+                status: 'cancelled',
+                error: 'Task terminated by user'
+            })
+            .where(
+                and(
+                    eq(searchPoints.taskId, taskId),
+                    sql`${searchPoints.status} IN ('pending', 'running')`
+                )
+            );
+        // 获取更新后的任务
+        const task = await db.query.tasks.findFirst({
+            where: eq(tasks.id, taskId)
+        });
+        res.json({
+            success: true,
+            message: '任务已终止',
+            task
+        });
+    } catch (error: any) {
+        logger.error('终止任务失败:', error);
         res.status(500).json({ error: error.message });
     }
 });

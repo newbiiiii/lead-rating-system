@@ -1,5 +1,5 @@
 // Management页面逻辑模块
-import { fetchAPI } from '../api.js';
+import { fetchAPI, postAPI } from '../api.js';
 import { formatDate } from '../utils.js';
 
 let currentPage = 1;
@@ -173,6 +173,9 @@ function resetFilters() {
 }
 
 async function viewTaskDetail(taskId) {
+    // 保存taskId供终止按钮使用
+    window.currentTaskId = taskId;
+
     const task = await fetchAPI(`/api/tasks/${taskId}`);
     if (!task) return;
 
@@ -250,6 +253,23 @@ async function viewTaskDetail(taskId) {
 function closeTaskDetail() {
     document.getElementById('task-detail-modal').style.display = 'none';
 }
+async function terminateTask(taskId) {
+    if (!confirm('确定要terminate这个任务吗？已完成的数据会保留，未完成的将被取消。')) {
+        return;
+    }
+
+    try {
+        const result = await postAPI(`/api/tasks/${taskId}/terminate`, {});
+
+        if (result && result.success) {
+            alert('任务已终止');
+            closeTaskDetail();
+            loadTaskHistory(currentPage);
+        }
+    } catch (error) {
+        alert('终止任务失败: ' + error.message);
+    }
+}
 
 // 导出给HTML调用
 window.loadTaskHistory = loadTaskHistory;
@@ -258,3 +278,4 @@ window.closeTaskDetail = closeTaskDetail;
 window.changePageSize = changePageSize;
 window.applyFilters = applyFilters;
 window.resetFilters = resetFilters;
+window.terminateTask = terminateTask;

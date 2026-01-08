@@ -72,8 +72,16 @@
         style="max-width: 1200px; margin: 0 auto; background: #1a1a2e; border-radius: 12px; padding: 24px; max-height: 90vh; overflow-y: auto;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <h2 id="modal-task-name" style="color: #fff; margin: 0;">任务详情</h2>
-            <button onclick="closeTaskDetail()"
-                style="background: #374151; border: none; color: #fff; padding: 8px 16px; border-radius: 6px; cursor: pointer;">关闭</button>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="terminateTask(window.currentTaskId)"
+                    style="background: #ef4444; border: none; color: #fff; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+                    终止任务
+                </button>
+                <button onclick="closeTaskDetail()"
+                    style="background: #374151; border: none; color: #fff; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+                    关闭
+                </button>
+            </div>
         </div>
         <div id="task-detail-info" style="margin-bottom: 24px;"></div>
         <h3 style="color: #cbd5e1; margin-bottom: 16px;">关联线索</h3>
