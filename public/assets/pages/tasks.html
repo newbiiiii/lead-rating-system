@@ -1,0 +1,71 @@
+<div class="section-card">
+    <div class="section-header">
+        <h3>搜索新客户</h3>
+    </div>
+    <form id="add-task-form" class="task-form">
+        <div class="form-grid">
+            <div class="form-group">
+                <label>搜索来源</label>
+                <select name="source" required>
+                    <option value="google_maps">Google地图</option>
+                    <option value="linkedin">领英</option>
+                    <option value="qichacha">企查查</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>目标国家 <span style="color: #888; font-size: 12px;">(可选)</span></label>
+                <select name="country" id="country-select">
+                    <option value="">不限制国家</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>目标城市 <span style="color: #888; font-size: 12px;">(可选)</span></label>
+                <select name="city" id="city-select" disabled>
+                    <option value="">请先选择国家</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>搜索关键词</label>
+                <input type="text" name="query" placeholder="例如：上海 电商公司" required>
+            </div>
+            <div class="form-group">
+                <label>搜索数量</label>
+                <input type="number" name="limit" value="30" min="1" max="100" required>
+            </div>
+            <div class="form-group">
+                <label>优先级</label>
+                <select name="priority">
+                    <option value="1">高</option>
+                    <option value="5" selected>中</option>
+                    <option value="10">低</option>
+                </select>
+            </div>
+        </div>
+        <input type="hidden" name="latitude" id="latitude">
+        <input type="hidden" name="longitude" id="longitude">
+        <input type="hidden" name="radius" id="radius">
+        <button type="submit" class="btn-primary">开始搜索</button>
+    </form>
+</div>
+
+<div class="section-card">
+    <div class="section-header">
+        <h3>搜索进度</h3>
+        <button class="btn-secondary btn-sm" onclick="loadQueueStats()">刷新</button>
+    </div>
+    <div id="queue-stats-container"></div>
+</div>
+
+<div class="section-card">
+    <div class="section-header">
+        <h3>实时日志</h3>
+        <div class="header-actions">
+            <button class="btn-secondary btn-sm" onclick="clearLogs()">清空</button>
+        </div>
+    </div>
+    <div class="terminal-window" id="log-terminal">
+        <div class="terminal-content" id="log-content">
+            <div class="log-line system">等待日志连接...</div>
+        </div>
+    </div>
+</div>

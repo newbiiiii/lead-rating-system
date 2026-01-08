@@ -1,0 +1,27 @@
+<div class="section-card">
+    <div class="section-header">
+        <h3>评分任务列表</h3>
+        <button class="btn-secondary btn-sm" onclick="loadRatingTasks()">刷新</button>
+    </div>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>任务名称</th>
+                    <th>搜索关键词</th>
+                    <th>来源</th>
+                    <th>总线索数</th>
+                    <th>已评分</th>
+                    <th>评分进度</th>
+                    <th>创建时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="rating-tasks-body">
+                <tr>
+                    <td colspan="8" class="empty-state">加载中...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
