@@ -9,8 +9,8 @@ import { randomUUID } from 'crypto';
 import { logger } from '../utils/logger';
 import { configLoader } from '../config/config-loader';
 import { db } from '../db';
-import { tasks, leads, contacts, companies } from '../db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { tasks, leads, contacts, companies, searchPoints } from '../db/schema';
+import { eq, sql, and } from 'drizzle-orm';
 import { GoogleMapsAdapter } from '../scraper/adapters/google-maps.adapter';
 import type { ScrapeParams } from '../scraper/base.adapter';
 import { eventEmitter } from '../utils/event-emitter';
@@ -35,10 +35,15 @@ interface ScrapeJobData {
 class ScraperWorker {
     private worker: Worker;
     private adapters: Record<string, any> = {};
+    private scrapeQueue: any;
 
     constructor() {
         // 初始化适配器
         this.adapters['google_maps'] = new GoogleMapsAdapter();
+
+        // 创建队列引用（用于恢复任务）
+        const Queue = require('bullmq').Queue;
+        this.scrapeQueue = new Queue('scrape', { connection: redis });
 
         // 创建 Worker
         this.worker = new Worker<ScrapeJobData>(
@@ -48,38 +53,108 @@ class ScraperWorker {
             },
             {
                 connection: redis,
-                concurrency: queueConfig.concurrency || 5,
+                concurrency: 1,  // 每次只运行一个爬虫任务
                 limiter: queueConfig.rate_limit
             }
         );
 
         this.setupEventHandlers();
+
+        // 启动时自动恢复未完成的任务
+        this.recoverInterruptedTasks();
+    }
+
+    /**
+     * 恢复中断的任务 - Worker 启动时自动调用
+     */
+    private async recoverInterruptedTasks() {
+        try {
+            // 查找状态为 'running' 的任务
+            const runningTasks = await db.select()
+                .from(tasks)
+                .where(eq(tasks.status, 'running'));
+
+            if (runningTasks.length === 0) {
+                logger.info('[任务恢复] 没有发现未完成的任务');
+                return;
+            }
+
+            logger.info(`[任务恢复] 发现 ${runningTasks.length} 个未完成的任务，正在恢复...`);
+
+            for (const task of runningTasks) {
+                // 重新加入队列
+                await this.scrapeQueue.add(
+                    `${task.source}-recovery-${task.id}`,
+                    {
+                        source: task.source,
+                        query: task.query,
+                        limit: task.targetCount || 100,
+                        config: task.config
+                    },
+                    {
+                        priority: 1  // 高优先级
+                    }
+                );
+
+                logger.info(`[任务恢复] 任务 ${task.id} (${task.name}) 已重新加入队列`);
+            }
+        } catch (error: any) {
+            logger.error('[任务恢复] 恢复任务时出错:', error.message);
+        }
     }
 
     private async processJob(job: Job<ScrapeJobData>) {
         const { source, query, limit, config } = job.data;
 
-        // 1. 创建Task记录
-        const taskId = randomUUID();
+        // 1. 检查是否有未完成的任务（恢复模式）
         const cityName = config?.geolocation?.city || config?.geolocation?.country || '全国';
         const taskName = `${query} - ${cityName}`;
 
-        await db.insert(tasks).values({
-            id: taskId,
-            name: taskName,
-            source,
-            query,
-            targetCount: limit,
-            config: config || {},
-            status: 'running',
-            startedAt: new Date()
-        });
+        let taskId: string;
+        let isResume = false;
 
-        logger.info(`\n${'='.repeat(60)}`);
-        logger.info(`[任务开始] ${source} - "${query}"`);
-        logger.info(`[任务ID] ${taskId}`);
-        logger.info(`[目标数量] ${limit} 条线索`);
-        logger.info(`${'='.repeat(60)}\n`);
+        // 查找是否存在相同配置的运行中任务
+        const existingTasks = await db.select()
+            .from(tasks)
+            .where(
+                and(
+                    eq(tasks.source, source),
+                    eq(tasks.query, query),
+                    eq(tasks.status, 'running')
+                )
+            )
+            .limit(1);
+
+        if (existingTasks.length > 0) {
+            // 恢复现有任务
+            taskId = existingTasks[0].id;
+            isResume = true;
+            logger.info(`\n${'='.repeat(60)}`);
+            logger.info(`[任务恢复] ${source} - "${query}"`);
+            logger.info(`[任务ID] ${taskId}`);
+            logger.info(`[恢复模式] 从中断点继续执行`);
+            logger.info(`${'='.repeat(60)}\n`);
+        } else {
+            // 创建新Task记录
+            taskId = randomUUID();
+
+            await db.insert(tasks).values({
+                id: taskId,
+                name: taskName,
+                source,
+                query,
+                targetCount: limit,
+                config: config || {},
+                status: 'running',
+                startedAt: new Date()
+            });
+
+            logger.info(`\n${'='.repeat(60)}`);
+            logger.info(`[任务开始] ${source} - "${query}"`);
+            logger.info(`[任务ID] ${taskId}`);
+            logger.info(`[目标数量] ${limit} 条线索`);
+            logger.info(`${'='.repeat(60)}\n`);
+        }
 
         const adapter = this.adapters[source];
         if (!adapter) {
@@ -89,12 +164,47 @@ class ScraperWorker {
             throw new Error(`未找到适配器: ${source}`);
         }
 
+        // 2. 如果是网格搜索,预先生成并保存搜索点（仅限新任务）
+        if (!isResume && source === 'google_maps' && config?.geolocation) {
+            const effectiveConfig = {
+                ...adapter.config,
+                ...(config || {})
+            };
+            if (config.geolocation) {
+                effectiveConfig.geolocation = {
+                    ...(adapter.config?.geolocation || {}),
+                    ...config.geolocation
+                };
+            }
+
+            const searchArea = adapter.getSearchArea(effectiveConfig);
+            if (searchArea) {
+                logger.info(`[搜索点生成] 开始生成网格搜索点...`);
+                const gridPoints = adapter.prepareSearchPoints(searchArea, effectiveConfig);
+
+                // 批量插入搜索点到数据库
+                const searchPointsData = gridPoints.map((point: { lat: number; lng: number; sequenceNumber: number }) => ({
+                    id: randomUUID(),
+                    taskId,
+                    latitude: point.lat,
+                    longitude: point.lng,
+                    sequenceNumber: point.sequenceNumber,
+                    status: 'pending' as const,
+                    resultsFound: 0,
+                    resultsSaved: 0
+                }));
+
+                await db.insert(searchPoints).values(searchPointsData);
+                logger.info(`[搜索点生成] 已保存 ${gridPoints.length} 个搜索点到数据库`);
+            }
+        }
+
         // 发送任务开始事件
         await eventEmitter.emit({
             type: 'task_start',
             jobId: job.id!,
             timestamp: new Date().toISOString(),
-            data: { source, query, totalCount: limit, taskId }
+            data: { source, query, totalCount: limit }
         });
 
         let rawData: any[] = [];
@@ -185,7 +295,7 @@ class ScraperWorker {
 
         try {
             // 执行爬取 - 使用增量保存回调
-            rawData = await adapter.scrape({ query, limit, config, onBatchComplete } as ScrapeParams);
+            rawData = await adapter.scrape({ query, limit, config, onBatchComplete, taskId } as ScrapeParams);
 
             logger.info(`\n[爬取完成] 共找到 ${rawData.length} 条线索`);
             logger.info(`${'─'.repeat(60)}`);
@@ -218,7 +328,6 @@ class ScraperWorker {
                 timestamp: new Date().toISOString(),
                 data: {
                     message: `任务完成,成功保存 ${savedCount}/${rawData.length} 条`,
-                    taskId,
                     stats: {
                         scraped: rawData.length,
                         saved: savedCount,

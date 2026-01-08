@@ -376,7 +376,7 @@ function setupFormHandlers() {
                         latitude: parseFloat(lat),
                         longitude: parseFloat(lng),
                         radius: parseFloat(radius),
-                        step: 0.1,
+                        step: 0.5,
                         zoom: 15
                     }
                 };

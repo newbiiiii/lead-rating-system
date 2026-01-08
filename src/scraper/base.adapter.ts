@@ -10,6 +10,7 @@ export interface ScrapeParams {
   offset?: number;
   config?: Record<string, any>;
   onBatchComplete?: (results: RawData[]) => Promise<void>;  // 增量保存回调
+  taskId?: string;  // 任务ID,用于读取/更新搜索点状态
 }
 
 export interface RawData {

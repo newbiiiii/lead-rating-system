@@ -8,6 +8,9 @@ import { BaseScraperAdapter, ScrapeParams, RawData, StandardData } from '../base
 import { logger } from '../../utils/logger';
 import { configLoader } from '../../config/config-loader';
 import { GLOBAL_CITIES, CityData } from '../../data/cities';
+import { db } from '../../db';
+import { searchPoints } from '../../db/schema';
+import { eq, and, or } from 'drizzle-orm';
 
 interface GoogleMapsAdapterConfig {
     headless?: boolean;
@@ -84,9 +87,27 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
     }
 
     /**
+     * 准备搜索点 - 在任务创建时调用
+     * 生成网格点并返回,供worker保存到数据库
+     */
+    public prepareSearchPoints(
+        area: { center: { lat: number; lng: number }; radius: number },
+        config: GoogleMapsAdapterConfig
+    ): Array<{ lat: number; lng: number; sequenceNumber: number }> {
+        const step = config.geolocation?.step || 0.01;
+        const points = this.generateGridPoints(area.center.lat, area.center.lng, area.radius, step);
+
+        return points.map((p, index) => ({
+            lat: p.lat,
+            lng: p.lng,
+            sequenceNumber: index + 1
+        }));
+    }
+
+    /**
      * 解析搜索区域配置 - 支持全球城市数据库
      */
-    private getSearchArea(config: GoogleMapsAdapterConfig): { center: { lat: number; lng: number }; radius: number } | null {
+    public getSearchArea(config: GoogleMapsAdapterConfig): { center: { lat: number; lng: number }; radius: number } | null {
         const geo = config.geolocation;
         if (!geo) return null;
 
@@ -139,50 +160,95 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
     }
 
     /**
-     * 网格搜索 - 覆盖整个城市区域
-     */
-    /**
-     * 网格搜索 - 覆盖整个城市区域
+     * 网格搜索 - 覆盖整个城市区域（支持断点续传）
      */
     private async gridScrape(
         params: ScrapeParams,
         area: { center: { lat: number; lng: number }; radius: number },
         config: GoogleMapsAdapterConfig
     ): Promise<RawData[]> {
-        const step = config.geolocation?.step || 0.01;
         const zoom = config.geolocation?.zoom || 15;
-
-        // 优化搜索词：添加城市名以强制本地化结果
         const cityName = config.geolocation?.city || '';
         const optimizedQuery = cityName ? `${params.query} ${cityName}` : params.query;
-
-        // 生成网格点
-        const gridPoints = this.generateGridPoints(
-            area.center.lat,
-            area.center.lng,
-            area.radius,
-            step
-        );
 
         logger.info(`[GoogleMaps] ========== 开始网格搜索 ==========`);
         logger.info(`[GoogleMaps] 原始查询: "${params.query}"`);
         if (cityName) {
             logger.info(`[GoogleMaps] 优化查询: "${optimizedQuery}" (添加城市名以强制本地化)`);
         }
-        logger.info(`[GoogleMaps] 网格点数: ${gridPoints.length}`);
-        logger.info(`[GoogleMaps] 缩放级别: ${zoom}z, 步长: ${step}度`);
-        logger.info(`[GoogleMaps] 预计耗时: ${Math.ceil(gridPoints.length * 60 / 60)} 分钟`);
+
+        // 从数据库读取待处理的搜索点
+        let pendingPoints;
+        if (params.taskId) {
+            pendingPoints = await db.select()
+                .from(searchPoints)
+                .where(
+                    and(
+                        eq(searchPoints.taskId, params.taskId),
+                        or(
+                            eq(searchPoints.status, 'pending'),
+                            eq(searchPoints.status, 'failed')  // 重试失败的点
+                        )
+                    )
+                )
+                .orderBy(searchPoints.sequenceNumber);
+
+            logger.info(`[GoogleMaps] 从数据库读取到 ${pendingPoints.length} 个待处理搜索点`);
+        } else {
+            // 向后兼容：如果没有 taskId,使用旧方式生成网格点
+            const step = config.geolocation?.step || 0.01;
+            const gridPoints = this.generateGridPoints(
+                area.center.lat,
+                area.center.lng,
+                area.radius,
+                step
+            );
+            pendingPoints = gridPoints.map((p, index) => ({
+                id: '',
+                taskId: '',
+                latitude: p.lat,
+                longitude: p.lng,
+                sequenceNumber: index + 1,
+                status: 'pending' as const,
+                resultsFound: 0,
+                resultsSaved: 0,
+                error: null,
+                startedAt: null,
+                completedAt: null,
+                createdAt: new Date()
+            }));
+            logger.info(`[GoogleMaps] 内存模式: 生成 ${pendingPoints.length} 个搜索点`);
+        }
+
+        logger.info(`[GoogleMaps] 缩放级别: ${zoom}z`);
+        logger.info(`[GoogleMaps] 预计耗时: ${Math.ceil(pendingPoints.length * 60 / 60)} 分钟`);
         logger.info(`[GoogleMaps] ========================================`);
 
         const allResults: RawData[] = [];
         const page = await this.browser!.newPage();
         const seenKeys = new Set<string>();  // 用于去重
 
-        try {
-            for (const [index, point] of gridPoints.entries()) {
-                logger.info(`[GoogleMaps] [${index + 1}/${gridPoints.length}] 搜索点: (${point.lat.toFixed(4)}, ${point.lng.toFixed(4)})`);
+        // 获取总搜索点数（用于显示进度）
+        let totalPoints = pendingPoints.length;
+        if (params.taskId) {
+            const allPoints = await db.select()
+                .from(searchPoints)
+                .where(eq(searchPoints.taskId, params.taskId));
+            totalPoints = allPoints.length;
+        }
 
-                const searchUrl = `https://www.google.com/maps/search/${encodeURIComponent(optimizedQuery)}/@${point.lat},${point.lng},${zoom}z`;
+        try {
+            for (const [index, point] of pendingPoints.entries()) {
+                logger.info(`[GoogleMaps] [#${point.sequenceNumber}/${totalPoints}] 处理搜索点 #${point.sequenceNumber}: (${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)})`);
+
+                // 更新搜索点状态为 running
+                if (params.taskId && point.id) {
+                    await db.update(searchPoints)
+                        .set({ status: 'running', startedAt: new Date() })
+                        .where(eq(searchPoints.id, point.id));
+                }
+
+                const searchUrl = `https://www.google.com/maps/search/${encodeURIComponent(optimizedQuery)}/@${point.latitude},${point.longitude},${zoom}z`;
 
                 try {
                     await page.goto(searchUrl, {
@@ -193,8 +259,7 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
                     await page.waitForSelector('[role="feed"]', { timeout: 15000 });
                     await page.waitForSelector('[role="article"]', { timeout: 15000 });
 
-                    // 深度滚动，获取尽可能多的结果
-                    // 如果limit未设置或为0，则尝试获取尽可能多（例如1000）
+                    // 深度滚动
                     const limit = params.limit && params.limit > 0 ? params.limit : 1000;
                     await this.scrollResults(page, limit);
 
@@ -209,7 +274,7 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
 
                             const data = await this.extractDetailData(page);
 
-                            // 去重：使用名称+电话作为唯一键
+                            // 去重
                             const uniqueKey = `${data.name}|${data.phone || 'no-phone'}`;
                             if (seenKeys.has(uniqueKey)) {
                                 continue;
@@ -223,28 +288,51 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
                                 data
                             };
                             allResults.push(rawData);
-                            batchResults.push(rawData);  // 也添加到批次
+                            batchResults.push(rawData);
                             newCount++;
                         } catch (error: any) {
                             logger.debug(`[GoogleMaps] 提取详情失败:`, error.message);
                         }
                     }
 
-                    logger.info(`[GoogleMaps] [${index + 1}/${gridPoints.length}] 完成，本点找到 ${listings.length} 个列表项，新增 ${newCount} 条数据，总计 ${allResults.length} 条`);
+                    logger.info(`[GoogleMaps] [#${point.sequenceNumber}/${totalPoints}] 完成，本点找到 ${listings.length} 个列表项，新增 ${newCount} 条数据，总计 ${allResults.length} 条`);
+
+                    // 更新搜索点状态为completed
+                    if (params.taskId && point.id) {
+                        await db.update(searchPoints)
+                            .set({
+                                status: 'completed',
+                                resultsFound: listings.length,
+                                resultsSaved: newCount,
+                                completedAt: new Date()
+                            })
+                            .where(eq(searchPoints.id, point.id));
+                    }
 
                     // 增量保存：每个点完成后立即保存新数据
                     if (params.onBatchComplete && batchResults.length > 0) {
                         await params.onBatchComplete(batchResults);
-                        logger.info(`[GoogleMaps] [${index + 1}/${gridPoints.length}] 已增量保存 ${batchResults.length} 条数据`);
+                        logger.info(`[GoogleMaps] [#${point.sequenceNumber}/${totalPoints}] 已增量保存 ${batchResults.length} 条数据`);
                     }
 
                     // 添加延迟避免被封
-                    if (index < gridPoints.length - 1) {
+                    if (index < pendingPoints.length - 1) {
                         await page.waitForTimeout(2000);
                     }
 
                 } catch (error: any) {
-                    logger.error(`[GoogleMaps] [${index + 1}/${gridPoints.length}] 搜索失败:`, error.message);
+                    logger.error(`[GoogleMaps] [#${point.sequenceNumber}/${totalPoints}] 搜索失败:`, error.message);
+
+                    // 标记搜索点失败
+                    if (params.taskId && point.id) {
+                        await db.update(searchPoints)
+                            .set({
+                                status: 'failed',
+                                error: error.message,
+                                completedAt: new Date()
+                            })
+                            .where(eq(searchPoints.id, point.id));
+                    }
                 }
             }
 

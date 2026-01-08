@@ -246,10 +246,51 @@ export const taskMetrics = pgTable('task_metrics', {
     typeIdx: index('metrics_type_idx').on(table.taskType),
 }));
 
+/**
+ * 搜索点表 - 用于断点续传
+ * 保存每个网格搜索点的坐标和执行状态
+ */
+export const searchPoints = pgTable('search_points', {
+    id: varchar('id', { length: 255 }).primaryKey(),
+    taskId: varchar('task_id', { length: 255 }).references(() => tasks.id).notNull(),
+
+    // 搜索点坐标 (使用 numeric 类型以保持精度)
+    latitude: real('latitude').notNull(),
+    longitude: real('longitude').notNull(),
+
+    // 位置信息
+    sequenceNumber: integer('sequence_number').notNull(), // 在任务中的序号
+
+    // 执行状态: pending, running, completed, failed, skipped
+    status: varchar('status', { length: 20 }).notNull().default('pending'),
+
+    // 结果统计
+    resultsFound: integer('results_found').default(0),   // 本点找到的总结果数
+    resultsSaved: integer('results_saved').default(0),   // 成功保存的结果数
+    error: text('error'),                                 // 错误信息
+
+    // 时间戳
+    startedAt: timestamp('started_at'),
+    completedAt: timestamp('completed_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+    taskIdx: index('search_points_task_idx').on(table.taskId),
+    statusIdx: index('search_points_status_idx').on(table.taskId, table.status),
+    sequenceIdx: index('search_points_sequence_idx').on(table.taskId, table.sequenceNumber),
+}));
+
 
 // Relations for new tables
 export const tasksRelations = relations(tasks, ({ many }) => ({
     leads: many(leads),
+    searchPoints: many(searchPoints),
+}));
+
+export const searchPointsRelations = relations(searchPoints, ({ one }) => ({
+    task: one(tasks, {
+        fields: [searchPoints.taskId],
+        references: [tasks.id],
+    }),
 }));
 
 export const leadsRelations = relations(leads, ({ one, many }) => ({
