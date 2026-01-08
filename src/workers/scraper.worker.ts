@@ -302,14 +302,25 @@ class ScraperWorker {
 
             // 注意：数据已通过 onBatchComplete 回调增量保存，无需再次保存
 
-            // 4. 标记任务完成
-            await db.update(tasks)
-                .set({
-                    status: 'completed',
-                    completedAt: new Date(),
-                    progress: 100
-                })
-                .where(eq(tasks.id, taskId));
+            // 4. 标记任务完成（但不覆盖已取消的任务）
+            const currentTask = await db.query.tasks.findFirst({
+                where: eq(tasks.id, taskId)
+            });
+
+            // 只有当任务不是cancelled状态时才更新为completed
+            if (currentTask?.status !== 'cancelled') {
+                await db.update(tasks)
+                    .set({
+                        status: 'completed',
+                        completedAt: new Date(),
+                        progress: 100
+                    })
+                    .where(eq(tasks.id, taskId));
+
+                logger.info(`[任务完成] 状态已更新为 completed`);
+            } else {
+                logger.info(`[任务终止] 任务已被用户取消，保持cancelled状态`);
+            }
 
             // 显示统计摘要
             logger.info(`\n${'─'.repeat(60)}`);

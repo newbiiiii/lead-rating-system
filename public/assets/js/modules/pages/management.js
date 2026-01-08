@@ -33,7 +33,8 @@ async function loadTaskHistory(page = 1) {
             pending: ['等待中', '#f59e0b', '#fef3c7'],
             running: ['运行中', '#3b82f6', '#dbeafe'],
             completed: ['已完成', '#10b981', '#d1fae5'],
-            failed: ['失败', '#ef4444', '#fee2e2']
+            failed: ['失败', '#ef4444', '#fee2e2'],
+            cancelled: ['已终止', '#f97316', '#fed7aa']
         };
         const [statusName, statusColor, statusBg] = statusMap[task.status] || [task.status, '#6b7280', '#f3f4f6'];
         const successRate = task.totalLeads > 0 ? Math.round((task.successLeads / task.totalLeads) * 100) : 0;
@@ -186,7 +187,8 @@ async function viewTaskDetail(taskId) {
         pending: ['等待中', '#f59e0b', '#fef3c7'],
         running: ['运行中', '#3b82f6', '#dbeafe'],
         completed: ['已完成', '#10b981', '#d1fae5'],
-        failed: ['失败', '#ef4444', '#fee2e2']
+        failed: ['失败', '#ef4444', '#fee2e2'],
+        cancelled: ['已终止', '#f97316', '#fed7aa']
     };
     const [statusName, statusColor, statusBg] = statusMap[task.status] || [task.status, '#6b7280', '#f3f4f6'];
 
