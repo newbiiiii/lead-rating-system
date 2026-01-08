@@ -131,6 +131,14 @@ function showPage(pageName) {
         case 'history':
             loadTaskHistory();
             break;
+        case 'rating-tasks':
+            title = '评分任务';
+            loadRatingTasks();
+            break;
+        case 'management':  // 原来的 history
+            title = '任务管理';
+            loadTaskHistory();
+            break;
     }
 }
 
@@ -813,13 +821,81 @@ async function viewTaskDetail(taskId) {
             <td style="font-size: 12px; max-width: 200px; color: #6b7280;">${contacts}</td>
             <td>
                 <span style="display: inline-block; padding: 6px 12px; border-radius: 12px; background: ${lead.ratingStatus === 'rated' ? '#d1fae5' : '#fef3c7'}; color: ${lead.ratingStatus === 'rated' ? '#059669' : '#d97706'}; font-size: 11px; font-weight: 700; border: 1px solid ${lead.ratingStatus === 'rated' ? '#86efac' : '#fcd34d'};">
-                    ${lead.ratingStatus === 'pending' ? '⏳ 待评级' : '✓ 已评级'}
-                </span>
-            </td>
         </tr>`;
     }).join('');
 }
+
 function closeTaskDetail() { document.getElementById('task-detail-modal').style.display = 'none'; }
+
+// 加载评分任务列表
+async function loadRatingTasks() {
+    try {
+        const data = await fetchAPI('/tasks?limit=50');
+        const tbody = document.getElementById('rating-tasks-body');
+
+        if (!data.tasks || data.tasks.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="empty-state">暂无数据</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.tasks.map(task => {
+            // 使用task对象中的统计字段，而不是访问leads数组
+            const totalLeads = task.totalLeads || 0;
+            const successLeads = task.successLeads || 0;
+            const progress = totalLeads > 0 ? Math.round((successLeads / totalLeads) * 100) : 0;
+
+            return `
+                <tr>
+                    <td>${task.name || '-'}</td>
+                    <td>${task.query || '-'}</td>
+                    <td>${getSourceName(task.source)}</td>
+                    <td>${totalLeads}</td>
+                    <td>${successLeads}</td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="flex: 1; background: #e2e8f0; border-radius: 4px; height: 8px; overflow: hidden;">
+                                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 100%; width: ${progress}%;"></div>
+                            </div>
+                            <span style="font-size: 12px; color: #64748b; min-width: 45px;">${progress}%</span>
+                        </div>
+                    </td>
+                    <td>${formatDate(task.createdAt)}</td>
+                    <td>
+                        <button class="btn-secondary btn-sm" onclick="viewRatingTaskDetail('${task.id}')">查看详情</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('加载评分任务失败:', error);
+        showNotification('加载评分任务失败', 'error');
+    }
+}
+
+// 查看评分任务详情
+async function viewRatingTaskDetail(taskId) {
+    try {
+        const task = await fetchAPI(`/tasks/${taskId}`);
+        if (!task) return;
+        // 复用任务详情弹窗
+        viewTaskDetail(taskId);
+    } catch (error) {
+        console.error('加载任务详情失败:', error);
+    }
+}
+
+function getSourceName(source) {
+    const names = {
+        'google_maps': 'Google地图',
+        'linkedin': '领英',
+        'qichacha': '企查查'
+    };
+    return names[source] || source;
+}
+
+// 导出全局函数
 window.loadTaskHistory = loadTaskHistory;
 window.viewTaskDetail = viewTaskDetail;
 window.closeTaskDetail = closeTaskDetail;
+window.loadRatingTasks = loadRatingTasks;
+window.viewRatingTaskDetail = viewRatingTaskDetail;

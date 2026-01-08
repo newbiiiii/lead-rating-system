@@ -96,19 +96,12 @@
                     </svg>
                     <span>搜索线索</span>
                 </a>
-                <a href="#companies" class="nav-item" data-page="companies">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                        <path
-                            d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 01-1.414.707L10 14.414l-4.586 2.293A1 1 0 014 16V4z" />
-                    </svg>
-                    <span>客户线索</span>
-                </a>
-                <a href="#ratings" class="nav-item" data-page="ratings">
+                <a href="#rating-tasks" class="nav-item" data-page="rating-tasks">
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
                         <path
                             d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                     </svg>
-                    <span>优质客户</span>
+                    <span>评分任务</span>
                 </a>
                 <a href="#history" class="nav-item" data-page="history">
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
@@ -116,7 +109,7 @@
                             d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
                             clip-rule="evenodd" />
                     </svg>
-                    <span>任务历史</span>
+                    <span>任务管理</span>
                 </a>
             </nav>
         </aside>
@@ -252,7 +245,7 @@
                             <h3>搜索新客户</h3>
                         </div>
                         <form id="add-task-form" class="task-form">
-                            <div class="form-row">
+                            <div class="form-grid">
                                 <div class="form-group">
                                     <label>搜索来源</label>
                                     <select name="source" required>
@@ -261,202 +254,155 @@
                                         <option value="qichacha">企查查</option>
                                     </select>
                                 </div>
+                                <div class="form-group">
+                                    <label>目标国家 <span style="color: #888; font-size: 12px;">(可选)</span></label>
+                                    <select name="country" id="country-select">
+                                        <option value="">不限制国家</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>目标城市 <span style="color: #888; font-size: 12px;">(可选)</span></label>
+                                    <select name="city" id="city-select" disabled>
+                                        <option value="">请先选择国家</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>搜索关键词</label>
+                                    <input type="text" name="query" placeholder="例如：上海 电商公司" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>搜索数量</label>
+                                    <input type="number" name="limit" value="30" min="1" max="100" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>优先级</label>
+                                    <select name="priority">
+                                        <option value="1">高</option>
+                                        <option value="5" selected>中</option>
+                                        <option value="10">低</option>
+                                    </select>
+                                </div>
                             </div>
-                            <!-- 新增: 国家-城市选择 -->
-                            <div class="form-group">
-                                <label>目标国家 <span style="color: #888; font-size: 12px;">(可选)</span></label>
-                                <select name="country" id="country-select">
-                                    <option value="">不限制国家</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>目标城市 <span style="color: #888; font-size: 12px;">(可选)</span></label>
-                                <select name="city" id="city-select" disabled>
-                                    <option value="">请先选择国家</option>
-                                </select>
-                            </div>
-                            <!-- 隐藏字段 -->
                             <input type="hidden" name="latitude" id="latitude">
                             <input type="hidden" name="longitude" id="longitude">
                             <input type="hidden" name="radius" id="radius">
-                            <div class="form-group">
-                                <label>搜索关键词 <span style="color: #888; font-size: 12px;">(例如: 美国 LED灯具
-                                        进口商)</span></label>
-                                <input type="text" name="query" placeholder="例如：上海 电商公司" required>
+                            <button type="submit" class="btn-primary">开始搜索</button>
+                        </form>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="section-header">
+                            <h3>搜索进度</h3>
+                            <button class="btn-secondary btn-sm" onclick="loadQueueStats()">刷新</button>
+                        </div>
+                        <div id="queue-stats-container"></div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="section-header">
+                            <h3>实时日志</h3>
+                            <div class="header-actions">
+                                <button class="btn-secondary btn-sm" onclick="clearLogs()">清空</button>
                             </div>
-                            <div class="form-group">
-                                <label>搜索数量</label>
-                                <input type="number" name="limit" value="30" min="1" max="100" required>
+                        </div>
+                        <div class="terminal-window" id="log-terminal">
+                            <div class="terminal-content" id="log-content">
+                                <div class="log-line system">等待日志连接...</div>
                             </div>
-                            <div class="form-group">
-                                <label>优先级</label>
-                                <select name="priority">
-                                    <option value="1">高</option>
-                                    <option value="5" selected>中</option>
-                                    <option value="10">低</option>
-                                </select>
-                            </div>
-                    </div>
-                    <button type="submit" class="btn-primary">开始搜索</button>
-                    </form>
-                </div>
-
-                <div class="section-card">
-                    <div class="section-header">
-                        <h3>搜索进度</h3>
-                        <button class="btn-secondary btn-sm" onclick="loadQueueStats()">刷新</button>
-                    </div>
-                    <div id="queue-stats-container"></div>
-                </div>
-
-                <div class="section-card">
-                    <div class="section-header">
-                        <h3>实时日志</h3>
-                        <div class="header-actions">
-                            <button class="btn-secondary btn-sm" onclick="clearLogs()">清空</button>
-                        </div>
-                    </div>
-                    <div class="terminal-window" id="log-terminal">
-                        <div class="terminal-content" id="log-content">
-                            <div class="log-line system">等待日志连接...</div>
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- 公司数据页面 -->
-            <div id="companies-page" class="page">
-                <div class="section-card">
-                    <div class="section-header">
-                        <h3>客户线索列表</h3>
-                        <div class="header-actions">
-                            <input type="search" placeholder="搜索客户名称、行业..." class="search-input">
-                            <button class="btn-secondary btn-sm" onclick="loadCompanies()">刷新</button>
+                <!-- 评分任务页面 -->
+                <div id="rating-tasks-page" class="page">
+                    <div class="section-card">
+                        <div class="section-header">
+                            <h3>评分任务列表</h3>
+                            <button class="btn-secondary btn-sm" onclick="loadRatingTasks()">刷新</button>
                         </div>
-                    </div>
-                    <div class="table-container">
-                        <table class="data-table" id="companies-table">
-                            <thead>
-                                <tr>
-                                    <th>客户名称</th>
-                                    <th>行业</th>
-                                    <th>官网</th>
-                                    <th>联系电话</th>
-                                    <th>邮箱</th>
-                                    <th>地址</th>
-                                    <th>公司规模</th>
-                                    <th>来源</th>
-                                    <th>采集时间</th>
-                                </tr>
-                            </thead>
-                            <tbody id="companies-body">
-                                <tr>
-                                    <td colspan="9" class="empty-state">暂无数据</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="pagination" id="companies-pagination"></div>
-                </div>
-            </div>
-
-            <!-- 评级结果页面 -->
-            <div id="ratings-page" class="page">
-                <div class="section-card">
-                    <div class="section-header">
-                        <h3>优质客户推荐</h3>
-                        <div class="header-actions">
-                            <select id="score-filter" class="filter-select">
-                                <option value="0">全部评分</option>
-                                <option value="9">高分 (≥9)</option>
-                                <option value="6">中分 (6-9)</option>
-                            </select>
-                            <button class="btn-secondary btn-sm" onclick="loadRatings()">刷新</button>
-                        </div>
-                    </div>
-                    <div class="table-container">
-                        <table class="data-table" id="ratings-table">
-                            <thead>
-                                <tr>
-                                    <th>公司名称</th>
-                                    <th>总分</th>
-                                    <th>基础匹配</th>
-                                    <th>意向信号</th>
-                                    <th>痛点关联</th>
-                                    <th>评分理由</th>
-                                    <th>评分时间</th>
-                                </tr>
-                            </thead>
-                            <tbody id="ratings-body">
-                                <tr>
-                                    <td colspan="7" class="empty-state">暂无数据</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            <!-- 任务历史页面 -->
-            <div id="history-page" class="page">
-                <div class="section-card">
-                    <div class="section-header">
-                        <h3>任务历史</h3>
-                        <button class="btn-secondary btn-sm" onclick="loadTaskHistory()">刷新</button>
-                    </div>
-                    <div class="table-container">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>任务名称</th>
-                                    <th>来源</th>
-                                    <th>状态</th>
-                                    <th>进度</th>
-                                    <th>线索数</th>
-                                    <th>创建时间</th>
-                                    <th>操作</th>
-                                </tr>
-                            </thead>
-                            <tbody id="task-history-body">
-                                <tr>
-                                    <td colspan="7" class="empty-state">加载中...</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <!-- 任务详情弹窗 -->
-                <div id="task-detail-modal"
-                    style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; padding: 40px;">
-                    <div
-                        style="max-width: 1200px; margin: 0 auto; background: #1a1a2e; border-radius: 12px; padding: 24px; max-height: 90vh; overflow-y: auto;">
-                        <div
-                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                            <h2 id="modal-task-name" style="color: #fff; margin: 0;">任务详情</h2>
-                            <button onclick="closeTaskDetail()"
-                                style="background: #374151; border: none; color: #fff; padding: 8px 16px; border-radius: 6px; cursor: pointer;">关闭</button>
-                        </div>
-                        <div id="task-detail-info" style="margin-bottom: 24px;"></div>
-                        <h3 style="color: #cbd5e1; margin-bottom: 16px;">关联线索</h3>
                         <div class="table-container">
                             <table class="data-table">
                                 <thead>
                                     <tr>
-                                        <th>公司名称</th>
-                                        <th>网站</th>
-                                        <th>行业</th>
-                                        <th>评分</th>
-                                        <th>联系人</th>
-                                        <th>评级状态</th>
+                                        <th>任务名称</th>
+                                        <th>搜索关键词</th>
+                                        <th>来源</th>
+                                        <th>总线索数</th>
+                                        <th>已评分</th>
+                                        <th>评分进度</th>
+                                        <th>创建时间</th>
+                                        <th>操作</th>
                                     </tr>
                                 </thead>
-                                <tbody id="task-leads-body"></tbody>
+                                <tbody id="rating-tasks-body">
+                                    <tr>
+                                        <td colspan="8" class="empty-state">加载中...</td>
+                                    </tr>
+                                </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
+                <!-- 任务管理页面 -->
+                <div id="management-page" class="page">
+                    <div class="section-card">
+                        <div class="section-header">
+                            <h3>任务管理</h3>
+                            <button class="btn-secondary btn-sm" onclick="loadTaskHistory()">刷新</button>
+                        </div>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>任务名称</th>
+                                        <th>来源</th>
+                                        <th>状态</th>
+                                        <th>进度</th>
+                                        <th>线索数</th>
+                                        <th>创建时间</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="task-history-body">
+                                    <tr>
+                                        <td colspan="7" class="empty-state">加载中...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <!-- 任务详情弹窗 -->
+                    <div id="task-detail-modal"
+                        style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; padding: 40px;">
+                        <div
+                            style="max-width: 1200px; margin: 0 auto; background: #1a1a2e; border-radius: 12px; padding: 24px; max-height: 90vh; overflow-y: auto;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                                <h2 id="modal-task-name" style="color: #fff; margin: 0;">任务详情</h2>
+                                <button onclick="closeTaskDetail()"
+                                    style="background: #374151; border: none; color: #fff; padding: 8px 16px; border-radius: 6px; cursor: pointer;">关闭</button>
+                            </div>
+                            <div id="task-detail-info" style="margin-bottom: 24px;"></div>
+                            <h3 style="color: #cbd5e1; margin-bottom: 16px;">关联线索</h3>
+                            <div class="table-container">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>公司名称</th>
+                                            <th>网站</th>
+                                            <th>行业</th>
+                                            <th>评分</th>
+                                            <th>联系人</th>
+                                            <th>评级状态</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="task-leads-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-    </div>
-    </main>
+        </main>
     </div>
 
     <script src="/assets/js/dashboard.js"></script>
