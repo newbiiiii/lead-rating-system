@@ -5,32 +5,20 @@
     <form id="add-task-form" class="task-form">
         <div class="form-grid">
             <div class="form-group">
-                <label>搜索来源</label>
-                <select name="source" required>
-                    <option value="google_maps">Google地图</option>
-                    <option value="linkedin">领英</option>
-                    <option value="qichacha">企查查</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>目标国家 <span style="color: #888; font-size: 12px;">(可选)</span></label>
-                <select name="country" id="country-select">
-                    <option value="">不限制国家</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>目标城市 <span style="color: #888; font-size: 12px;">(可选)</span></label>
-                <select name="city" id="city-select" disabled>
-                    <option value="">请先选择国家</option>
-                </select>
-            </div>
-            <div class="form-group">
                 <label>搜索关键词</label>
                 <input type="text" name="query" placeholder="例如：Wall Panel" required>
             </div>
             <div class="form-group">
-                <label>搜索数量</label>
-                <input type="number" name="limit" value="30" min="1" max="100" required>
+                <label>目标国家</label>
+                <select name="country" id="country-select" required>
+                    <option value="">不限制国家</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>目标城市</label>
+                <select name="city" id="city-select" disabled required>
+                    <option value="">请先选择国家</option>
+                </select>
             </div>
             <div class="form-group">
                 <label>优先级</label>

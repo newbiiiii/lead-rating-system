@@ -24,9 +24,9 @@ async function handleFormSubmit(e) {
 
     const formData = new FormData(e.target);
     const taskData = {
-        source: formData.get('source'),
+        source: 'google_maps',
         query: formData.get('query'),
-        limit: parseInt(formData.get('limit')),
+        limit: 99,
         priority: parseInt(formData.get('priority')),
         config: {}
     };
