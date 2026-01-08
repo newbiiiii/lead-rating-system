@@ -255,3 +255,6 @@ function closeTaskDetail() {
 window.loadTaskHistory = loadTaskHistory;
 window.viewTaskDetail = viewTaskDetail;
 window.closeTaskDetail = closeTaskDetail;
+window.changePageSize = changePageSize;
+window.applyFilters = applyFilters;
+window.resetFilters = resetFilters;

@@ -100,8 +100,20 @@ app.get('/api/tasks', async (req, res) => {
         const status = req.query.status as string;
         const query = req.query.query as string;
 
+        // 构建WHERE条件
+        const whereConditions = [];
+        if (status) {
+            whereConditions.push(eq(tasks.status, status));
+        }
+        if (query) {
+            const lowerQuery = `%${query.toLowerCase()}%`;
+            whereConditions.push(
+                sql`(LOWER(${tasks.name}) LIKE ${lowerQuery} OR LOWER(${tasks.query}) LIKE ${lowerQuery})`
+            );
+        }
+
         const tasksList = await db.query.tasks.findMany({
-            where: status ? eq(tasks.status, status) : undefined,
+            where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
             orderBy: desc(tasks.createdAt),
             limit,
             offset,
@@ -137,20 +149,10 @@ app.get('/api/tasks', async (req, res) => {
             };
         });
 
-        // 如果有query参数，手动过滤（因为需要对name和query字段进行模糊匹配）
-        let filteredTasks = tasksWithProgress;
-        if (query) {
-            const lowerQuery = query.toLowerCase();
-            filteredTasks = tasksWithProgress.filter(task =>
-                task.name.toLowerCase().includes(lowerQuery) ||
-                task.query.toLowerCase().includes(lowerQuery)
-            );
-        }
-
-        // 获取总数
+        // 获取总数（使用相同的WHERE条件）
         const total = await db.select({ count: sql<number>`count(*)` })
             .from(tasks)
-            .where(status ? eq(tasks.status, status) : undefined);
+            .where(whereConditions.length > 0 ? and(...whereConditions) : undefined);
 
         res.json({
             tasks: tasksWithProgress,
