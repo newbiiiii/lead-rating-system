@@ -98,6 +98,7 @@ app.get('/api/tasks', async (req, res) => {
         const limit = parseInt(req.query.limit as string) || 20;
         const offset = (page - 1) * limit;
         const status = req.query.status as string;
+        const query = req.query.query as string;
 
         const tasksList = await db.query.tasks.findMany({
             where: status ? eq(tasks.status, status) : undefined,
@@ -135,6 +136,16 @@ app.get('/api/tasks', async (req, res) => {
                 searchPoints: undefined  // 不返回完整的searchPoints数组，节省带宽
             };
         });
+
+        // 如果有query参数，手动过滤（因为需要对name和query字段进行模糊匹配）
+        let filteredTasks = tasksWithProgress;
+        if (query) {
+            const lowerQuery = query.toLowerCase();
+            filteredTasks = tasksWithProgress.filter(task =>
+                task.name.toLowerCase().includes(lowerQuery) ||
+                task.query.toLowerCase().includes(lowerQuery)
+            );
+        }
 
         // 获取总数
         const total = await db.select({ count: sql<number>`count(*)` })
