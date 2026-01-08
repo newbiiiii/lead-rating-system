@@ -43,7 +43,14 @@ async function loadTaskHistory() {
                 </span>
             </td>
             <td>
-                <div style="min-width: 140px;">
+                <div style="min-width: 160px;">
+                    ${task.searchPointsStats && task.searchPointsStats.total > 0 ? `
+                    <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px;">
+                        <span style="display: inline-block; padding: 4px 10px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 6px; font-size: 12px; font-weight: 700; font-family: 'Courier New', monospace;">
+                            #${task.searchPointsStats.completed + task.searchPointsStats.failed}/${task.searchPointsStats.total}
+                        </span>
+                    </div>
+                    ` : ''}
                     <div style="display: flex; gap: 10px; align-items: center;">
                         <div style="flex: 1; background: #e5e7eb; height: 10px; border-radius: 20px; overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);">
                             <div style="width: ${task.progress || 0}%; height: 100%; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); transition: width 0.3s; box-shadow: 0 0 10px rgba(102, 126, 234, 0.4);"></div>

@@ -103,7 +103,37 @@ app.get('/api/tasks', async (req, res) => {
             where: status ? eq(tasks.status, status) : undefined,
             orderBy: desc(tasks.createdAt),
             limit,
-            offset
+            offset,
+            with: {
+                searchPoints: true  // 包含searchPoints用于计算进度
+            }
+        });
+
+        // 计算每个任务的searchPoints进度
+        const tasksWithProgress = tasksList.map(task => {
+            const sp = task.searchPoints || [];
+            const totalPoints = sp.length;
+            const completedPoints = sp.filter(p => p.status === 'completed').length;
+            const failedPoints = sp.filter(p => p.status === 'failed').length;
+            const runningPoints = sp.filter(p => p.status === 'running').length;
+
+            // 计算进度: (已完成 + 失败) / 总数 * 100
+            const progress = totalPoints > 0
+                ? Math.round(((completedPoints + failedPoints) / totalPoints) * 100)
+                : task.progress || 0;
+
+            return {
+                ...task,
+                progress,
+                searchPointsStats: {
+                    total: totalPoints,
+                    completed: completedPoints,
+                    failed: failedPoints,
+                    running: runningPoints,
+                    pending: totalPoints - completedPoints - failedPoints - runningPoints
+                },
+                searchPoints: undefined  // 不返回完整的searchPoints数组，节省带宽
+            };
         });
 
         // 获取总数
@@ -112,7 +142,7 @@ app.get('/api/tasks', async (req, res) => {
             .where(status ? eq(tasks.status, status) : undefined);
 
         res.json({
-            tasks: tasksList,
+            tasks: tasksWithProgress,
             total: Number(total[0].count),
             page,
             pageSize: limit
