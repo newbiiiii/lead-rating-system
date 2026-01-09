@@ -36,7 +36,7 @@ class CrmWorker {
             },
             {
                 connection: redis,
-                concurrency: 5,
+                concurrency: 1,
                 limiter: {
                     max: 20,
                     duration: 1000
