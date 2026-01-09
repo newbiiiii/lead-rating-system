@@ -4,26 +4,17 @@
  */
 import 'dotenv/config';
 import { isRetryableError, constructPrompt, shouldRetry, rateLeadWithAI } from '../../src/services/rating.service';
+import {db} from "../../src/db";
+import {eq} from "drizzle-orm";
+import {leads} from "../../src/db/schema";
 
 // ============ 测试数据工厂 ============
-function createMockLead(overrides?: any) {
-    return {
-        id: 'test-lead-id',
-        companyName: 'Test Company',
-        website: 'https://test.com',
-        industry: 'Technology',
-        region: 'California',
-        address: '123 Test St',
-        employeeCount: 50,
-        estimatedSize: 'medium',
-        rating: 4.5,
-        reviewCount: 100,
-        rawData: {
-            description: 'A test company',
-            categories: ['Software']
-        },
-        ...overrides
-    };
+const createMockLead = async (overrides?: any) => {
+    const leadId = 'fa470fa1-743d-46be-857e-40c9494557f5';
+    const lead = await db.query.leads.findFirst({
+        where: eq(leads.id, leadId)
+    });
+    return {...lead}
 }
 
 // console.log('测试1: API限流错误应该重试');
@@ -76,7 +67,7 @@ function createMockLead(overrides?: any) {
 console.log('\n测试11: 评级');
 const testRealAI = async () => {
     try {
-        const testLead = createMockLead();
+        const testLead = await createMockLead();
         const result = await rateLeadWithAI(testLead);
         console.log('结果:', result)
     } catch (error: any) {
