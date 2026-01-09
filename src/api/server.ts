@@ -201,27 +201,83 @@ app.post('/api/tasks/:id/terminate', async (req, res) => {
     }
 });
 
-// 查询任务详情
+// 查询任务详情（带分页和筛选）
 app.get('/api/tasks/:id', async (req, res) => {
     try {
+        const taskId = req.params.id;
+        const page = parseInt(req.query.page as string) || 1;
+        const pageSize = parseInt(req.query.pageSize as string) || 20;
+        const ratingStatus = req.query.ratingStatus as string;  // pending, completed, failed
+        const offset = (page - 1) * pageSize;
+
+        // 查询任务基本信息
         const task = await db.query.tasks.findFirst({
-            where: eq(tasks.id, req.params.id),
-            with: {
-                leads: {
-                    with: {
-                        contacts: true,
-                        rating: true
-                    },
-                    limit: 100  // 限制返回的leads数量
-                }
-            }
+            where: eq(tasks.id, taskId)
         });
 
         if (!task) {
             return res.status(404).json({ error: '任务未找到' });
         }
 
-        res.json(task);
+        // 构建leads查询条件
+        let whereConditions = sql`l.task_id = ${taskId}`;
+        if (ratingStatus) {
+            whereConditions = sql`${whereConditions} AND l.rating_status = ${ratingStatus}`;
+        }
+
+        // 查询leads总数
+        const countResult = await db.execute(sql`
+            SELECT COUNT(*) as count
+            FROM leads l
+            WHERE ${whereConditions}
+        `);
+        const total = parseInt(countResult.rows[0].count as string);
+
+        // 查询leads数据（带分页）
+        const leadsResult = await db.execute(sql`
+            SELECT 
+                l.id,
+                l.company_name as "companyName",
+                l.domain,
+                l.website,
+                l.industry,
+                l.region,
+                l.address,
+                l.employee_count as "employeeCount",
+                l.estimated_size as "estimatedSize",
+                l.rating,
+                l.review_count as "reviewCount",
+                l.source,
+                l.source_url as "sourceUrl",
+                l.rating_status as "ratingStatus",
+                l.scraped_at as "scrapedAt",
+                l.created_at as "createdAt",
+                l.updated_at as "updatedAt",
+                lr.id as "ratingId",
+                lr.overall_rating as "overallRating",
+                lr.suggestion,
+                lr.think,
+                lr.rated_at as "ratedAt"
+            FROM leads l
+            LEFT JOIN lead_ratings lr ON l.id = lr.lead_id
+            WHERE ${whereConditions}
+            ORDER BY l.created_at DESC
+            LIMIT ${pageSize} OFFSET ${offset}
+        `);
+
+        res.json({
+            task,
+            leads: leadsResult.rows,
+            pagination: {
+                page,
+                pageSize,
+                total,
+                totalPages: Math.ceil(total / pageSize)
+            },
+            filters: {
+                ratingStatus: ratingStatus || null
+            }
+        });
     } catch (error: any) {
         logger.error('查询任务详情失败:', error);
         res.status(500).json({ error: error.message });

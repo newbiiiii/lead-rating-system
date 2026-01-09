@@ -173,12 +173,28 @@ function resetFilters() {
     loadTaskHistory(1);
 }
 
-async function viewTaskDetail(taskId) {
-    // 保存taskId供终止按钮使用
+// 任务详情状态
+let detailCurrentPage = 1;
+let detailPageSize = 20;
+let detailRatingFilter = '';
+
+async function viewTaskDetail(taskId, page = 1, pageSize = 20, ratingStatus = '') {
+    // 保存状态
+    detailCurrentPage = page;
+    detailPageSize = pageSize;
+    detailRatingFilter = ratingStatus;
     window.currentTaskId = taskId;
 
-    const task = await fetchAPI(`/api/tasks/${taskId}`);
-    if (!task) return;
+    // 构建查询参数
+    let queryParams = `page=${page}&pageSize=${pageSize}`;
+    if (ratingStatus) {
+        queryParams += `&ratingStatus=${ratingStatus}`;
+    }
+
+    const data = await fetchAPI(`/api/tasks/${taskId}?${queryParams}`);
+    if (!data) return;
+
+    const { task, leads, pagination, filters } = data;
 
     document.getElementById('task-detail-modal').style.display = 'block';
     document.getElementById('modal-task-name').textContent = task.name;
@@ -208,7 +224,7 @@ async function viewTaskDetail(taskId) {
             </div>
             <div style="padding: 16px; background: linear-gradient(135deg, #ede9fe, #f3f0ff); border-radius: 12px; border: 1px solid #d8c4f8;">
                 <div style="color: #7c3aed; font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 10px; font-weight: 600;">线索总数</div>
-                <div style="color: #7c3aed; font-size: 32px; font-weight: 800;">${task.totalLeads || 0}</div>
+                <div style="color: #7c3aed; font-size: 32px; font-weight: 800;">${pagination.total || 0}</div>
             </div>
             <div style="padding: 16px; background: linear-gradient(135deg, #d1fae5, #dcfce7); border-radius: 12px; border: 1px solid #86efac;">
                 <div style="color: #059669; font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 10px; font-weight: 600;">成功/失败</div>
@@ -222,34 +238,109 @@ async function viewTaskDetail(taskId) {
                 <div style="color: #6b7280; font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 10px; font-weight: 600;">创建时间</div>
                 <div style="color: #374151; font-size: 13px; font-weight: 500;">${formatDate(task.createdAt)}</div>
             </div>
+        </div>
+        
+        <!-- 筛选和分页控件 -->
+        <div style="margin: 20px 0; display: flex; justify-content: space-between; align-items: center; padding: 16px; background: white; border-radius: 12px; border: 1px solid #e5e7eb;">
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <label style="font-weight: 600; color: #374151;">评分状态:</label>
+                <select id="detail-rating-filter" onchange="filterTaskDetail()" style="padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer;">
+                    <option value="">全部</option>
+                    <option value="pending" ${filters.ratingStatus === 'pending' ? 'selected' : ''}>待评分</option>
+                    <option value="completed" ${filters.ratingStatus === 'completed' ? 'selected' : ''}>已评分</option>
+                    <option value="failed" ${filters.ratingStatus === 'failed' ? 'selected' : ''}>评分失败</option>
+                </select>
+                <label style="font-weight: 600; color: #374151;">每页:</label>
+                <select id="detail-pagesize-select" onchange="changeDetailPageSize(this.value)" style="padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer;">
+                    <option value="10" ${pageSize == 10 ? 'selected' : ''}>10</option>
+                    <option value="20" ${pageSize == 20 ? 'selected' : ''}>20</option>
+                    <option value="50" ${pageSize == 50 ? 'selected' : ''}>50</option>
+                    <option value="100" ${pageSize == 100 ? 'selected' : ''}>100</option>
+                </select>
+            </div>
+            <div style="color: #6b7280; font-size: 14px;">
+                共 ${pagination.total} 条，第 ${pagination.page}/${pagination.totalPages || 1} 页
+            </div>
         </div>`;
 
     const leadsBody = document.getElementById('task-leads-body');
-    if (!task.leads || task.leads.length === 0) {
-        leadsBody.innerHTML = '<tr><td colspan="6" class="empty-state">该任务暂无线索</td></tr>';
-        return;
+    if (!leads || leads.length === 0) {
+        leadsBody.innerHTML = '<tr><td colspan="7" class="empty-state">暂无线索数据</td></tr>';
+    } else {
+        leadsBody.innerHTML = leads.map((lead, index) => {
+            const globalIndex = (pagination.page - 1) * pagination.pageSize + index + 1;
+            const ratingBadge = lead.ratingStatus === 'completed'
+                ? '<span style="display: inline-block; padding: 6px 12px; border-radius: 12px; background: #d1fae5; color: #059669; font-size: 11px; font-weight: 700; border: 1px solid #86efac;">✓ 已评分</span>'
+                : lead.ratingStatus === 'failed'
+                    ? '<span style="display: inline-block; padding: 6px 12px; border-radius: 12px; background: #fee2e2; color: #dc2626; font-size: 11px; font-weight: 700; border: 1px solid #fca5a5;">✗ 失败</span>'
+                    : '<span style="display: inline-block; padding: 6px 12px; border-radius: 12px; background: #fef3c7; color: #d97706; font-size: 11px; font-weight: 700; border: 1px solid #fcd34d;">⏳ 待评分</span>';
+
+            return `<tr style="background: white; transition: all 0.2s; border-bottom: 1px solid #f3f4f6;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='white'">
+                <td>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 700; box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);">${globalIndex}</div>
+                        <strong style="color: #111827;">${lead.companyName}</strong>
+                    </div>
+                </td>
+                <td>${lead.website ? `<a href="${lead.website}" target="_blank" style="color: #667eea; text-decoration: none; font-weight: 500;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${lead.website.substring(0, 35)}...</a>` : '<span style="color: #9ca3af;">-</span>'}</td>
+                <td style="color: #6b7280; font-weight: 500;">${lead.industry || '-'}</td>
+                <td>${lead.rating ? `<span style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 6px 12px; border-radius: 10px; font-weight: 700; font-size: 13px; box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);">${lead.rating.toFixed(1)}</span>` : '<span style="color: #9ca3af;">-</span>'}</td>
+                <td>${ratingBadge}</td>
+                <td>${lead.overallRating ? `<div style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; color: #374151; font-size: 13px;">${lead.overallRating}</div>` : '<span style="color: #9ca3af;">-</span>'}</td>
+                <td>${lead.suggestion ? `<div style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; color: #6b7280; font-size: 12px;">${lead.suggestion}</div>` : '<span style="color: #9ca3af;">-</span>'}</td>
+            </tr>`;
+        }).join('');
     }
 
-    leadsBody.innerHTML = task.leads.map((lead, index) => {
-        const contacts = (lead.contacts || []).map(c => c.phone || c.email).filter(Boolean).join(', ') || '-';
-        return `<tr style="background: white; transition: all 0.2s; border-bottom: 1px solid #f3f4f6;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='white'">
-            <td>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div style="width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 700; box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);">${index + 1}</div>
-                    <strong style="color: #111827;">${lead.companyName}</strong>
-                </div>
-            </td>
-            <td>${lead.website ? `<a href="${lead.website}" target="_blank" style="color: #667eea; text-decoration: none; font-weight: 500;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${lead.website.substring(0, 35)}...</a>` : '<span style="color: #9ca3af;">-</span>'}</td>
-            <td style="color: #6b7280; font-weight: 500;">${lead.industry || '-'}</td>
-            <td>${lead.rating ? `<span style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 6px 12px; border-radius: 10px; font-weight: 700; font-size: 13px; box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);">${lead.rating.toFixed(1)}</span>` : '<span style="color: #9ca3af;">-</span>'}</td>
-            <td style="font-size: 12px; max-width: 200px; color: #6b7280;">${contacts}</td>
-            <td>
-                <span style="display: inline-block; padding: 6px 12px; border-radius: 12px; background: ${lead.ratingStatus === 'rated' ? '#d1fae5' : '#fef3c7'}; color: ${lead.ratingStatus === 'rated' ? '#059669' : '#d97706'}; font-size: 11px; font-weight: 700; border: 1px solid ${lead.ratingStatus === 'rated' ? '#86efac' : '#fcd34d'};">
-                    ${lead.ratingStatus === 'pending' ? '⏳ 待评级' : '✓ 已评级'}
-                </span>
-            </td>
-        </tr>`;
-    }).join('');
+    // 添加分页控件
+    updateDetailPagination(pagination, taskId);
+}
+
+function updateDetailPagination(pagination, taskId) {
+    const paginationDiv = document.getElementById('detail-pagination');
+    if (!paginationDiv) return;
+
+    const { page, totalPages } = pagination;
+
+    let html = '<div style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 20px;">';
+
+    // 上一页
+    html += `<button onclick="viewTaskDetail('${taskId}', ${page - 1}, ${detailPageSize}, '${detailRatingFilter}')" 
+                ${page === 1 ? 'disabled' : ''}
+                style="padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 6px; background: white; cursor: ${page === 1 ? 'not-allowed' : 'pointer'}; color: ${page === 1 ? '#9ca3af' : '#374151'};">
+            上一页
+        </button>`;
+
+    // 页码
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= page - 2 && i <= page + 2)) {
+            html += `<button onclick="viewTaskDetail('${taskId}', ${i}, ${detailPageSize}, '${detailRatingFilter}')" 
+                        style="padding: 8px 12px; border: 1px solid ${i === page ? '#667eea' : '#e5e7eb'}; border-radius: 6px; background: ${i === page ? 'linear-gradient(135deg, #667eea, #764ba2)' : 'white'}; color: ${i === page ? 'white' : '#374151'}; font-weight: ${i === page ? '600' : '400'}; cursor: pointer;">
+                    ${i}
+                </button>`;
+        } else if (i === page - 3 || i === page + 3) {
+            html += '<span style="padding: 8px;">...</span>';
+        }
+    }
+
+    // 下一页
+    html += `<button onclick="viewTaskDetail('${taskId}', ${page + 1}, ${detailPageSize}, '${detailRatingFilter}')" 
+                ${page === totalPages ? 'disabled' : ''}
+                style="padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 6px; background: white; cursor: ${page === totalPages ? 'not-allowed' : 'pointer'}; color: ${page === totalPages ? '#9ca3af' : '#374151'};">
+            下一页
+        </button>`;
+
+    html += '</div>';
+    paginationDiv.innerHTML = html;
+}
+
+function filterTaskDetail() {
+    const filter = document.getElementById('detail-rating-filter').value;
+    viewTaskDetail(window.currentTaskId, 1, detailPageSize, filter);
+}
+
+function changeDetailPageSize(newSize) {
+    viewTaskDetail(window.currentTaskId, 1, parseInt(newSize), detailRatingFilter);
 }
 
 function closeTaskDetail() {
@@ -281,3 +372,5 @@ window.changePageSize = changePageSize;
 window.applyFilters = applyFilters;
 window.resetFilters = resetFilters;
 window.terminateTask = terminateTask;
+window.filterTaskDetail = filterTaskDetail;
+window.changeDetailPageSize = changeDetailPageSize;
