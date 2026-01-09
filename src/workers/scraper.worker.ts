@@ -58,7 +58,14 @@ class ScraperWorker {
             {
                 connection: redis,
                 concurrency: 1,  // 每次只运行一个爬虫任务
-                limiter: queueConfig.rate_limit
+                limiter: queueConfig.rate_limit,
+                // 重试配置
+                settings: {
+                    backoffStrategy: (attemptsMade: number) => {
+                        // 指数退避: 5s, 10s, 20s
+                        return Math.min(5000 * Math.pow(2, attemptsMade - 1), 20000);
+                    }
+                }
             }
         );
 
@@ -371,17 +378,29 @@ class ScraperWorker {
                 failed: validationFailedCount
             };
         } catch (error: any) {
-            // 5. 处理错误 - 标记任务失败
-            await db.update(tasks)
-                .set({
-                    status: 'failed',
-                    error: error.message,
-                    completedAt: new Date()
-                })
-                .where(eq(tasks.id, taskId));
+            // 5. 处理错误 - 区分可恢复和不可恢复的错误
+            const attemptsMade = job.attemptsMade || 0;
+            const maxAttempts = 3;
+            const isLastAttempt = attemptsMade >= maxAttempts - 1;
 
-            logger.error(`[任务失败] ${taskId}:`, error.message);
-            throw error;
+            if (isLastAttempt) {
+                // 所有重试都失败了，标记任务为永久失败
+                await db.update(tasks)
+                    .set({
+                        status: 'failed',
+                        error: `Failed after ${maxAttempts} attempts: ${error.message}`,
+                        completedAt: new Date()
+                    })
+                    .where(eq(tasks.id, taskId));
+
+                logger.error(`[任务失败] ${taskId} - 所有重试已用尽:`, error.message);
+            } else {
+                // 还有重试机会，记录但不标记为失败
+                logger.warn(`[任务重试] ${taskId} - 尝试 ${attemptsMade + 1}/${maxAttempts} 失败:`, error.message);
+                logger.info(`[任务重试] 将在稍后自动重试...`);
+            }
+
+            throw error;  // 重新抛出以触发BullMQ的重试机制
         }
     }
 

@@ -54,6 +54,13 @@ class RatingWorker {
                 limiter: {
                     max: 10,      // 限制速率，避免 API 超限
                     duration: 1000
+                },
+                // 重试配置
+                settings: {
+                    backoffStrategy: (attemptsMade: number) => {
+                        // 指数退避: 2s, 4s, 8s
+                        return Math.min(2000 * Math.pow(2, attemptsMade - 1), 8000);
+                    }
                 }
             }
         );
@@ -152,18 +159,82 @@ class RatingWorker {
             return result;
 
         } catch (error: any) {
-            logger.error(`[评分失败] ${lead.companyName}:`, error.message);
+            const attemptsMade = job.attemptsMade || 0;
+            const maxAttempts = 3;
+            const isLastAttempt = attemptsMade >= maxAttempts - 1;
 
-            // 更新状态为失败
-            await db.update(leads)
-                .set({
-                    ratingStatus: 'failed',
-                    updatedAt: new Date()
-                })
-                .where(eq(leads.id, leadId));
+            // 判断错误类型
+            const isRetryableError = this.isRetryableError(error);
 
-            throw error;
+            if (isLastAttempt || !isRetryableError) {
+                // 所有重试都失败了，或者是不可重试的错误，标记为永久失败
+                await db.update(leads)
+                    .set({
+                        ratingStatus: 'failed',
+                        updatedAt: new Date()
+                    })
+                    .where(eq(leads.id, leadId));
+
+                if (isLastAttempt) {
+                    logger.error(`[评分失败] ${lead.companyName} - 所有重试已用尽:`, error.message);
+                } else {
+                    logger.error(`[评分失败] ${lead.companyName} - 不可恢复的错误:`, error.message);
+                }
+            } else {
+                // 还有重试机会且错误可重试
+                logger.warn(`[评分重试] ${lead.companyName} - 尝试 ${attemptsMade + 1}/${maxAttempts} 失败:`, error.message);
+                logger.info(`[评分重试] 将在稍后自动重试...`);
+            }
+
+            throw error;  // 重新抛出以触发BullMQ的重试机制
         }
+    }
+
+    /**
+     * 判断错误是否可重试
+     * API限流、网络错误等可重试
+     * JSON解析错误、验证错误等不可重试
+     */
+    private isRetryableError(error: any): boolean {
+        const errorMessage = error.message?.toLowerCase() || '';
+        const errorCode = error.code?.toLowerCase() || '';
+
+        // API限流错误 - 应该重试
+        if (errorMessage.includes('rate limit') ||
+            errorMessage.includes('too many requests') ||
+            errorCode === 'rate_limit_exceeded') {
+            return true;
+        }
+
+        // 网络错误 - 应该重试
+        if (errorMessage.includes('network') ||
+            errorMessage.includes('timeout') ||
+            errorMessage.includes('econnrefused') ||
+            errorCode === 'enotfound') {
+            return true;
+        }
+
+        // 临时服务器错误 - 应该重试
+        if (errorMessage.includes('503') ||
+            errorMessage.includes('502') ||
+            errorMessage.includes('500')) {
+            return true;
+        }
+
+        // JSON解析错误 - 不应该重试（AI返回了无效的JSON）
+        if (errorMessage.includes('json') ||
+            errorMessage.includes('parse')) {
+            return false;
+        }
+
+        // 验证错误 - 不应该重试
+        if (errorMessage.includes('validation') ||
+            errorMessage.includes('invalid')) {
+            return false;
+        }
+
+        // 默认认为可以重试
+        return true;
     }
 
     private constructPrompt(lead: any): string {
