@@ -7,33 +7,39 @@ class PageRouter {
 
     async loadPage(pageName) {
         try {
+            // 解析带参数的页面名（如 leads-by-status?status=failed）
+            let actualPageName = pageName;
+            if (pageName.includes('?')) {
+                actualPageName = pageName.split('?')[0];
+            }
+
             // 1. 隐藏所有页面内容
             const contentArea = document.querySelector('.content');
             if (!contentArea) return;
 
             // 2. 加载HTML片段
-            const response = await fetch(`/assets/pages/${pageName}.html`);
-            if (!response.ok) throw new Error(`Failed to load ${pageName}.html`);
+            const response = await fetch(`/assets/pages/${actualPageName}.html`);
+            if (!response.ok) throw new Error(`Failed to load ${actualPageName}.html`);
 
             const html = await response.text();
             contentArea.innerHTML = html;
 
             // 3. 动态加载页面专属逻辑模块
-            if (!this.loadedModules[pageName]) {
+            if (!this.loadedModules[actualPageName]) {
                 try {
-                    const pageModule = await import(`/assets/js/modules/pages/${pageName}.js`);
-                    this.loadedModules[pageName] = pageModule;
+                    const pageModule = await import(`/assets/js/modules/pages/${actualPageName}.js`);
+                    this.loadedModules[actualPageName] = pageModule;
 
                     // 初始化页面
                     if (pageModule.init) {
                         await pageModule.init();
                     }
                 } catch (error) {
-                    console.warn(`No module found for ${pageName}, using inline handlers`);
+                    console.warn(`No module found for ${actualPageName}, using inline handlers`);
                 }
             } else {
                 // 如果模块已加载，直接调用init
-                const pageModule = this.loadedModules[pageName];
+                const pageModule = this.loadedModules[actualPageName];
                 if (pageModule.init) {
                     await pageModule.init();
                 }

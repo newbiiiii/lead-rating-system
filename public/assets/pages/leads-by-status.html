@@ -1,0 +1,52 @@
+<div class="section-card">
+    <div class="section-header">
+        <h3 id="status-page-title">线索管理</h3>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn-primary" onclick="retryAllLeads()"
+                style="background: linear-gradient(135deg, #10b981, #059669);">
+                批量重新评分
+            </button>
+            <button class="btn-secondary btn-sm" onclick="refreshLeadsList()">刷新</button>
+        </div>
+    </div>
+
+    <div id="status-hint-box"
+        style="margin-bottom: 16px; padding: 16px; background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px;">
+        <p style="margin: 0; color: #92400e; font-size: 14px;">
+            <strong>说明：</strong><span id="status-hint-text">加载中...</span>
+        </p>
+    </div>
+
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>公司名称</th>
+                    <th>网站</th>
+                    <th>所属任务</th>
+                    <th>状态</th>
+                    <th>创建时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="leads-status-body">
+                <tr>
+                    <td colspan="6" class="empty-state">加载中...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div id="pagination-container"></div>
+</div>
+
+<script type="module">
+    import { init, refreshLeadsList, retryAllLeads, retrySingleLead } from '../js/modules/pages/leads-by-status.js';
+    window.refreshLeadsList = refreshLeadsList;
+    window.retryAllLeads = retryAllLeads;
+    window.retrySingleLead = retrySingleLead;
+
+    // 页面加载时自动加载数据
+    document.addEventListener('DOMContentLoaded', () => {
+        init();
+    });
+</script>

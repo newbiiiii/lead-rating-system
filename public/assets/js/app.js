@@ -32,20 +32,23 @@ function initNavigation() {
         item.addEventListener('click', async (e) => {
             e.preventDefault();
 
-            const pageName = item.dataset.page;
+            // 从 href 获取完整的页面路径（包含参数）
+            const href = item.getAttribute('href');
+            const fullPageName = href ? href.slice(1) : item.dataset.page; // 去掉 # 符号
+            const basePage = fullPageName.includes('?') ? fullPageName.split('?')[0] : fullPageName;
 
             // 更新导航状态
             navItems.forEach(nav => nav.classList.remove('active'));
             item.classList.add('active');
 
-            // 加载页面
-            await router.loadPage(pageName);
+            // 先更新URL（让 init 能正确读取 hash）
+            window.location.hash = fullPageName;
 
-            // 更新URL
-            window.location.hash = pageName;
+            // 加载页面
+            await router.loadPage(fullPageName);
 
             // 更新页面标题
-            updatePageTitle(pageName);
+            updatePageTitle(basePage);
         });
     });
 }
@@ -55,7 +58,9 @@ function updatePageTitle(pageName) {
         dashboard: '数据概览',
         tasks: '搜索线索',
         'rating-tasks': '评分任务',
-        management: '任务管理'
+        management: '任务管理',
+        'pending-config': '待配置规则',
+        'leads-by-status': '线索管理'
     };
 
     const titleElement = document.querySelector('#page-title');

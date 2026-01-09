@@ -416,6 +416,125 @@ app.post('/api/leads/retry-rating', async (req, res) => {
     }
 });
 
+// ============ 通用状态管理 ============
+// 查询指定状态的线索 (支持 pending_config, failed, pending)
+app.get('/api/leads/by-status', async (req, res) => {
+    try {
+        const status = req.query.status as string || 'pending_config';
+        const page = parseInt(req.query.page as string) || 1;
+        const pageSize = parseInt(req.query.pageSize as string) || 20;
+        const offset = (page - 1) * pageSize;
+
+        // 验证状态参数
+        const validStatuses = ['pending_config', 'failed', 'pending'];
+        if (!validStatuses.includes(status)) {
+            return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
+        }
+
+        // 查询总数
+        const countResult = await db.execute(sql`
+            SELECT COUNT(*) as count
+            FROM leads
+            WHERE rating_status = ${status}
+        `);
+        const total = parseInt(countResult.rows[0].count as string);
+
+        // 查询数据
+        const leadsResult = await db.execute(sql`
+            SELECT 
+                l.id,
+                l.company_name as "companyName",
+                l.website,
+                l.created_at as "createdAt",
+                l.rating_status as "ratingStatus",
+                t.id as "taskId",
+                t.name as "taskName"
+            FROM leads l
+            JOIN tasks t ON l.task_id = t.id
+            WHERE l.rating_status = ${status}
+            ORDER BY l.created_at DESC
+            LIMIT ${pageSize} OFFSET ${offset}
+        `);
+
+        res.json({
+            leads: leadsResult.rows,
+            pagination: {
+                page,
+                pageSize,
+                total,
+                totalPages: Math.ceil(total / pageSize)
+            }
+        });
+    } catch (error: any) {
+        logger.error('查询指定状态线索失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 按状态批量重新入队
+app.post('/api/leads/retry-rating-by-status', async (req, res) => {
+    try {
+        const { leadIds, status } = req.body;
+        const targetStatus = status || 'pending_config';
+
+        // 验证状态参数
+        const validStatuses = ['pending_config', 'failed', 'pending'];
+        if (!validStatuses.includes(targetStatus)) {
+            return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
+        }
+
+        let leadsToRetry: any[];
+        if (leadIds && Array.isArray(leadIds) && leadIds.length > 0) {
+            // 查询指定的leads
+            const placeholders = leadIds.map(id => `'${id}'`).join(',');
+            const result = await db.execute(sql.raw(`
+                SELECT l.id, l.task_id as "taskId"
+                FROM leads l
+                WHERE l.id IN (${placeholders}) AND l.rating_status = '${targetStatus}'
+            `));
+            leadsToRetry = result.rows as any[];
+        } else {
+            // 查询所有指定状态的leads
+            const result = await db.execute(sql`
+                SELECT l.id, l.task_id as "taskId"
+                FROM leads l
+                WHERE l.rating_status = ${targetStatus}
+            `);
+            leadsToRetry = result.rows as any[];
+        }
+
+        if (leadsToRetry.length === 0) {
+            return res.json({
+                success: true,
+                message: '没有找到需要重新评分的线索',
+                count: 0
+            });
+        }
+
+        // 更新状态为pending并加入队列
+        for (const lead of leadsToRetry) {
+            await db.update(leads)
+                .set({ ratingStatus: 'pending' })
+                .where(eq(leads.id, lead.id));
+            // 添加到rating队列
+            await ratingQueue.add('rate-lead', {
+                leadId: lead.id,
+                taskId: lead.taskId
+            });
+        }
+
+        logger.info(`成功将 ${leadsToRetry.length} 条 ${targetStatus} 状态线索重新加入评分队列`);
+        res.json({
+            success: true,
+            message: `成功将 ${leadsToRetry.length} 条线索重新加入评分队列`,
+            count: leadsToRetry.length
+        });
+    } catch (error: any) {
+        logger.error('按状态批量重新入队失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // 查询单个线索详情
 app.get('/api/leads/:id', async (req, res) => {
     try {
