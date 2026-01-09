@@ -108,7 +108,13 @@ export function constructPrompt(taskLead: TaskLead): string {
         
         Description: ${description}
         
-        Task Context: We are looking for potential B2B clients in the construction/home decoration industry (e.g., Wall Panels, Flooring).
+        # Evaluation Task
+        ${getDynamicRatingContext(taskLead.taskName)}
+        
+        # Output Requirement
+        Please provide the evaluation in the following format:
+        - Rating: [A, B, or C]
+        - Reason: [Briefly explain why based on the criteria]
         `;
 }
 
@@ -189,4 +195,70 @@ export function shouldRetry(error: any, attemptsMade: number, maxAttempts: numbe
         shouldRetry: true,
         reason: `可重试错误，尝试 ${attemptsMade + 1}/${maxAttempts}`
     };
+}
+
+/**
+ * 根据任务名称或查询词动态生成任务上下文
+ */
+function getDynamicRatingContext(taskName: string): string {
+    const name = taskName.toLowerCase();
+
+    // 1. 建材墙板类
+    if (name.includes('wall panel') || name.includes('flooring') || name.includes('decoration')) {
+        return `
+        Task Context: We are looking for potential B2B clients in the construction/home decoration industry (e.g., Wall Panels, Flooring). Focus on their wholesale capacity and project experience.
+        
+        Please classify this company into Tier A, B, or C based on the following strict criteria:
+        
+        ### Tier A (Must meet ALL):
+        1. **Product**: Explicitly sells Flat Wall Panel, Acoustic Wall Panel, or Wall Panel.
+        2. **Material**: Made of PS, PVC, SPC, WPC, MDF, PE, PET, or Aluminum Alloy.
+        3. **Role**: Is a distributor, wholesaler, or retailer (Sales Channel).
+        4. **Non-Manufacturer**: Does not produce these panels in their own local factory.
+        5. **Origin**: Is NOT a Chinese company.
+        
+        ### Tier B (Must meet ALL):
+        1. **Industry Synergy**: Does not explicitly list wall panels, but is a large/strong player in related sectors: Flooring, Doors/Windows, Furniture, Sanitary Ware, Ceramics, Ceilings, or Acoustic Systems.
+        2. **Potential**: High potential to become a distributor, importer, or strategic partner.
+        3. **Capability**: Has importer, wholesaler, or distributor qualifications.
+        4. **Origin**: Is NOT a Chinese company.
+        
+        ### Tier C (Meets ANY):
+        1. **Chinese Entity**: Is a Chinese factory or trading company (based on address, domain, or phone).
+        2. **Irrelevant**: Main business is unrelated to construction or home decor (e.g., electronics, apparel, food).
+        3. **Invalid Source**: The page is not a corporate official website (e.g., B2B platform like Indiamart/Alibaba, directory site).
+        `;
+    }
+
+    // 2. 包装与制造业 (Packaging & Manufacturing)
+    if (name.includes('garbage bag') || name.includes('trash bag') || name.includes('packaging')) {
+        return `
+        Task Context: We are identifying high-quality B2B leads in the plastic packaging and waste management industry, specifically focusing on Garbage Bags/Bin Liners.
+        
+        Please classify this company into Tier A, B, or C based on the following strict criteria:
+        
+        ### Tier A (Must meet ALL):
+        1. **Product**: Explicitly sells or distributes Garbage Bags, Trash Bags, Bin Liners, or Refuse Sacks.
+        2. **Material/Specialty**: Offers standard PE bags or specialized bags (e.g., Biodegradable, Compostable, or Heavy-duty Industrial bags).
+        3. **Role**: Functions as a professional Distributor, Wholesaler, or Cleaning Supply Provider.
+        4. **Target Market**: Serves B2B sectors like facility management, hospitality, hospitals, or large-scale retail.
+        5. **Origin**: Is NOT a Chinese company.
+        
+        ### Tier B (Must meet ALL):
+        1. **Industry Synergy**: Does not focus primarily on garbage bags, but is a major player in General Plastic Packaging, Professional Cleaning Chemicals, or Janitorial Supplies.
+        2. **Potential**: Strong potential to add garbage bags to their existing product portfolio as a key distributor or importer.
+        3. **Scale**: Shows significant business scale (e.g., large warehouse, multiple branches, or high employee count).
+        4. **Origin**: Is NOT a Chinese company.
+        
+        ### Tier C (Meets ANY):
+        1. **Chinese Entity**: Is a Chinese manufacturer or trading company (based on address, domain, or phone).
+        2. **Irrelevant**: Main business is unrelated to packaging or cleaning supplies (e.g., software, food ingredients, textiles).
+        3. **End User Only**: Is merely a consumer of bags (like a single restaurant or a small office) rather than a reseller/distributor.
+        4. **Invalid Source**: The link is a B2B directory (Indiamart, Justdial) or a social media profile, not an official corporate website.
+        `;
+    }
+
+    // 默认兜底 (Default)
+    // 如果没有命中关键词，根据 query 动态生成一段话，保证不重复
+    return `We are currently evaluating businesses related to "${taskName}" to determine their suitability for B2B collaboration`;
 }

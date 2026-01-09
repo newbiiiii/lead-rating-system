@@ -75,7 +75,8 @@ const createMockLead = async (overrides?: any) => {
 console.log('\n测试11: 评级');
 const testRealAI = async () => {
     try {
-        const taskLead = await getTaskLead('b5838e5c-ffd6-4e7d-979a-0c785c120ada');
+        // Wall Panel
+        const taskLead = await getTaskLead('d656b1c5-6b32-4ae1-922f-42a0b1fbb77c');
         const result = await rateLeadWithAI(taskLead);
         console.log('结果:', result)
     } catch (error: any) {
