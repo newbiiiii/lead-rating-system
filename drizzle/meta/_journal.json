@@ -15,6 +15,13 @@
       "when": 1767836301822,
       "tag": "0001_loving_rhino",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1767948857193,
+      "tag": "0002_cuddly_kinsey_walden",
+      "breakpoints": true
     }
   ]
 }

@@ -11,7 +11,7 @@
     "worker:scraper": "tsx src/workers/scraper.worker.ts",
     "worker:processor": "tsx src/workers/processor.worker.ts",
     "worker:rating": "tsx src/workers/rating.worker.ts",
-    "worker:automation": "tsx src/workers/automation.worker.ts",
+    "worker:crm": "tsx src/workers/crm.worker.ts",
     "worker:all": "concurrently \"npm:worker:*\"",
     "lint": "eslint src --ext .ts",
     "format": "prettier --write \"src/**/*.ts\"",

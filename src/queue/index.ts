@@ -36,7 +36,7 @@ export const ratingQueue = new Queue('rating', {
     connection: redisConnection
 });
 
-export const automationQueue = new Queue('automation', {
+export const crmQueue = new Queue('crm', {
     connection: redisConnection
 });
 

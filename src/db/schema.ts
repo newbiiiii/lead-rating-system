@@ -106,6 +106,10 @@ export const leads = pgTable('leads', {
     // AI评级状态
     ratingStatus: varchar('rating_status', { length: 20 }).default('pending'),
 
+    // CRM同步状态
+    crmSyncStatus: varchar('crm_sync_status', { length: 20 }).default('pending'), // pending, synced, failed
+    crmSyncedAt: timestamp('crm_synced_at'),
+
     // 时间戳
     scrapedAt: timestamp('scraped_at').notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -208,7 +212,8 @@ export const ratings = pgTable('ratings', {
  */
 export const automationLogs = pgTable('automation_logs', {
     id: varchar('id', { length: 255 }).primaryKey(),
-    companyId: varchar('company_id', { length: 255 }).references(() => companies.id).notNull(),
+    companyId: varchar('company_id', { length: 255 }).references(() => companies.id), // 可选，兼容旧数据
+    leadId: varchar('lead_id', { length: 255 }).references(() => leads.id), // 新增关联
     ratingId: varchar('rating_id', { length: 255 }).references(() => ratings.id),
 
     actionType: varchar('action_type', { length: 50 }).notNull(), // notify, crm_push, email_sequence

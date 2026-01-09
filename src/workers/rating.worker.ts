@@ -4,15 +4,15 @@
  */
 
 import 'dotenv/config';
-import { Worker, Job, Queue } from 'bullmq';
+import { Worker, Job } from 'bullmq';
 import { db } from '../db';
 import { leads, leadRatings } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { configLoader } from '../config/config-loader';
 import { logger } from '../utils/logger';
 import { randomUUID } from 'crypto';
-import {getTaskLead, rateLeadWithAI, shouldRetry} from '../services/rating.service';
-import {RatingResult} from "../model/model";
+import { getTaskLead, rateLeadWithAI, shouldRetry } from '../services/rating.service';
+import { RatingResult } from "../model/model";
 
 const redisConfig = configLoader.get('database.redis');
 
@@ -102,6 +102,16 @@ class RatingWorker {
                 });
 
                 logger.info(`[评分完成] ${lead.companyName}: ${result.overallRating}分`);
+
+                // 4. 如果评分是 A 或 B，触发 CRM 同步
+                if (['A', 'B'].includes(result.overallRating)) {
+                    const { crmQueue } = await import('../queue');
+                    await crmQueue.add('saveToCrm', {
+                        type: 'saveToCrm',
+                        leadId: lead.leadId
+                    });
+                    logger.info(`[自动流程] 已触发 CRM 同步: ${lead.companyName}`);
+                }
             }
 
             return result;
