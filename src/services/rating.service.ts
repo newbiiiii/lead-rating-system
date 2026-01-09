@@ -3,10 +3,10 @@
  * 从 worker 中提取出来，方便测试
  */
 import { logger } from '../utils/logger';
-import {RatingResult, TaskLead} from "../model/model";
-import {db} from "../db";
-import {sql} from "drizzle-orm";
-import {Task} from "langchain/dist/experimental/babyagi";
+import { RatingResult, TaskLead } from "../model/model";
+import { db } from "../db";
+import { sql } from "drizzle-orm";
+import { Task } from "langchain/dist/experimental/babyagi";
 
 /**
  * 判断错误是否可重试
@@ -93,10 +93,17 @@ export const getTaskLead = async (leadId: string): Promise<TaskLead> => {
 /**
  * 构建评分 prompt
  */
-export function constructPrompt(taskLead: TaskLead): string {
+export function constructPrompt(taskLead: TaskLead): string | null {
     const rawData = taskLead.rawData as any;
     const description = rawData?.description || rawData?.about || '';
     const categories = rawData?.categories || [];
+    const ratingContext = getDynamicRatingContext(taskLead.taskName);
+
+    // 如果没有配置评分规则，抛出503错误（可重试）
+    if (ratingContext === null) {
+        logger.warn(`评分规则未配置: ${taskLead.taskName}`);
+        return null;
+    }
 
     return `
         Company Name: ${taskLead.companyName}
@@ -109,7 +116,7 @@ export function constructPrompt(taskLead: TaskLead): string {
         Description: ${description}
         
         # Evaluation Task
-        ${getDynamicRatingContext(taskLead.taskName)}
+        ${ratingContext}
         
         # Output Requirement
         Please provide the evaluation in the following format:
@@ -121,9 +128,17 @@ export function constructPrompt(taskLead: TaskLead): string {
 /**
  * 调用 HiAgent 进行评分
  */
-export async function rateLeadWithAI(taskLead: TaskLead): Promise<RatingResult> {
+export async function rateLeadWithAI(taskLead: TaskLead): Promise<RatingResult | null> {
     const prompt = constructPrompt(taskLead);
-    logger.info('[prompt]', {'prompt' : prompt});
+    logger.info('[prompt]', { 'prompt': prompt });
+    if (prompt === null) {
+        // 未配置评分规则，标记为pending_config
+        await db.execute(sql`
+            UPDATE leads SET rating_status = 'pending_config', updated_at = ${new Date()} WHERE id = ${taskLead.leadId}
+        `);
+        logger.info(`Lead ${taskLead.leadId} 标记为待配置状态`);
+        return null;
+    }
     // 发送post请求，调用HiAgent接口
     const url = 'http://127.0.0.1:7015/tps/hiagent/chat/chatAndGetMessage';
 
@@ -200,7 +215,7 @@ export function shouldRetry(error: any, attemptsMade: number, maxAttempts: numbe
 /**
  * 根据任务名称或查询词动态生成任务上下文
  */
-function getDynamicRatingContext(taskName: string): string {
+function getDynamicRatingContext(taskName: string): string | null {
     const name = taskName.toLowerCase();
 
     // 1. 建材墙板类
@@ -260,5 +275,6 @@ function getDynamicRatingContext(taskName: string): string {
 
     // 默认兜底 (Default)
     // 如果没有命中关键词，根据 query 动态生成一段话，保证不重复
-    return `We are currently evaluating businesses related to "${taskName}" to determine their suitability for B2B collaboration`;
+    // return `We are currently evaluating businesses related to "${taskName}" to determine their suitability for B2B collaboration`;
+    return null;
 }

@@ -77,31 +77,32 @@ class RatingWorker {
 
         try {
             // 2. 调用评分服务
-            const result: RatingResult = await rateLeadWithAI(lead);
+            const result: RatingResult | null = await rateLeadWithAI(lead);
+            if (!!result) {
+                // 3. 保存结果
+                // 使用事务确保原子性
+                await db.transaction(async (tx) => {
+                    // 插入评分结果
+                    await tx.insert(leadRatings).values({
+                        id: randomUUID(),
+                        leadId: lead.leadId,
+                        overallRating: result.overallRating,
+                        suggestion: result.suggestion,
+                        think: result.think,
+                        ratedAt: new Date()
+                    });
 
-            // 3. 保存结果
-            // 使用事务确保原子性
-            await db.transaction(async (tx) => {
-                // 插入评分结果
-                await tx.insert(leadRatings).values({
-                    id: randomUUID(),
-                    leadId: lead.leadId,
-                    overallRating: result.overallRating,
-                    suggestion: result.suggestion,
-                    think: result.think,
-                    ratedAt: new Date()
+                    // 更新线索状态
+                    await tx.update(leads)
+                        .set({
+                            ratingStatus: 'completed',
+                            updatedAt: new Date()
+                        })
+                        .where(eq(leads.id, leadId));
                 });
 
-                // 更新线索状态
-                await tx.update(leads)
-                    .set({
-                        ratingStatus: 'completed',
-                        updatedAt: new Date()
-                    })
-                    .where(eq(leads.id, leadId));
-            });
-
-            logger.info(`[评分完成] ${lead.companyName}: ${result.overallRating}分`);
+                logger.info(`[评分完成] ${lead.companyName}: ${result.overallRating}分`);
+            }
 
             return result;
 
