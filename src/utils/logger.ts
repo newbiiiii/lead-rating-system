@@ -16,7 +16,9 @@ const logConfig = configLoader.get('monitoring.logging', {
 const logger = winston.createLogger({
     level: logConfig.level || 'info',
     format: winston.format.combine(
-        winston.format.timestamp(),
+        winston.format.timestamp({
+            format: () => new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false })
+        }),
         winston.format.errors({ stack: true }),
         logConfig.format === 'json'
             ? winston.format.json()
