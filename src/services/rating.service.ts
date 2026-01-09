@@ -117,7 +117,7 @@ export function constructPrompt(taskLead: TaskLead): string {
  */
 export async function rateLeadWithAI(taskLead: TaskLead): Promise<RatingResult> {
     const prompt = constructPrompt(taskLead);
-    logger.info('[prompt]', prompt);
+    logger.info('[prompt]', {'prompt' : prompt});
     // 发送post请求，调用HiAgent接口
     const url = 'http://127.0.0.1:7015/tps/hiagent/chat/chatAndGetMessage';
 
