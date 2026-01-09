@@ -10,6 +10,13 @@ let currentPage = 1;
 let pageSize = 20;
 
 /**
+ * 初始化页面 - 进入页面时自动刷新数据
+ */
+export function init() {
+    loadPendingConfigLeads(1, pageSize);
+}
+
+/**
  * 加载待配置线索列表
  */
 export async function loadPendingConfigLeads(page = 1, size = 20) {
@@ -24,6 +31,7 @@ export async function loadPendingConfigLeads(page = 1, size = 20) {
     const tbody = document.getElementById('pending-config-body');
     if (!leads || leads.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="empty-state">暂无待配置的线索</td></tr>';
+        document.getElementById('pagination-container').innerHTML = '';
         return;
     }
 
@@ -37,7 +45,7 @@ export async function loadPendingConfigLeads(page = 1, size = 20) {
                 </div>
             </td>
             <td>
-                ${lead.website ? `<a href="${lead.website}" target="_blank" style="color: #667eea; text-decoration: none; font-weight: 500;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${lead.website.substring(0, 40)}...</a>` : '<span style="color:#9ca3af;">-</span>'}
+                ${lead.website ? `<a href="${lead.website}" target="_blank" style="color: #667eea; text-decoration: none; font-weight: 500;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${lead.website.substring(0, 40)}${lead.website.length > 40 ? '...' : ''}</a>` : '<span style="color:#9ca3af;">-</span>'}
             </td>
             <td style="color: #6b7280; font-weight: 500;">${lead.taskName}</td>
             <td>
@@ -126,7 +134,7 @@ export async function retryAllLeads() {
  * 重新评分单个线索
  */
 export async function retrySingleLead(leadId) {
-    const data = await postAPI('/api/leads/retry-rating', {leadIds: [leadId]});
+    const data = await postAPI('/api/leads/retry-rating', { leadIds: [leadId] });
 
     if (data && data.success) {
         alert('已重新加入评分队列');
