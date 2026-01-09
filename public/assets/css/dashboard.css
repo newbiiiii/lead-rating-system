@@ -69,6 +69,7 @@ body {
 .nav {
     flex: 1;
     padding: 20px 0;
+    overflow-y: auto;
 }
 
 .nav-item {
@@ -101,6 +102,63 @@ body {
     bottom: 0;
     width: 3px;
     background: var(--primary);
+}
+
+/* 子菜单样式 */
+.nav-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.nav-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+}
+
+.nav-group-header:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.nav-group-header .nav-group-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.nav-group-header .nav-group-arrow {
+    transition: transform 0.2s;
+    font-size: 12px;
+}
+
+.nav-group.expanded .nav-group-arrow {
+    transform: rotate(90deg);
+}
+
+.nav-group-children {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.nav-group.expanded .nav-group-children {
+    max-height: 200px;
+}
+
+.nav-group-children .nav-item {
+    padding-left: 52px;
+    font-size: 13px;
+}
+
+.nav-group-children .nav-item::before {
+    left: 20px;
 }
 
 /* ===== 主内容区 ===== */
