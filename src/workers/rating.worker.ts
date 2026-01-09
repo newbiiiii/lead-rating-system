@@ -8,17 +8,12 @@ import { Worker, Job, Queue } from 'bullmq';
 import { db } from '../db';
 import { leads, leadRatings } from '../db/schema';
 import { eq } from 'drizzle-orm';
-import OpenAI from 'openai';
 import { configLoader } from '../config/config-loader';
 import { logger } from '../utils/logger';
 import { randomUUID } from 'crypto';
+import { rateLeadWithAI, shouldRetry } from '../services/rating.service';
 
 const redisConfig = configLoader.get('database.redis');
-const aiConfig = configLoader.get('integrations.openai') || {
-    apiKey: process.env.OPENAI_API_KEY,
-    baseURL: process.env.OPENAI_API_BASE_URL,
-    model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo'
-};
 
 const redis = {
     host: redisConfig.host,
@@ -33,15 +28,8 @@ interface RatingJobData {
 
 class RatingWorker {
     private worker: Worker;
-    private openai: OpenAI;
 
     constructor() {
-        // 初始化 OpenAI 客户端
-        this.openai = new OpenAI({
-            apiKey: aiConfig.apiKey,
-            baseURL: aiConfig.baseURL,
-        });
-
         // 创建 Worker
         this.worker = new Worker<RatingJobData>(
             'rating',
@@ -89,46 +77,10 @@ class RatingWorker {
         }
 
         try {
-            // 2. 构建 Prompt
-            const prompt = this.constructPrompt(lead);
+            // 2. 调用评分服务
+            const result = await rateLeadWithAI(lead);
 
-            // 3. 调用 AI
-            const completion = await this.openai.chat.completions.create({
-                model: aiConfig.model,
-                messages: [
-                    {
-                        role: 'system',
-                        content: `You are an expert B2B sales analyst. Evaluate the following company lead based on the provided data. 
-                        Output strictly in JSON format with the following structure:
-                        {
-                            "totalScore": number (0-100),
-                            "confidence": number (0-1),
-                            "reasoning": "string (concise explanation)",
-                            "breakdown": {
-                                "industryFit": number (0-100),
-                                "scale": number (0-100),
-                                "contactQuality": number (0-100)
-                            },
-                            "icebreaker": "string (a personalized opening sentence for cold email)"
-                        }`
-                    },
-                    {
-                        role: 'user',
-                        content: prompt
-                    }
-                ],
-                response_format: { type: 'json_object' },
-                temperature: 0.3
-            });
-
-            const content = completion.choices[0].message.content;
-            if (!content) {
-                throw new Error('AI returned empty response');
-            }
-
-            const result = JSON.parse(content);
-
-            // 4. 保存结果
+            // 3. 保存结果
             // 使用事务确保原子性
             await db.transaction(async (tx) => {
                 // 插入评分结果
@@ -140,8 +92,8 @@ class RatingWorker {
                     confidence: result.confidence,
                     reasoning: result.reasoning,
                     icebreaker: result.icebreaker,
-                    model: aiConfig.model,
-                    tokensUsed: completion.usage?.total_tokens,
+                    model: 'hiagent',
+                    tokensUsed: result.tokensUsed,
                     ratedAt: new Date()
                 });
 
@@ -161,13 +113,12 @@ class RatingWorker {
         } catch (error: any) {
             const attemptsMade = job.attemptsMade || 0;
             const maxAttempts = 3;
-            const isLastAttempt = attemptsMade >= maxAttempts - 1;
 
-            // 判断错误类型
-            const isRetryableError = this.isRetryableError(error);
+            // 判断是否应该重试
+            const retryDecision = shouldRetry(error, attemptsMade, maxAttempts);
 
-            if (isLastAttempt || !isRetryableError) {
-                // 所有重试都失败了，或者是不可重试的错误，标记为永久失败
+            if (!retryDecision.shouldRetry) {
+                // 标记为永久失败
                 await db.update(leads)
                     .set({
                         ratingStatus: 'failed',
@@ -175,86 +126,15 @@ class RatingWorker {
                     })
                     .where(eq(leads.id, leadId));
 
-                if (isLastAttempt) {
-                    logger.error(`[评分失败] ${lead.companyName} - 所有重试已用尽:`, error.message);
-                } else {
-                    logger.error(`[评分失败] ${lead.companyName} - 不可恢复的错误:`, error.message);
-                }
+                logger.error(`[评分失败] ${lead.companyName} - ${retryDecision.reason}:`, error.message);
             } else {
-                // 还有重试机会且错误可重试
-                logger.warn(`[评分重试] ${lead.companyName} - 尝试 ${attemptsMade + 1}/${maxAttempts} 失败:`, error.message);
+                // 还有重试机会
+                logger.warn(`[评分重试] ${lead.companyName} - ${retryDecision.reason}:`, error.message);
                 logger.info(`[评分重试] 将在稍后自动重试...`);
             }
 
             throw error;  // 重新抛出以触发BullMQ的重试机制
         }
-    }
-
-    /**
-     * 判断错误是否可重试
-     * API限流、网络错误等可重试
-     * JSON解析错误、验证错误等不可重试
-     */
-    private isRetryableError(error: any): boolean {
-        const errorMessage = error.message?.toLowerCase() || '';
-        const errorCode = error.code?.toLowerCase() || '';
-
-        // API限流错误 - 应该重试
-        if (errorMessage.includes('rate limit') ||
-            errorMessage.includes('too many requests') ||
-            errorCode === 'rate_limit_exceeded') {
-            return true;
-        }
-
-        // 网络错误 - 应该重试
-        if (errorMessage.includes('network') ||
-            errorMessage.includes('timeout') ||
-            errorMessage.includes('econnrefused') ||
-            errorCode === 'enotfound') {
-            return true;
-        }
-
-        // 临时服务器错误 - 应该重试
-        if (errorMessage.includes('503') ||
-            errorMessage.includes('502') ||
-            errorMessage.includes('500')) {
-            return true;
-        }
-
-        // JSON解析错误 - 不应该重试（AI返回了无效的JSON）
-        if (errorMessage.includes('json') ||
-            errorMessage.includes('parse')) {
-            return false;
-        }
-
-        // 验证错误 - 不应该重试
-        if (errorMessage.includes('validation') ||
-            errorMessage.includes('invalid')) {
-            return false;
-        }
-
-        // 默认认为可以重试
-        return true;
-    }
-
-    private constructPrompt(lead: any): string {
-        // 提取原始数据中的描述信息（如果有）
-        const rawData = lead.rawData as any;
-        const description = rawData?.description || rawData?.about || '';
-        const categories = rawData?.categories || [];
-
-        return `
-        Company Name: ${lead.companyName}
-        Website: ${lead.website || 'N/A'}
-        Industry: ${lead.industry || categories.join(', ') || 'Unknown'}
-        Region: ${lead.region || lead.address || 'Unknown'}
-        Employee Count: ${lead.employeeCount || lead.estimatedSize || 'Unknown'}
-        Google Rating: ${lead.rating || 'N/A'} (${lead.reviewCount || 0} reviews)
-        
-        Description: ${description}
-        
-        Task Context: We are looking for potential B2B clients in the construction/home decoration industry (e.g., Wall Panels, Flooring).
-        `;
     }
 
     private setupEventHandlers() {
