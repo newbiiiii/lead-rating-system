@@ -95,6 +95,10 @@ function updatePageUI() {
         hintText.innerHTML = config.hint;
         hintText.parentElement.style.color = config.hintColor;
     }
+    const retryAllBtn = document.querySelector('.section-header .btn-primary');
+    if (retryAllBtn) {
+        retryAllBtn.style.display = currentStatus === 'pending' ? 'none' : 'block';
+    }
 }
 
 /**
@@ -119,6 +123,12 @@ export async function loadLeadsByStatus(page = 1, size = 20) {
     const config = STATUS_CONFIG[currentStatus];
     tbody.innerHTML = leads.map((lead, index) => {
         const globalIndex = (pagination.page - 1) * pagination.pageSize + index + 1;
+        const actionHtml = currentStatus === 'pending'
+            ? '<span style="color: #9ca3af; font-size: 12px;">自动排队中...</span>'
+            : `<button onclick="retrySingleLead('${lead.id}')" 
+                style="padding: 6px 12px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">
+                重新评分
+               </button>`;
         return `<tr style="background: white; transition: all 0.2s; border-bottom: 1px solid #f3f4f6;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='white'">
             <td>
                 <div style="display: flex; align-items: center; gap: 10px;">
@@ -135,10 +145,7 @@ export async function loadLeadsByStatus(page = 1, size = 20) {
             </td>
             <td style="color: #6b7280; font-size: 13px;">${formatDate(lead.createdAt)}</td>
             <td>
-                <button onclick="retrySingleLead('${lead.id}')" 
-                    style="padding: 6px 12px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">
-                    重新评分
-                </button>
+                ${actionHtml}
             </td>
         </tr>`;
     }).join('');
