@@ -171,20 +171,15 @@ export const leadRatings = pgTable('lead_ratings', {
     id: varchar('id', { length: 255 }).primaryKey(),
     leadId: varchar('lead_id', { length: 255 }).references(() => leads.id).notNull().unique(),
 
-    totalScore: real('total_score').notNull(),
-    breakdown: jsonb('breakdown').notNull(),
-    confidence: real('confidence').notNull(),
-    reasoning: text('reasoning').notNull(),
-    icebreaker: text('icebreaker'),
-
-    model: varchar('model', { length: 50 }),
-    tokensUsed: integer('tokens_used'),
+    overallRating: text('overall_rating').notNull(),
+    suggestion: text('suggestion').notNull(),
+    think: text('think'),
 
     ratedAt: timestamp('rated_at').notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => ({
     leadIdx: index('lead_ratings_lead_idx').on(table.leadId),
-    scoreIdx: index('lead_ratings_score_idx').on(table.totalScore),
+    scoreIdx: index('lead_ratings_score_idx').on(table.overallRating),
 }));
 
 // 保留原ratings表用于向后兼容

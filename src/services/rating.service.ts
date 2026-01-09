@@ -3,6 +3,10 @@
  * 从 worker 中提取出来，方便测试
  */
 import { logger } from '../utils/logger';
+import {RatingResult, TaskLead} from "../model/model";
+import {db} from "../db";
+import {sql} from "drizzle-orm";
+import {Task} from "langchain/dist/experimental/babyagi";
 
 /**
  * 判断错误是否可重试
@@ -49,21 +53,58 @@ export function isRetryableError(error: any): boolean {
     return true;
 }
 
+export const getTaskLead = async (leadId: string): Promise<TaskLead> => {
+    const result = await db.execute(sql`
+        SELECT t.id AS "taskId",
+               t.name AS "taskName",
+               t.source,
+               t.query,
+               t.config#>>'{"geolocation","country"}' country,
+               t.config#>>'{"geolocation","city"}' city,
+               t.progress,
+               l.id AS "leadId",
+               l.company_name AS "companyName",
+               l.domain,
+               l.website,
+               l.industry,
+               l.region,
+               l.address,
+               l.source_url AS "sourceUrl",
+               l.rating_status AS "ratingStatus",
+               l.scraped_at AS "scrapedAt",
+               t.config,
+               l.employee_count AS "employeeCount",
+               l.estimated_size AS "estimatedSize",
+               l.rating AS rating,
+               l.review_count AS "reviewCount",
+               l.raw_data AS "rawData"
+        FROM leads l
+            JOIN tasks t ON l.task_id = t.id
+        WHERE l.id = ${leadId}
+        ORDER BY l.created_at DESC
+    `);
+    if (!result.rows.length) {
+        throw new Error('Lead not found');
+    }
+    logger.info('[taskLead]', result.rows[0])
+    return result.rows[0] as TaskLead;
+}
+
 /**
  * 构建评分 prompt
  */
-export function constructPrompt(lead: any): string {
-    const rawData = lead.rawData as any;
+export function constructPrompt(taskLead: TaskLead): string {
+    const rawData = taskLead.rawData as any;
     const description = rawData?.description || rawData?.about || '';
     const categories = rawData?.categories || [];
 
     return `
-        Company Name: ${lead.companyName}
-        Website: ${lead.website || 'N/A'}
-        Industry: ${lead.industry || categories.join(', ') || 'Unknown'}
-        Region: ${lead.region || lead.address || 'Unknown'}
-        Employee Count: ${lead.employeeCount || lead.estimatedSize || 'Unknown'}
-        Google Rating: ${lead.rating || 'N/A'} (${lead.reviewCount || 0} reviews)
+        Company Name: ${taskLead.companyName}
+        Website: ${taskLead.website || 'N/A'}
+        Industry: ${taskLead.industry || categories.join(', ') || 'Unknown'}
+        Region: ${taskLead.region || taskLead.address || 'Unknown'}
+        Employee Count: ${taskLead.employeeCount || taskLead.estimatedSize || 'Unknown'}
+        Google Rating: ${taskLead.rating || 'N/A'} (${taskLead.reviewCount || 0} reviews)
         
         Description: ${description}
         
@@ -74,8 +115,8 @@ export function constructPrompt(lead: any): string {
 /**
  * 调用 HiAgent 进行评分
  */
-export async function rateLeadWithAI(lead: any): Promise<{}> {
-    const prompt = constructPrompt(lead);
+export async function rateLeadWithAI(taskLead: TaskLead): Promise<RatingResult> {
+    const prompt = constructPrompt(taskLead);
     logger.info('[prompt]', prompt);
     // 发送post请求，调用HiAgent接口
     const url = 'http://127.0.0.1:7015/tps/hiagent/chat/chatAndGetMessage';
@@ -86,7 +127,7 @@ export async function rateLeadWithAI(lead: any): Promise<{}> {
         query: prompt,
     };
 
-    let content = {};
+    let content: RatingResult = {} as RatingResult;
     try {
         const response = await fetch(url, {
             method: 'POST',

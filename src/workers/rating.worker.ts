@@ -11,7 +11,8 @@ import { eq } from 'drizzle-orm';
 import { configLoader } from '../config/config-loader';
 import { logger } from '../utils/logger';
 import { randomUUID } from 'crypto';
-import { rateLeadWithAI, shouldRetry } from '../services/rating.service';
+import {getTaskLead, rateLeadWithAI, shouldRetry} from '../services/rating.service';
+import {RatingResult} from "../model/model";
 
 const redisConfig = configLoader.get('database.redis');
 
@@ -62,9 +63,7 @@ class RatingWorker {
         logger.info(`[评分开始] Lead ID: ${leadId}`);
 
         // 1. 获取线索数据
-        const lead = await db.query.leads.findFirst({
-            where: eq(leads.id, leadId)
-        });
+        const lead = await getTaskLead(leadId)
 
         if (!lead) {
             throw new Error(`Lead not found: ${leadId}`);
@@ -78,7 +77,7 @@ class RatingWorker {
 
         try {
             // 2. 调用评分服务
-            const result = await rateLeadWithAI(lead);
+            const result: RatingResult = await rateLeadWithAI(lead);
 
             // 3. 保存结果
             // 使用事务确保原子性
@@ -86,14 +85,10 @@ class RatingWorker {
                 // 插入评分结果
                 await tx.insert(leadRatings).values({
                     id: randomUUID(),
-                    leadId: lead.id,
-                    totalScore: result.totalScore,
-                    breakdown: result.breakdown,
-                    confidence: result.confidence,
-                    reasoning: result.reasoning,
-                    icebreaker: result.icebreaker,
-                    model: 'hiagent',
-                    tokensUsed: result.tokensUsed,
+                    leadId: lead.leadId,
+                    overallRating: result.overallRating,
+                    suggestion: result.suggestion,
+                    think: result.think,
                     ratedAt: new Date()
                 });
 
@@ -106,7 +101,7 @@ class RatingWorker {
                     .where(eq(leads.id, leadId));
             });
 
-            logger.info(`[评分完成] ${lead.companyName}: ${result.totalScore}分`);
+            logger.info(`[评分完成] ${lead.companyName}: ${result.overallRating}分`);
 
             return result;
 

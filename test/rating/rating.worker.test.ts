@@ -3,17 +3,25 @@
  * 测试评分逻辑、重试机制和错误处理
  */
 import 'dotenv/config';
-import { isRetryableError, constructPrompt, shouldRetry, rateLeadWithAI } from '../../src/services/rating.service';
+import {
+    isRetryableError,
+    constructPrompt,
+    shouldRetry,
+    rateLeadWithAI,
+    getTaskLead
+} from '../../src/services/rating.service';
 import {db} from "../../src/db";
-import {eq} from "drizzle-orm";
+import {eq, sql} from "drizzle-orm";
 import {leads} from "../../src/db/schema";
+import {TaskLead} from "../../src/model/model";
 
 // ============ 测试数据工厂 ============
 const createMockLead = async (overrides?: any) => {
-    const leadId = 'fa470fa1-743d-46be-857e-40c9494557f5';
+    const leadId = 'b5838e5c-ffd6-4e7d-979a-0c785c120ada';
     const lead = await db.query.leads.findFirst({
         where: eq(leads.id, leadId)
     });
+    console.log('[lead]', lead)
     return {...lead}
 }
 
@@ -67,8 +75,8 @@ const createMockLead = async (overrides?: any) => {
 console.log('\n测试11: 评级');
 const testRealAI = async () => {
     try {
-        const testLead = await createMockLead();
-        const result = await rateLeadWithAI(testLead);
+        const taskLead = await getTaskLead('b5838e5c-ffd6-4e7d-979a-0c785c120ada');
+        const result = await rateLeadWithAI(taskLead);
         console.log('结果:', result)
     } catch (error: any) {
         console.log('✗ 失败:', error.message);
