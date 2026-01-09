@@ -370,11 +370,12 @@ app.post('/api/leads/retry-rating', async (req, res) => {
         let leadsToRetry: any[];
         if (leadIds && Array.isArray(leadIds) && leadIds.length > 0) {
             // 查询指定的leads
-            const result = await db.execute(sql`
+            const placeholders = leadIds.map(id => `'${id}'`).join(',');
+            const result = await db.execute(sql.raw(`
                 SELECT l.id, l.task_id as "taskId"
                 FROM leads l
-                WHERE l.id = ANY(${leadIds}) AND l.rating_status = 'pending_config'
-            `);
+                WHERE l.id IN (${placeholders}) AND l.rating_status = 'pending_config'
+            `));
             leadsToRetry = result.rows as any[];
         } else {
             // 查询所有pending_config的leads

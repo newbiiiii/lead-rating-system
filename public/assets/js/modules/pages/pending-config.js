@@ -2,7 +2,7 @@
  * 待配置规则管理页面 JavaScript
  */
 
-import { fetchAPI } from '../api.js';
+import { fetchAPI, postAPI } from '../api.js';
 import { formatDate } from '../utils.js';
 
 // 分页状态
@@ -113,13 +113,7 @@ export async function retryAllLeads() {
         return;
     }
 
-    const data = await fetchAPI('/api/leads/retry-rating', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({}) // 不传leadIds，表示重新评分所有
-    });
+    const data = await postAPI('/api/leads/retry-rating', {});
 
     if (data && data.success) {
         alert(data.message);
@@ -132,15 +126,7 @@ export async function retryAllLeads() {
  * 重新评分单个线索
  */
 export async function retrySingleLead(leadId) {
-    const data = await fetchAPI('/api/leads/retry-rating', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            leadIds: [leadId]
-        })
-    });
+    const data = await postAPI('/api/leads/retry-rating', {leadIds: [leadId]});
 
     if (data && data.success) {
         alert('已重新加入评分队列');
