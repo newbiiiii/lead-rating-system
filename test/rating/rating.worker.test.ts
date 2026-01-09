@@ -76,7 +76,7 @@ console.log('\n测试11: 评级');
 const testRealAI = async () => {
     try {
         // Wall Panel
-        const taskLead = await getTaskLead('d567e26c-92d0-45a3-bc8a-e2a052005668');
+        const taskLead = await getTaskLead('c8e3be93-891a-4f60-b4b6-94dc781c1998');
         const result = await rateLeadWithAI(taskLead);
         console.log('结果:', result)
     } catch (error: any) {
