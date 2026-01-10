@@ -116,19 +116,19 @@ export async function callCrmApi(lead: CrmLead): Promise<{ success: boolean; mes
     // 封装请求参数
     const createLeadBody = {
         "data": {
-            "entityType": 3112761,                      // 写死即可
-            "dbcSelect4": 30,                           // 线索来源,固定为30-AI数字营销
-            "companyName": lead.companyName,            // 公司名称
-            "dbcTextarea1": "AI数字营销获客",             // 线索描述,固定为 AI数字营销获客
-            "name": !!lead.name ? lead.name : lead.companyName,      // 联系人姓名
-            "territoryHighSeaId": 3392360243429516,     // 所属区域公海,暂时固定为 RPA线索公海池[线索]
-            "email": lead.email,                        // 联系人邮箱
-            "customItem200__c": lead.domain,            // 线索官网
-            "dimDepart": null,                          // TODO
-            "dbcSelect2": 137,                          // TODO 国家/地区
-            "customItem211__c": 11,                     // TODO 线索等级
-            "phone": lead.phone,                        // 联系人电话
-            "dbcSelect3": 13,                           // TODO 州(仅限美国)
+            "entityType": 3112761,                                                  // 写死即可
+            "dbcSelect4": 30,                                                       // 线索来源,固定为30-AI数字营销
+            "companyName": cleanCompanyName(lead.companyName),                      // 公司名称
+            "dbcTextarea1": "AI数字营销获客",                                         // 线索描述,固定为 AI数字营销获客
+            "name": !!lead.name ? lead.name : lead.companyName,                     // 联系人姓名
+            "territoryHighSeaId": 3392360243429516,                                 // 所属区域公海,暂时固定为 RPA线索公海池[线索]
+            "email": lead.email?.replace(/\s+/g, ""),        // 联系人邮箱
+            "customItem200__c": lead.domain,                                        // 线索官网
+            "dimDepart": null,                                                      // TODO
+            "dbcSelect2": 137,                                                      // TODO 国家/地区
+            "customItem211__c": 11,                                                 // TODO 线索等级
+            "phone": lead.phone?.replace(/\s+/g, ""),        // 联系人电话
+            "dbcSelect3": 13,                                                       // TODO 州(仅限美国)
         }
     }
     logger.info(`[CRM同步] 封装推送数据: ${JSON.stringify(createLeadBody)}`);
@@ -147,7 +147,7 @@ export async function callCrmApi(lead: CrmLead): Promise<{ success: boolean; mes
     logger.info(`[CRM同步] 状态码: ${response.status}, 成功: ${response.ok}`);
     logger.info(`[CRM同步] 接口返回内容: ${JSON.stringify(result, null, 2)}`);
 
-    if (!response.ok || result?.code !== 200) {
+    if (!response.ok || (result?.code !== 200 && result?.code !== '200')) {
         logger.error(`[CRM同步] 错误详情: ${JSON.stringify(result)}`);
     } else {
         logger.info(`[CRM同步] 线索创建成功: ${lead.companyName}`);
@@ -285,4 +285,29 @@ export async function getAccessToken() {
     } catch (error) {
         console.error('请求出错:', error);
     }
+}
+
+const cleanCompanyName = (rawCompanyName: string) => {
+    return rawCompanyName.replace("LTD.", 'LTD')
+        .replace("INC.", "INC")
+        .replace("PLC.", "PLC")
+        .replace("LLC.", "LLC")
+        .replace("LLP.", "LLP")
+        .replace("PVT.", "PVT")
+        .replace("BHD.", "BHD")
+        .replace("PT.", "PT")
+        .replace("TBK.", "TBK")
+        .replace("GMBH.", "GMBH")
+        .replace("A.G", "AG")
+        .replace("S.A.", "SA")
+        .replace("S.A.R.L.", "SARL")
+        .replace("B.V.", "BV")
+        .replace("N.V.", "NV")
+        .replace("S.P.A.", "SPA")
+        .replace("S.R.L.", "SRL")
+        .replace("AB.", "AB")
+        .replace("OY.", "OY")
+        .replace("S.R.O.", "SRO")
+        .toUpperCase()
+        .trim();
 }
