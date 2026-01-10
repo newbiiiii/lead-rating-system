@@ -668,6 +668,7 @@ app.post('/api/import/leads', upload.single('file'), async (req: any, res: any) 
     try {
         const file = req.file;
         const taskName = req.body.taskName;
+        const source = req.body.source || 'import';  // 来源分类，默认为 import
 
         if (!file) {
             return res.status(400).json({ error: '请上传 Excel 文件' });
@@ -689,7 +690,7 @@ app.post('/api/import/leads', upload.single('file'), async (req: any, res: any) 
             id: taskId,
             name: taskName || `手动导入 ${now.toLocaleDateString('zh-CN')}`,
             description: `导入 ${data.length} 条线索`,
-            source: 'import',
+            source: source,
             query: 'manual-import',
             status: 'completed',
             progress: 100,

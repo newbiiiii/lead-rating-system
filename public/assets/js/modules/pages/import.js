@@ -56,11 +56,31 @@ export async function init() {
         syncBtn.addEventListener('click', handleSyncToCrm);
     }
 
+    // 绑定来源分类选择
+    const sourceSelect = document.getElementById('source-select');
+    if (sourceSelect) {
+        sourceSelect.addEventListener('change', handleSourceChange);
+    }
+
     // 加载数据
     await Promise.all([
         loadImportTasks(),
         loadImportLeads(1)
     ]);
+}
+
+// 处理来源分类选择变化
+function handleSourceChange(e) {
+    const customInput = document.getElementById('custom-source-input');
+    if (customInput) {
+        if (e.target.value === 'custom') {
+            customInput.style.display = 'block';
+            customInput.focus();
+        } else {
+            customInput.style.display = 'none';
+            customInput.value = '';
+        }
+    }
 }
 
 // 处理文件选择
@@ -132,10 +152,25 @@ async function handleImportSubmit(e) {
         return;
     }
 
+    // 获取来源分类
+    const sourceSelect = document.getElementById('source-select');
+    const customSourceInput = document.getElementById('custom-source-input');
+    let source = sourceSelect?.value || 'import';
+
+    // 如果选择自定义，使用自定义输入的值
+    if (source === 'custom') {
+        source = customSourceInput?.value?.trim();
+        if (!source) {
+            showNotification('请输入自定义分类名称', 'error');
+            return;
+        }
+    }
+
     // 创建 FormData
     const formData = new FormData();
     formData.append('file', file);
     formData.append('taskName', form.taskName.value.trim());
+    formData.append('source', source);
 
     // 提交导入请求
     const submitBtn = document.getElementById('submit-btn');

@@ -8,6 +8,16 @@
             <input type="text" name="taskName" placeholder="例如：Manus导入-2026年1月">
         </div>
         <div class="form-group">
+            <label>数据来源分类</label>
+            <select name="source" id="source-select">
+                <option value="import" selected>import (默认)</option>
+                <option value="manus">manus</option>
+                <option value="存量数据迁移">存量数据迁移</option>
+            </select>
+            <input type="text" name="customSource" id="custom-source-input" placeholder="输入自定义分类名称"
+                style="display: none; margin-top: 8px;">
+        </div>
+        <div class="form-group">
             <label>Excel 文件</label>
             <div class="file-upload-area" id="file-upload-area">
                 <input type="file" name="file" id="file-input" accept=".xlsx,.xls,.csv" required>
