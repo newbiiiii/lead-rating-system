@@ -1008,6 +1008,7 @@ app.get('/api/crm/leads', async (req: any, res: any) => {
                 l.source,
                 l.rating_status as "ratingStatus",
                 l.crm_sync_status as "crmSyncStatus",
+                l.crm_sync_error as "crmSyncError",
                 l.crm_synced_at as "crmSyncedAt",
                 l.created_at as "createdAt",
                 t.id as "taskId",

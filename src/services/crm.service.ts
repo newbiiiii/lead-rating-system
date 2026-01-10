@@ -5,7 +5,7 @@
 
 import { db } from '../db';
 import { leads, automationLogs } from '../db/schema';
-import {eq, sql} from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { logger } from '../utils/logger';
 import { randomUUID } from 'crypto';
 
@@ -34,9 +34,6 @@ export interface CrmLead {
     phone: string;
     mobile: string;
     linkedinUrl: string;
-
-    // region: string | null;
-    // address: string | null;
     crmSyncStatus: string | null;
 }
 
@@ -66,7 +63,7 @@ export interface XiaoshouyiAuthResponse {
  * 获取 Lead 数据用于 CRM 同步
  */
 export async function getLeadForCrm(leadId: string): Promise<CrmLead | null> {
-    const leads = await db.execute(sql`
+    const leadsData = await db.execute(sql`
         SELECT t.id AS "taskId",
                t.name AS "taskName",
                t.source,
@@ -96,7 +93,7 @@ export async function getLeadForCrm(leadId: string): Promise<CrmLead | null> {
         ORDER BY l.created_at DESC
             `);
 
-    const lead = leads?.rows?.[0];
+    const lead = leadsData?.rows?.[0];
     if (!lead) {
         return null;
     }
@@ -105,8 +102,7 @@ export async function getLeadForCrm(leadId: string): Promise<CrmLead | null> {
 }
 
 /**
- * 模拟调用 CRM API
- * TODO: 替换为实际的 CRM API 调用
+ * 调用 CRM API
  */
 export async function callCrmApi(lead: CrmLead): Promise<{ success: boolean; message: string }> {
     // 1.1. 获取token
@@ -144,11 +140,11 @@ export async function callCrmApi(lead: CrmLead): Promise<{ success: boolean; mes
             "dbcTextarea1": "AI数字营销获客",                                         // 线索描述,固定为 AI数字营销获客
             "name": !!lead.name ? lead.name : lead.companyName,                     // 联系人姓名
             "territoryHighSeaId": 3392360243429516,                                 // 所属区域公海,暂时固定为 RPA线索公海池[线索]
-            "email": lead.email?.replace(/\s+/g, ""),        // 联系人邮箱
+            "email": lead.email?.replace(/\s+/g, ""),                               // 联系人邮箱
             "customItem200__c": lead.domain,                                        // 线索官网
             "dbcSelect2": leadCountryValue,                                         // 国家/地区
             "customItem211__c": ratingValue,                                        // 线索等级
-            "phone": lead.phone?.replace(/\s+/g, ""),        // 联系人电话
+            "phone": lead.phone?.replace(/\s+/g, ""),                               // 联系人电话
         }
     }
     logger.info(`[CRM同步] 封装推送数据: ${JSON.stringify(createLeadBody)}`);
@@ -167,11 +163,17 @@ export async function callCrmApi(lead: CrmLead): Promise<{ success: boolean; mes
     logger.info(`[CRM同步] 状态码: ${response.status}, 成功: ${response.ok}`);
     logger.info(`[CRM同步] 接口返回内容: ${JSON.stringify(result, null, 2)}`);
 
+    // 如果API返回失败，返回失败结果，以便之后标记为同步失败
     if (!response.ok || (result?.code !== 200 && result?.code !== '200')) {
+        const errorMsg = result?.message || result?.msg || `CRM API 返回错误码: ${result?.code || response.status}`;
         logger.error(`[CRM同步] 错误详情: ${JSON.stringify(result)}`);
-    } else {
-        logger.info(`[CRM同步] 线索创建成功: ${lead.companyName}`);
+        return {
+            success: false,
+            message: errorMsg
+        };
     }
+
+    logger.info(`[CRM同步] 线索创建成功: ${lead.companyName}`);
     return {
         success: true,
         message: `Lead ${lead.companyName} synced successfully`
@@ -183,11 +185,12 @@ export async function callCrmApi(lead: CrmLead): Promise<{ success: boolean; mes
  */
 export async function markLeadAsSynced(leadId: string): Promise<void> {
     await db.transaction(async (tx) => {
-        // 更新 Lead 状态
+        // 更新 Lead 状态，清除错误信息
         await tx.update(leads)
             .set({
                 crmSyncStatus: 'synced',
                 crmSyncedAt: new Date(),
+                crmSyncError: null,
                 updatedAt: new Date()
             })
             .where(eq(leads.id, leadId));
@@ -217,10 +220,11 @@ export async function markLeadAsFailed(leadId: string, errorMessage: string): Pr
         executedAt: new Date()
     });
 
-    // 更新 Lead 状态为失败
+    // 更新 Lead 状态为失败，并保存错误原因
     await db.update(leads)
         .set({
             crmSyncStatus: 'failed',
+            crmSyncError: errorMessage,
             updatedAt: new Date()
         })
         .where(eq(leads.id, leadId));
@@ -243,11 +247,18 @@ export async function syncLeadToCrm(leadId: string): Promise<CrmSyncResult> {
         // 2. 调用 CRM API
         const apiResult = await callCrmApi(lead);
 
+        // 如果API调用失败，标记为同步失败
         if (!apiResult.success) {
-            throw new Error(apiResult.message);
+            await markLeadAsFailed(leadId, apiResult.message);
+            return {
+                success: false,
+                leadId: leadId,
+                message: apiResult.message,
+                error: apiResult.message
+            };
         }
 
-        // 3. 更新数据库状态
+        // 3. 更新数据库状态为成功
         await markLeadAsSynced(leadId);
 
         return {

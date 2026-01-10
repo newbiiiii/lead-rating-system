@@ -19,6 +19,16 @@ const STATUS_NAMES = {
     'failed': '同步失败'
 };
 
+// HTML转义函数防止XSS
+function escapeHtml(text) {
+    if (!text) return '';
+    return text.replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 export async function init() {
     // 解析URL参数
     const hash = window.location.hash;
@@ -104,7 +114,14 @@ async function loadCrmLeads(page = 1) {
             <td>${lead.contactName || '-'}<br><small style="color: #6b7280;">${lead.contactEmail || ''}</small></td>
             <td>${lead.taskName || '-'}</td>
             <td>${getSourceName(lead.source)}</td>
-            <td><span class="crm-status-badge ${lead.crmSyncStatus}">${STATUS_NAMES[lead.crmSyncStatus] || lead.crmSyncStatus}</span></td>
+            <td>
+                <span class="crm-status-badge ${lead.crmSyncStatus}">${STATUS_NAMES[lead.crmSyncStatus] || lead.crmSyncStatus}</span>
+                ${lead.crmSyncError ? `<div class="sync-error-msg" title="${escapeHtml(lead.crmSyncError)}">
+                    <small style="color: #dc2626; display: block; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        ${escapeHtml(lead.crmSyncError)}
+                    </small>
+                </div>` : ''}
+            </td>
             <td>${formatDate(lead.createdAt)}</td>
             <td>
                 ${currentStatus === 'failed' ? `

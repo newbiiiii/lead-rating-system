@@ -1,0 +1,1 @@
+ALTER TABLE "leads" ADD COLUMN "crm_sync_error" text;

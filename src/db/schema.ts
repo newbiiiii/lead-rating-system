@@ -109,6 +109,7 @@ export const leads = pgTable('leads', {
     // CRM同步状态
     crmSyncStatus: varchar('crm_sync_status', { length: 20 }).default('pending'), // pending, synced, failed
     crmSyncedAt: timestamp('crm_synced_at'),
+    crmSyncError: text('crm_sync_error'), // 同步失败原因
 
     // 时间戳
     scrapedAt: timestamp('scraped_at').notNull(),
