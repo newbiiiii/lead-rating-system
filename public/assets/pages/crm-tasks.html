@@ -29,16 +29,60 @@
                     <th>同步失败</th>
                     <th>同步进度</th>
                     <th>创建时间</th>
+                    <th>操作</th>
                 </tr>
             </thead>
             <tbody id="crm-tasks-body">
                 <tr>
-                    <td colspan="8" class="empty-state">加载中...</td>
+                    <td colspan="9" class="empty-state">加载中...</td>
                 </tr>
             </tbody>
         </table>
     </div>
     <div id="pagination-container-crm"></div>
+</div>
+
+<!-- 任务详情弹窗 -->
+<div id="task-detail-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-container">
+        <div class="modal-header">
+            <h3 id="modal-task-name">任务详情</h3>
+            <button class="modal-close-btn" onclick="closeTaskDetailModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <!-- 统计概览 -->
+            <div id="modal-task-stats" class="task-stats-bar"></div>
+
+            <!-- 状态筛选 -->
+            <div class="modal-filter-bar">
+                <button class="filter-btn active" data-status="all" onclick="filterModalLeads('all')">全部</button>
+                <button class="filter-btn" data-status="pending" onclick="filterModalLeads('pending')">待同步</button>
+                <button class="filter-btn" data-status="synced" onclick="filterModalLeads('synced')">已同步</button>
+                <button class="filter-btn" data-status="failed" onclick="filterModalLeads('failed')">同步失败</button>
+            </div>
+
+            <!-- 线索列表 -->
+            <div class="modal-table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>公司名称</th>
+                            <th>联系人</th>
+                            <th>邮箱</th>
+                            <th>同步状态</th>
+                            <th>失败原因</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-leads-body">
+                        <tr>
+                            <td colspan="5" class="loading">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="modal-pagination"></div>
+        </div>
+    </div>
 </div>
 
 <style>
@@ -97,5 +141,128 @@
         font-size: 12px;
         color: #64748b;
         min-width: 45px;
+    }
+
+    /* 弹窗样式 */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .modal-container {
+        background: white;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 900px;
+        max-height: 80vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 20px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        color: #1f2937;
+    }
+
+    .modal-close-btn {
+        background: none;
+        border: none;
+        font-size: 24px;
+        color: #9ca3af;
+        cursor: pointer;
+        line-height: 1;
+    }
+
+    .modal-close-btn:hover {
+        color: #374151;
+    }
+
+    .modal-body {
+        padding: 20px;
+        overflow-y: auto;
+        flex: 1;
+    }
+
+    .task-stats-bar {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 16px;
+        padding: 12px;
+        background: #f8fafc;
+        border-radius: 8px;
+    }
+
+    .modal-filter-bar {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+
+    .filter-btn {
+        padding: 8px 16px;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        background: white;
+        color: #6b7280;
+        cursor: pointer;
+        font-size: 13px;
+        transition: all 0.2s;
+    }
+
+    .filter-btn:hover {
+        border-color: #667eea;
+        color: #667eea;
+    }
+
+    .filter-btn.active {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border-color: transparent;
+    }
+
+    .modal-table-container {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .error-text {
+        color: #dc2626;
+        font-size: 12px;
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .btn-view-detail {
+        padding: 6px 12px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .btn-view-detail:hover {
+        opacity: 0.9;
     }
 </style>

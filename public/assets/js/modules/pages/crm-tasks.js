@@ -1,9 +1,16 @@
 // CRM Tasks页面逻辑模块
 import { fetchAPI } from '../api.js';
-import { formatDate, getSourceName } from '../utils.js';
+import { formatDate, getSourceName, showNotification } from '../utils.js';
 
 let currentPage = 1;
 let pageSize = 10;
+
+// 弹窗相关状态
+let modalCurrentPage = 1;
+let modalPageSize = 20;
+let modalCurrentStatus = 'all';
+let modalCurrentTaskId = null;
+let modalTaskName = '';
 
 export async function init() {
     await loadCrmTasks();
@@ -16,7 +23,7 @@ async function loadCrmTasks(page = 1) {
     const tbody = document.getElementById('crm-tasks-body');
 
     if (!data || !data.tasks || data.tasks.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">暂无数据</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="empty-state">暂无数据</td></tr>';
         updatePagination(0);
         return;
     }
@@ -57,6 +64,11 @@ async function loadCrmTasks(page = 1) {
                     </div>
                 </td>
                 <td>${formatDate(task.createdAt)}</td>
+                <td>
+                    <button class="btn-view-detail" onclick="openTaskDetailModal('${task.id}', '${escapeHtml(task.name || '任务详情')}', ${pending}, ${synced}, ${failed})">
+                        查看详情
+                    </button>
+                </td>
             </tr>
         `;
     }).join('');
@@ -121,7 +133,160 @@ function viewCrmLeads(status, taskId) {
     window.location.hash = `#crm-leads?status=${status}&taskId=${taskId}`;
 }
 
+// ============ 弹窗相关功能 ============
+
+function escapeHtml(text) {
+    if (!text) return '';
+    return text.replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+async function openTaskDetailModal(taskId, taskName, pending, synced, failed) {
+    modalCurrentTaskId = taskId;
+    modalTaskName = taskName;
+    modalCurrentStatus = 'all';
+    modalCurrentPage = 1;
+
+    // 显示弹窗
+    document.getElementById('task-detail-modal').style.display = 'flex';
+    document.getElementById('modal-task-name').textContent = taskName;
+
+    // 显示统计信息
+    const total = pending + synced + failed;
+    document.getElementById('modal-task-stats').innerHTML = `
+        <div><strong>总线索:</strong> ${total}</div>
+        <div><span class="sync-stat pending">${pending} 待同步</span></div>
+        <div><span class="sync-stat synced">${synced} 已同步</span></div>
+        <div><span class="sync-stat failed">${failed} 失败</span></div>
+    `;
+
+    // 重置筛选按钮状态
+    document.querySelectorAll('.modal-filter-bar .filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.status === 'all') btn.classList.add('active');
+    });
+
+    // 加载线索列表
+    await loadModalLeads();
+}
+
+function closeTaskDetailModal() {
+    document.getElementById('task-detail-modal').style.display = 'none';
+    modalCurrentTaskId = null;
+}
+
+async function filterModalLeads(status) {
+    modalCurrentStatus = status;
+    modalCurrentPage = 1;
+
+    // 更新按钮状态
+    document.querySelectorAll('.modal-filter-bar .filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.status === status) btn.classList.add('active');
+    });
+
+    await loadModalLeads();
+}
+
+async function loadModalLeads(page = 1) {
+    modalCurrentPage = page;
+    const tbody = document.getElementById('modal-leads-body');
+    tbody.innerHTML = '<tr><td colspan="5" class="loading">加载中...</td></tr>';
+
+    // 构建API URL
+    let url;
+    if (modalCurrentStatus === 'all') {
+        // 分别请求三种状态并合并
+        const [pendingData, syncedData, failedData] = await Promise.all([
+            fetchAPI(`/api/crm/leads?taskId=${modalCurrentTaskId}&status=pending&pageSize=100`),
+            fetchAPI(`/api/crm/leads?taskId=${modalCurrentTaskId}&status=synced&pageSize=100`),
+            fetchAPI(`/api/crm/leads?taskId=${modalCurrentTaskId}&status=failed&pageSize=100`)
+        ]);
+
+        const allLeads = [
+            ...(pendingData?.leads || []),
+            ...(syncedData?.leads || []),
+            ...(failedData?.leads || [])
+        ];
+
+        renderModalLeads(allLeads);
+        return;
+    } else {
+        url = `/api/crm/leads?taskId=${modalCurrentTaskId}&status=${modalCurrentStatus}&page=${page}&pageSize=${modalPageSize}`;
+    }
+
+    const data = await fetchAPI(url);
+
+    if (!data || !data.leads || data.leads.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">暂无数据</td></tr>';
+        document.getElementById('modal-pagination').innerHTML = '';
+        return;
+    }
+
+    renderModalLeads(data.leads);
+    updateModalPagination(data.pagination?.total || data.leads.length, data.pagination?.totalPages || 1);
+}
+
+function renderModalLeads(leads) {
+    const tbody = document.getElementById('modal-leads-body');
+
+    if (!leads || leads.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">暂无数据</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = leads.map(lead => {
+        const statusBadge = {
+            'pending': '<span class="sync-stat pending">待同步</span>',
+            'synced': '<span class="sync-stat synced">已同步</span>',
+            'failed': '<span class="sync-stat failed">失败</span>'
+        }[lead.crmSyncStatus] || '-';
+
+        return `
+            <tr>
+                <td><strong>${lead.companyName || '-'}</strong></td>
+                <td>${lead.contactName || '-'}</td>
+                <td>${lead.contactEmail || '-'}</td>
+                <td>${statusBadge}</td>
+                <td>
+                    ${lead.crmSyncError ? `<span class="error-text" title="${escapeHtml(lead.crmSyncError)}">${escapeHtml(lead.crmSyncError)}</span>` : '-'}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function updateModalPagination(total, totalPages) {
+    const pagination = document.getElementById('modal-pagination');
+    if (!pagination || totalPages <= 1) {
+        if (pagination) pagination.innerHTML = `<div style="text-align: center; color: #6b7280; margin-top: 12px;">共 ${total} 条</div>`;
+        return;
+    }
+
+    let html = '<div style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 12px;">';
+
+    if (modalCurrentPage > 1) {
+        html += `<button class="btn-secondary btn-sm" onclick="loadModalLeads(${modalCurrentPage - 1})">上一页</button>`;
+    }
+
+    html += `<span style="color: #6b7280;">第 ${modalCurrentPage}/${totalPages} 页，共 ${total} 条</span>`;
+
+    if (modalCurrentPage < totalPages) {
+        html += `<button class="btn-secondary btn-sm" onclick="loadModalLeads(${modalCurrentPage + 1})">下一页</button>`;
+    }
+
+    html += '</div>';
+    pagination.innerHTML = html;
+}
+
 // 导出给HTML调用
 window.loadCrmTasks = loadCrmTasks;
 window.viewCrmLeads = viewCrmLeads;
 window.changePageSizeCrm = changePageSize;
+window.openTaskDetailModal = openTaskDetailModal;
+window.closeTaskDetailModal = closeTaskDetailModal;
+window.filterModalLeads = filterModalLeads;
+window.loadModalLeads = loadModalLeads;
