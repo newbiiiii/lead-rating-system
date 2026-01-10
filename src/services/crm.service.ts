@@ -121,17 +121,19 @@ export async function callCrmApi(lead: CrmLead): Promise<{ success: boolean; mes
         },
     });
     const leadDescResult: any = await leadDescResponse.json();
+
+    // 1.3. 根据国家映射国家
     const leadCountrySelectItem = leadDescResult.data.fields.find((field: any) => field.apiKey === 'dbcSelect2').selectitem;
     logger.info(`[CRM同步] lead描述-国家选项: ${leadCountrySelectItem.length}`)
     const leadCountryValue = leadCountrySelectItem.find((item: any) => item.label.slice(0, -2).endsWith(lead.country))?.value;
     logger.info(`[CRM同步] lead描述-国家值: ${leadCountryValue}`)
 
+    // 1.4. 根据线索等级映射线索等级
     const ratingSelectItem = leadDescResult.data.fields.find((field: any) => field.apiKey === 'customItem211__c').selectitem;
     logger.info(`[CRM同步] lead描述-线索等级选项: ${ratingSelectItem.length}`)
     const ratingValue = ratingSelectItem.find((item: any) => item.label === lead.overallRating)?.value;
     logger.info(`[CRM同步] lead描述-线索等级值: ${ratingValue}`)
 
-    // 1.3. 根据国家映射国家
 
     // 2. 封装请求参数
     const createLeadBody = {
