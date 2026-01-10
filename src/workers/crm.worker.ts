@@ -62,7 +62,7 @@ class CrmWorker {
         });
 
         this.worker.on('failed', (job, err) => {
-            logger.error(`CRM Job ${job?.id} failed:`, err.message);
+            logger.error(`CRM Job ${job?.id} failed: ${err?.message || err}`, err);
         });
 
         logger.info('✓ CRM Worker 已启动');

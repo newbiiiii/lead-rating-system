@@ -86,9 +86,9 @@ export async function getLeadForCrm(leadId: string): Promise<CrmLead | null> {
                c.mobile,
                c.linkedin_url AS "linkedinUrl"
         FROM leads l
-            JOIN tasks t ON l.task_id = t.id
-            JOIN lead_ratings lr ON l.id = lr.lead_id
-            JOIN contacts c ON l.id = c.lead_id
+            LEFT JOIN tasks t ON l.task_id = t.id
+            LEFT JOIN lead_ratings lr ON l.id = lr.lead_id
+            LEFT JOIN contacts c ON l.id = c.lead_id
         WHERE l.id = ${leadId}
         ORDER BY l.created_at DESC
             `);
@@ -236,14 +236,13 @@ export async function markLeadAsFailed(leadId: string, errorMessage: string): Pr
 export async function syncLeadToCrm(leadId: string): Promise<CrmSyncResult> {
     logger.info(`[CRM同步] 开始同步 Lead ID: ${leadId}`);
 
-    // 1. 获取 Lead 数据
-    const lead = await getLeadForCrm(leadId);
-
-    if (!lead) {
-        throw new Error(`Lead not found: ${leadId}`);
-    }
-
     try {
+        // 1. 获取 Lead 数据
+        const lead = await getLeadForCrm(leadId);
+
+        if (!lead) {
+            throw new Error(`Lead not found: ${leadId}`);
+        }
         // 2. 调用 CRM API
         const apiResult = await callCrmApi(lead);
 
