@@ -9,6 +9,8 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import Redis from 'ioredis';
 import path from 'path';
+import multer from 'multer';
+import * as XLSX from 'xlsx';
 import { logger } from '../utils/logger';
 import { TaskScheduler, scrapeQueue, processQueue, ratingQueue, importQueue, crmQueue } from '../queue';
 import { db } from '../db';
@@ -574,6 +576,79 @@ app.post('/api/tasks/scrape/batch', async (req, res) => {
 
 // ============ 数据导入 ============
 
+// 配置 multer 用于文件上传
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB限制
+    fileFilter: (req, file, cb) => {
+        // 只允许 Excel 文件
+        const allowedMimes = [
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+            'application/vnd.ms-excel', // .xls
+            'text/csv' // .csv
+        ];
+        if (allowedMimes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('只支持 Excel (.xlsx, .xls) 或 CSV 文件'));
+        }
+    }
+});
+
+// Excel列名映射到字段名
+const COLUMN_MAPPING: Record<string, string> = {
+    '公司名称': 'companyName',
+    '公司': 'companyName',
+    'company': 'companyName',
+    'companyname': 'companyName',
+    '网站': 'website',
+    'website': 'website',
+    '域名': 'domain',
+    'domain': 'domain',
+    '行业': 'industry',
+    'industry': 'industry',
+    '地区': 'region',
+    '国家': 'region',
+    'region': 'region',
+    'country': 'region',
+    '地址': 'address',
+    'address': 'address',
+    '联系人': 'contactName',
+    '联系人姓名': 'contactName',
+    'contact': 'contactName',
+    'contactname': 'contactName',
+    '职位': 'contactTitle',
+    'title': 'contactTitle',
+    'contacttitle': 'contactTitle',
+    '邮箱': 'contactEmail',
+    'email': 'contactEmail',
+    'contactemail': 'contactEmail',
+    '电话': 'contactPhone',
+    'phone': 'contactPhone',
+    'contactphone': 'contactPhone'
+};
+
+// 解析Excel数据
+function parseExcelData(buffer: Buffer): any[] {
+    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const rawData = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+    // 映射列名
+    return rawData.map((row: any) => {
+        const mappedRow: any = {};
+        for (const [key, value] of Object.entries(row)) {
+            const normalizedKey = key.toLowerCase().trim();
+            const mappedKey = COLUMN_MAPPING[normalizedKey] || COLUMN_MAPPING[key.trim()];
+            if (mappedKey) {
+                mappedRow[mappedKey] = String(value).trim();
+            }
+        }
+        return mappedRow;
+    }).filter(row => row.companyName); // 过滤掉没有公司名称的行
+}
+
 // 导入线索数据格式
 interface ImportLeadData {
     companyName: string;
@@ -582,20 +657,27 @@ interface ImportLeadData {
     industry?: string;
     region?: string;
     address?: string;
-    // 联系人信息
     contactName?: string;
     contactTitle?: string;
     contactEmail?: string;
     contactPhone?: string;
 }
 
-// 批量导入线索
-app.post('/api/import/leads', async (req, res) => {
+// Excel文件导入线索
+app.post('/api/import/leads', upload.single('file'), async (req: any, res: any) => {
     try {
-        const { data, taskName } = req.body as { data: ImportLeadData[]; taskName?: string };
+        const file = req.file;
+        const taskName = req.body.taskName;
 
-        if (!data || !Array.isArray(data) || data.length === 0) {
-            return res.status(400).json({ error: '请提供有效的线索数据数组' });
+        if (!file) {
+            return res.status(400).json({ error: '请上传 Excel 文件' });
+        }
+
+        // 解析 Excel
+        const data = parseExcelData(file.buffer) as ImportLeadData[];
+
+        if (data.length === 0) {
+            return res.status(400).json({ error: 'Excel 文件中没有有效数据，请确保包含"公司名称"列' });
         }
 
         const { randomUUID } = await import('crypto');

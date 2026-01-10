@@ -13,10 +13,24 @@ export async function init() {
         importForm.addEventListener('submit', handleImportSubmit);
     }
 
-    // 绑定示例数据按钮
-    const sampleBtn = document.getElementById('import-sample-btn');
-    if (sampleBtn) {
-        sampleBtn.addEventListener('click', fillSampleData);
+    // 绑定文件选择
+    const fileInput = document.getElementById('file-input');
+    if (fileInput) {
+        fileInput.addEventListener('change', handleFileSelect);
+    }
+
+    // 绑定清除文件按钮
+    const clearFileBtn = document.getElementById('clear-file-btn');
+    if (clearFileBtn) {
+        clearFileBtn.addEventListener('click', clearFile);
+    }
+
+    // 绑定拖拽事件
+    const uploadArea = document.getElementById('file-upload-area');
+    if (uploadArea) {
+        uploadArea.addEventListener('dragover', handleDragOver);
+        uploadArea.addEventListener('dragleave', handleDragLeave);
+        uploadArea.addEventListener('drop', handleDrop);
     }
 
     // 绑定刷新按钮
@@ -49,36 +63,59 @@ export async function init() {
     ]);
 }
 
-// 填充示例数据
-function fillSampleData() {
-    const textarea = document.querySelector('textarea[name="data"]');
-    if (textarea) {
-        textarea.value = JSON.stringify([
-            {
-                "companyName": "ABC Manufacturing Co.",
-                "website": "https://abc-manufacturing.com",
-                "domain": "abc-manufacturing.com",
-                "industry": "Manufacturing",
-                "region": "United States",
-                "address": "123 Industrial Blvd, Chicago, IL",
-                "contactName": "John Smith",
-                "contactTitle": "Purchasing Manager",
-                "contactEmail": "john.smith@abc-manufacturing.com",
-                "contactPhone": "+1-312-555-0101"
-            },
-            {
-                "companyName": "XYZ Trading Ltd.",
-                "website": "https://xyz-trading.co.uk",
-                "domain": "xyz-trading.co.uk",
-                "industry": "Trading",
-                "region": "United Kingdom",
-                "address": "45 Commerce Street, London",
-                "contactName": "Jane Doe",
-                "contactTitle": "Import Director",
-                "contactEmail": "jane.doe@xyz-trading.co.uk",
-                "contactPhone": "+44-20-7123-4567"
-            }
-        ], null, 2);
+// 处理文件选择
+function handleFileSelect(e) {
+    const file = e.target.files[0];
+    if (file) {
+        showSelectedFile(file);
+    }
+}
+
+// 显示选中的文件
+function showSelectedFile(file) {
+    const placeholder = document.querySelector('.file-upload-placeholder');
+    const selected = document.getElementById('file-selected');
+    const fileName = document.getElementById('file-name');
+
+    if (placeholder && selected && fileName) {
+        placeholder.style.display = 'none';
+        selected.style.display = 'flex';
+        fileName.textContent = file.name;
+    }
+}
+
+// 清除文件
+function clearFile() {
+    const fileInput = document.getElementById('file-input');
+    const placeholder = document.querySelector('.file-upload-placeholder');
+    const selected = document.getElementById('file-selected');
+
+    if (fileInput) fileInput.value = '';
+    if (placeholder) placeholder.style.display = 'block';
+    if (selected) selected.style.display = 'none';
+}
+
+// 拖拽事件处理
+function handleDragOver(e) {
+    e.preventDefault();
+    e.currentTarget.classList.add('dragover');
+}
+
+function handleDragLeave(e) {
+    e.currentTarget.classList.remove('dragover');
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('dragover');
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        const fileInput = document.getElementById('file-input');
+        if (fileInput) {
+            fileInput.files = files;
+            showSelectedFile(files[0]);
+        }
     }
 }
 
@@ -87,48 +124,36 @@ async function handleImportSubmit(e) {
     e.preventDefault();
 
     const form = e.target;
-    const taskName = form.taskName.value.trim();
-    const dataText = form.data.value.trim();
+    const fileInput = document.getElementById('file-input');
+    const file = fileInput.files[0];
 
-    // 验证JSON格式
-    let data;
-    try {
-        data = JSON.parse(dataText);
-    } catch (err) {
-        showNotification('JSON格式错误，请检查数据格式', 'error');
+    if (!file) {
+        showNotification('请选择要导入的 Excel 文件', 'error');
         return;
     }
 
-    if (!Array.isArray(data) || data.length === 0) {
-        showNotification('请提供有效的数据数组', 'error');
-        return;
-    }
-
-    // 验证每条数据必须有companyName
-    for (let i = 0; i < data.length; i++) {
-        if (!data[i].companyName) {
-            showNotification(`第 ${i + 1} 条数据缺少 companyName 字段`, 'error');
-            return;
-        }
-    }
+    // 创建 FormData
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('taskName', form.taskName.value.trim());
 
     // 提交导入请求
-    const submitBtn = form.querySelector('button[type="submit"]');
+    const submitBtn = document.getElementById('submit-btn');
     submitBtn.disabled = true;
     submitBtn.textContent = '导入中...';
 
     try {
-        const result = await fetchAPI('/api/import/leads', {
+        const response = await fetch('/api/import/leads', {
             method: 'POST',
-            body: JSON.stringify({
-                data,
-                taskName: taskName || undefined
-            })
+            body: formData
         });
 
-        if (result && result.success) {
+        const result = await response.json();
+
+        if (response.ok && result.success) {
             showNotification(`成功导入 ${result.count} 条线索`, 'success');
             form.reset();
+            clearFile();
             // 刷新数据
             await Promise.all([
                 loadImportTasks(),

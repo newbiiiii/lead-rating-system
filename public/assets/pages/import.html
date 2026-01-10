@@ -2,32 +2,34 @@
     <div class="section-header">
         <h3>导入线索数据</h3>
     </div>
-    <form id="import-form" class="task-form">
+    <form id="import-form" class="task-form" enctype="multipart/form-data">
         <div class="form-group">
             <label>任务名称（可选）</label>
             <input type="text" name="taskName" placeholder="例如：Manus导入-2026年1月">
         </div>
         <div class="form-group">
-            <label>数据（JSON格式）</label>
-            <textarea name="data" rows="12" placeholder='[
-  {
-    "companyName": "公司名称",
-    "website": "https://example.com",
-    "domain": "example.com",
-    "industry": "制造业",
-    "region": "美国",
-    "address": "123 Main St",
-    "contactName": "张三",
-    "contactTitle": "采购经理",
-    "contactEmail": "zhang@example.com",
-    "contactPhone": "+1-123-456-7890"
-  }
-]' required></textarea>
-            <small class="form-hint">每条数据必须包含 companyName 字段，其他字段可选</small>
+            <label>Excel 文件</label>
+            <div class="file-upload-area" id="file-upload-area">
+                <input type="file" name="file" id="file-input" accept=".xlsx,.xls,.csv" required>
+                <div class="file-upload-placeholder">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <p>点击选择文件或拖拽到此处</p>
+                    <span class="file-types">支持 .xlsx, .xls, .csv 格式</span>
+                </div>
+                <div class="file-selected" id="file-selected" style="display: none;">
+                    <span class="file-name" id="file-name"></span>
+                    <button type="button" class="btn-text" id="clear-file-btn">清除</button>
+                </div>
+            </div>
+            <small class="form-hint">Excel 表头应包含：公司名称（必填）、网站、联系人、邮箱、电话、地区 等</small>
         </div>
         <div class="form-actions">
-            <button type="submit" class="btn-primary">开始导入</button>
-            <button type="button" class="btn-secondary" id="import-sample-btn">填入示例数据</button>
+            <button type="submit" class="btn-primary" id="submit-btn">开始导入</button>
+            <a href="/assets/templates/import_template.xlsx" class="btn-secondary" download>下载模板</a>
         </div>
     </form>
 </div>
@@ -73,3 +75,85 @@
     </div>
     <div class="pagination" id="leads-pagination"></div>
 </div>
+
+<style>
+    .file-upload-area {
+        border: 2px dashed rgba(102, 126, 234, 0.4);
+        border-radius: 12px;
+        padding: 32px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: rgba(102, 126, 234, 0.05);
+        position: relative;
+    }
+
+    .file-upload-area:hover {
+        border-color: rgba(102, 126, 234, 0.8);
+        background: rgba(102, 126, 234, 0.1);
+    }
+
+    .file-upload-area.dragover {
+        border-color: #667eea;
+        background: rgba(102, 126, 234, 0.15);
+    }
+
+    .file-upload-area input[type="file"] {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+    }
+
+    .file-upload-placeholder {
+        color: #94a3b8;
+    }
+
+    .file-upload-placeholder svg {
+        margin-bottom: 12px;
+        opacity: 0.6;
+    }
+
+    .file-upload-placeholder p {
+        margin: 0 0 8px 0;
+        font-size: 15px;
+    }
+
+    .file-types {
+        font-size: 13px;
+        opacity: 0.7;
+    }
+
+    .file-selected {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+    }
+
+    .file-name {
+        color: #667eea;
+        font-weight: 500;
+    }
+
+    .btn-text {
+        background: none;
+        border: none;
+        color: #ef4444;
+        cursor: pointer;
+        font-size: 13px;
+    }
+
+    .btn-text:hover {
+        text-decoration: underline;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 16px;
+    }
+</style>
