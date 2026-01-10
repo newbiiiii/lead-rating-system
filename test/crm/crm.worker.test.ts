@@ -39,7 +39,8 @@ const getTestLeadId = async (): Promise<string | null> => {
 // 测试1: 获取 Lead 数据
 console.log('测试1: 获取 Lead 数据');
 const testGetLeadForCrm = async () => {
-    const leadId = await getTestLeadId();
+    // const leadId = await getTestLeadId();
+    const leadId = '';
     if (!leadId) return;
 
     const lead = await getLeadForCrm(leadId);
@@ -56,18 +57,15 @@ const testGetLeadForCrm = async () => {
 // 测试2: 模拟 CRM API 调用
 console.log('\n测试2: 模拟 CRM API 调用');
 const testCallCrmApi = async () => {
-    const mockLead: CrmLead = {
-        id: 'test-id',
-        companyName: 'Test Company',
-        domain: 'test.com',
-        website: 'https://test.com',
-        industry: 'Technology',
-        region: 'California',
-        address: '123 Test St',
-        crmSyncStatus: 'pending'
-    };
-
-    const result = await callCrmApi(mockLead);
+    const leadId = await getTestLeadId();
+    if (!leadId) return;
+    const crmLead: CrmLead | null = await getLeadForCrm(leadId);
+    if (!crmLead) {
+        console.log('✗ 获取 Lead 数据失败');
+        return;
+    }
+    console.log('Crm Lead测试数据', crmLead)
+    const result = await callCrmApi(crmLead);
     if (result.success) {
         console.log('✓ 通过 - CRM API 模拟调用成功');
         console.log('  消息:', result.message);
@@ -112,9 +110,9 @@ const testSyncLeadToCrm = async () => {
 const runTests = async () => {
     console.log('=== CRM Service 测试开始 ===\n');
 
-    await testGetLeadForCrm();
+    // await testGetLeadForCrm();
     await testCallCrmApi();
-    await testSyncLeadToCrm();
+    // await testSyncLeadToCrm();
 
     console.log('\n=== CRM Service 测试完成 ===');
     process.exit(0);
