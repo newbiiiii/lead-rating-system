@@ -1,0 +1,75 @@
+<div class="section-card">
+    <div class="section-header">
+        <h3>导入线索数据</h3>
+    </div>
+    <form id="import-form" class="task-form">
+        <div class="form-group">
+            <label>任务名称（可选）</label>
+            <input type="text" name="taskName" placeholder="例如：Manus导入-2026年1月">
+        </div>
+        <div class="form-group">
+            <label>数据（JSON格式）</label>
+            <textarea name="data" rows="12" placeholder='[
+  {
+    "companyName": "公司名称",
+    "website": "https://example.com",
+    "domain": "example.com",
+    "industry": "制造业",
+    "region": "美国",
+    "address": "123 Main St",
+    "contactName": "张三",
+    "contactTitle": "采购经理",
+    "contactEmail": "zhang@example.com",
+    "contactPhone": "+1-123-456-7890"
+  }
+]' required></textarea>
+            <small class="form-hint">每条数据必须包含 companyName 字段，其他字段可选</small>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">开始导入</button>
+            <button type="button" class="btn-secondary" id="import-sample-btn">填入示例数据</button>
+        </div>
+    </form>
+</div>
+
+<div class="section-card">
+    <div class="section-header">
+        <h3>导入历史</h3>
+        <button class="btn-secondary btn-sm" id="refresh-tasks-btn">刷新</button>
+    </div>
+    <div id="import-tasks-container">
+        <div class="loading">加载中...</div>
+    </div>
+</div>
+
+<div class="section-card">
+    <div class="section-header">
+        <h3>已导入线索</h3>
+        <div class="header-actions">
+            <button class="btn-secondary btn-sm" id="refresh-leads-btn">刷新</button>
+            <button class="btn-primary btn-sm" id="sync-selected-btn" disabled>同步选中到CRM</button>
+        </div>
+    </div>
+    <div class="table-container">
+        <table class="data-table" id="import-leads-table">
+            <thead>
+                <tr>
+                    <th><input type="checkbox" id="select-all-leads"></th>
+                    <th>公司名称</th>
+                    <th>网站</th>
+                    <th>联系人</th>
+                    <th>邮箱</th>
+                    <th>CRM状态</th>
+                    <th>导入时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="import-leads-body">
+                <tr>
+                    <td colspan="8" class="empty-state">暂无导入数据</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="pagination" id="leads-pagination"></div>
+</div>

@@ -40,6 +40,10 @@ export const crmQueue = new Queue('crm', {
     connection: redisConnection
 });
 
+export const importQueue = new Queue('import', {
+    connection: redisConnection
+});
+
 /**
  * 任务调度器
  */

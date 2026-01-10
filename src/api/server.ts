@@ -10,7 +10,7 @@ import { Server } from 'socket.io';
 import Redis from 'ioredis';
 import path from 'path';
 import { logger } from '../utils/logger';
-import { TaskScheduler, scrapeQueue, processQueue, ratingQueue, automationQueue } from '../queue';
+import { TaskScheduler, scrapeQueue, processQueue, ratingQueue, importQueue, crmQueue } from '../queue';
 import { db } from '../db';
 import { tasks, leads, contacts, companies, ratings, searchPoints } from '../db/schema';
 import { desc, sql, eq, and } from 'drizzle-orm';
@@ -572,6 +572,272 @@ app.post('/api/tasks/scrape/batch', async (req, res) => {
     }
 });
 
+// ============ 数据导入 ============
+
+// 导入线索数据格式
+interface ImportLeadData {
+    companyName: string;
+    website?: string;
+    domain?: string;
+    industry?: string;
+    region?: string;
+    address?: string;
+    // 联系人信息
+    contactName?: string;
+    contactTitle?: string;
+    contactEmail?: string;
+    contactPhone?: string;
+}
+
+// 批量导入线索
+app.post('/api/import/leads', async (req, res) => {
+    try {
+        const { data, taskName } = req.body as { data: ImportLeadData[]; taskName?: string };
+
+        if (!data || !Array.isArray(data) || data.length === 0) {
+            return res.status(400).json({ error: '请提供有效的线索数据数组' });
+        }
+
+        const { randomUUID } = await import('crypto');
+        const now = new Date();
+
+        // 1. 创建导入任务
+        const taskId = randomUUID();
+        await db.insert(tasks).values({
+            id: taskId,
+            name: taskName || `手动导入 ${now.toLocaleDateString('zh-CN')}`,
+            description: `导入 ${data.length} 条线索`,
+            source: 'import',
+            query: 'manual-import',
+            status: 'completed',
+            progress: 100,
+            totalLeads: data.length,
+            successLeads: data.length,
+            failedLeads: 0,
+            startedAt: now,
+            completedAt: now,
+            createdAt: now,
+            updatedAt: now
+        });
+
+        // 2. 批量插入线索和联系人
+        const insertedLeads: string[] = [];
+
+        for (const item of data) {
+            const leadId = randomUUID();
+
+            // 插入线索 (跳过rating，直接进入CRM流程)
+            await db.insert(leads).values({
+                id: leadId,
+                taskId: taskId,
+                companyName: item.companyName,
+                domain: item.domain || null,
+                website: item.website || null,
+                industry: item.industry || null,
+                region: item.region || null,
+                address: item.address || null,
+                source: 'import',
+                ratingStatus: 'skipped', // 跳过评分
+                crmSyncStatus: 'pending', // 待同步CRM
+                scrapedAt: now,
+                createdAt: now,
+                updatedAt: now
+            });
+
+            // 如果有联系人信息，插入联系人
+            if (item.contactName || item.contactEmail || item.contactPhone) {
+                await db.insert(contacts).values({
+                    id: randomUUID(),
+                    leadId: leadId,
+                    name: item.contactName || null,
+                    title: item.contactTitle || null,
+                    email: item.contactEmail || null,
+                    phone: item.contactPhone || null,
+                    source: 'import',
+                    isPrimary: true,
+                    createdAt: now,
+                    updatedAt: now
+                });
+            }
+
+            insertedLeads.push(leadId);
+
+            // 3. 加入CRM队列
+            await crmQueue.add('saveToCrm', {
+                type: 'saveToCrm',
+                leadId: leadId
+            });
+        }
+
+        logger.info(`成功导入 ${insertedLeads.length} 条线索，任务ID: ${taskId}`);
+
+        res.json({
+            success: true,
+            message: `成功导入 ${insertedLeads.length} 条线索`,
+            taskId: taskId,
+            leadIds: insertedLeads,
+            count: insertedLeads.length
+        });
+    } catch (error: any) {
+        logger.error('导入线索失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 查询已导入的线索
+app.get('/api/import/leads', async (req, res) => {
+    try {
+        const page = parseInt(req.query.page as string) || 1;
+        const pageSize = parseInt(req.query.pageSize as string) || 20;
+        const taskId = req.query.taskId as string;
+        const offset = (page - 1) * pageSize;
+
+        // 构建查询条件
+        let whereClause = sql`l.source = 'import'`;
+        if (taskId) {
+            whereClause = sql`${whereClause} AND l.task_id = ${taskId}`;
+        }
+
+        // 查询总数
+        const countResult = await db.execute(sql`
+            SELECT COUNT(*) as count
+            FROM leads l
+            WHERE ${whereClause}
+        `);
+        const total = parseInt(countResult.rows[0].count as string);
+
+        // 查询数据
+        const leadsResult = await db.execute(sql`
+            SELECT
+                l.id,
+                l.company_name as "companyName",
+                l.website,
+                l.domain,
+                l.industry,
+                l.region,
+                l.address,
+                l.crm_sync_status as "crmSyncStatus",
+                l.crm_synced_at as "crmSyncedAt",
+                l.created_at as "createdAt",
+                t.id as "taskId",
+                t.name as "taskName",
+                c.name as "contactName",
+                c.email as "contactEmail",
+                c.phone as "contactPhone",
+                c.title as "contactTitle"
+            FROM leads l
+            JOIN tasks t ON l.task_id = t.id
+            LEFT JOIN contacts c ON l.id = c.lead_id AND c.is_primary = true
+            WHERE ${whereClause}
+            ORDER BY l.created_at DESC
+            LIMIT ${pageSize} OFFSET ${offset}
+        `);
+
+        res.json({
+            leads: leadsResult.rows,
+            pagination: {
+                page,
+                pageSize,
+                total,
+                totalPages: Math.ceil(total / pageSize)
+            }
+        });
+    } catch (error: any) {
+        logger.error('查询导入线索失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 查询导入任务列表
+app.get('/api/import/tasks', async (req, res) => {
+    try {
+        const page = parseInt(req.query.page as string) || 1;
+        const pageSize = parseInt(req.query.pageSize as string) || 20;
+        const offset = (page - 1) * pageSize;
+
+        // 查询import类型的任务
+        const tasksList = await db.query.tasks.findMany({
+            where: eq(tasks.source, 'import'),
+            orderBy: desc(tasks.createdAt),
+            limit: pageSize,
+            offset
+        });
+
+        // 获取总数
+        const countResult = await db.execute(sql`
+            SELECT COUNT(*) as count
+            FROM tasks
+            WHERE source = 'import'
+        `);
+        const total = parseInt(countResult.rows[0].count as string);
+
+        res.json({
+            tasks: tasksList,
+            pagination: {
+                page,
+                pageSize,
+                total,
+                totalPages: Math.ceil(total / pageSize)
+            }
+        });
+    } catch (error: any) {
+        logger.error('查询导入任务列表失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 批量触发CRM同步
+app.post('/api/import/leads/sync-crm', async (req, res) => {
+    try {
+        const { leadIds } = req.body;
+
+        if (!leadIds || !Array.isArray(leadIds) || leadIds.length === 0) {
+            return res.status(400).json({ error: '请提供有效的线索ID数组' });
+        }
+
+        // 查询指定的import线索
+        const placeholders = leadIds.map(id => `'${id}'`).join(',');
+        const result = await db.execute(sql.raw(`
+            SELECT id
+            FROM leads
+            WHERE id IN (${placeholders}) AND source = 'import'
+        `));
+
+        const validLeads = result.rows as any[];
+
+        if (validLeads.length === 0) {
+            return res.json({
+                success: true,
+                message: '没有找到需要同步的导入线索',
+                count: 0
+            });
+        }
+
+        // 更新状态并加入队列
+        for (const lead of validLeads) {
+            await db.update(leads)
+                .set({ crmSyncStatus: 'pending' })
+                .where(eq(leads.id, lead.id));
+
+            await crmQueue.add('saveToCrm', {
+                type: 'saveToCrm',
+                leadId: lead.id
+            });
+        }
+
+        logger.info(`成功将 ${validLeads.length} 条导入线索加入CRM同步队列`);
+
+        res.json({
+            success: true,
+            message: `成功将 ${validLeads.length} 条线索加入CRM同步队列`,
+            count: validLeads.length
+        });
+    } catch (error: any) {
+        logger.error('批量触发CRM同步失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // ============ 队列监控 ============
 
 app.get('/api/queues/stats', async (req, res) => {
@@ -580,7 +846,7 @@ app.get('/api/queues/stats', async (req, res) => {
             scrape: scrapeQueue,
             process: processQueue,
             rating: ratingQueue,
-            automation: automationQueue
+            import: importQueue
         };
 
         const stats: any = {};
