@@ -37,7 +37,7 @@ export interface CrmLead {
 
     // region: string | null;
     // address: string | null;
-    // crmSyncStatus: string | null;
+    crmSyncStatus: string | null;
 }
 
 /**
@@ -142,7 +142,7 @@ export async function callCrmApi(lead: CrmLead): Promise<{ success: boolean; mes
         },
         body: JSON.stringify(createLeadBody)
     });
-    const result = await response.json();
+    const result: any = await response.json();
 
     logger.info(`[CRM同步] 状态码: ${response.status}, 成功: ${response.ok}`);
     logger.info(`[CRM同步] 接口返回内容: ${JSON.stringify(result, null, 2)}`);
