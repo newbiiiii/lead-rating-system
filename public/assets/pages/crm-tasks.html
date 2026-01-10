@@ -1,0 +1,101 @@
+<div class="section-card">
+    <div class="section-header">
+        <h3>CRM 同步任务列表</h3>
+        <button class="btn-secondary btn-sm" onclick="loadCrmTasks()">刷新</button>
+    </div>
+
+    <!-- 搜索和筛选 -->
+    <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: flex-end;">
+        <div style="min-width: 120px;">
+            <label style="display: block; color: #6b7280; font-size: 12px; margin-bottom: 4px;">每页显示</label>
+            <select id="page-size-selector-crm" onchange="changePageSizeCrm(this.value)"
+                style="width: 100%; padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 14px;">
+                <option value="10" selected>10条</option>
+                <option value="20">20条</option>
+                <option value="50">50条</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>任务名称</th>
+                    <th>来源</th>
+                    <th>总线索</th>
+                    <th>待同步</th>
+                    <th>已同步</th>
+                    <th>同步失败</th>
+                    <th>同步进度</th>
+                    <th>创建时间</th>
+                </tr>
+            </thead>
+            <tbody id="crm-tasks-body">
+                <tr>
+                    <td colspan="8" class="empty-state">加载中...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div id="pagination-container-crm"></div>
+</div>
+
+<style>
+    .sync-stats {
+        display: flex;
+        gap: 8px;
+    }
+
+    .sync-stat {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .sync-stat.pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .sync-stat.synced {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .sync-stat.failed {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .progress-bar-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .progress-bar {
+        flex: 1;
+        background: #e2e8f0;
+        border-radius: 4px;
+        height: 8px;
+        overflow: hidden;
+        min-width: 100px;
+    }
+
+    .progress-bar-fill {
+        height: 100%;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        transition: width 0.3s ease;
+    }
+
+    .progress-text {
+        font-size: 12px;
+        color: #64748b;
+        min-width: 45px;
+    }
+</style>

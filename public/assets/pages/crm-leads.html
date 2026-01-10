@@ -1,0 +1,101 @@
+<div class="section-card">
+    <div class="section-header">
+        <h3 id="crm-status-page-title">CRM 同步线索</h3>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn-primary" onclick="retryAllCrm()" id="retry-all-btn"
+                style="background: linear-gradient(135deg, #10b981, #059669); display: none;">
+                批量重新同步
+            </button>
+            <button class="btn-secondary btn-sm" onclick="refreshCrmLeads()">刷新</button>
+        </div>
+    </div>
+
+    <div id="crm-status-hint-box"
+        style="margin-bottom: 16px; padding: 16px; background: #dbeafe; border: 1px solid #93c5fd; border-radius: 8px;">
+        <p style="margin: 0; color: #1e40af; font-size: 14px;">
+            <strong>说明：</strong><span id="crm-status-hint-text">加载中...</span>
+        </p>
+    </div>
+
+    <!-- 状态切换标签 -->
+    <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+        <button class="status-tab active" data-status="pending" onclick="switchCrmStatus('pending')">
+            待同步
+        </button>
+        <button class="status-tab" data-status="synced" onclick="switchCrmStatus('synced')">
+            已同步
+        </button>
+        <button class="status-tab" data-status="failed" onclick="switchCrmStatus('failed')">
+            同步失败
+        </button>
+    </div>
+
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>公司名称</th>
+                    <th>网站</th>
+                    <th>联系人</th>
+                    <th>所属任务</th>
+                    <th>来源</th>
+                    <th>同步状态</th>
+                    <th>创建时间</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="crm-leads-body">
+                <tr>
+                    <td colspan="8" class="empty-state">加载中...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div id="crm-leads-pagination"></div>
+</div>
+
+<style>
+    .status-tab {
+        padding: 8px 16px;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        background: white;
+        color: #374151;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s ease;
+    }
+
+    .status-tab:hover {
+        background: #f3f4f6;
+    }
+
+    .status-tab.active {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border-color: #667eea;
+    }
+
+    .crm-status-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .crm-status-badge.pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .crm-status-badge.synced {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .crm-status-badge.failed {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+</style>

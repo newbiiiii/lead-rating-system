@@ -113,7 +113,7 @@
                     <span>任务管理</span>
                 </a>
 
-                <!-- 线索状态管理 - 带子菜单 -->
+                <!-- 评分管理 - 带子菜单 -->
                 <div class="nav-group expanded" id="leads-status-group">
                     <div class="nav-group-header" onclick="toggleNavGroup('leads-status-group')">
                         <div class="nav-group-left">
@@ -126,18 +126,34 @@
                         <span class="nav-group-arrow">▶</span>
                     </div>
                     <div class="nav-group-children">
-                        <a href="#rating-tasks" class="nav-item" data-page="rating-tasks">
-                            <span>评分查询</span>
-                        </a>
-                        <a href="#leads-by-status?status=pending_config" class="nav-item" data-page="leads-by-status">
-                            <span>待配置规则</span>
-                        </a>
-                        <a href="#leads-by-status?status=failed" class="nav-item" data-page="leads-by-status">
-                            <span>评分失败</span>
-                        </a>
-                        <a href="#leads-by-status?status=pending" class="nav-item" data-page="leads-by-status">
-                            <span>待评分</span>
-                        </a>
+                        <a href="#rating-tasks" class="nav-item" data-page="rating-tasks"><span>评分查询</span></a>
+                        <a href="#leads-by-status?status=pending_config" class="nav-item"
+                            data-page="leads-by-status"><span>待配置规则</span></a>
+                        <a href="#leads-by-status?status=failed" class="nav-item"
+                            data-page="leads-by-status"><span>评分失败</span></a>
+                        <a href="#leads-by-status?status=pending" class="nav-item"
+                            data-page="leads-by-status"><span>待评分</span></a>
+                    </div>
+                </div>
+
+                <!-- CRM 同步管理 - 带子菜单 -->
+                <div class="nav-group" id="crm-sync-group">
+                    <div class="nav-group-header" onclick="toggleNavGroup('crm-sync-group')">
+                        <div class="nav-group-left">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd"
+                                    d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            <span>CRM 同步</span>
+                        </div>
+                        <span class="nav-group-arrow">▶</span>
+                    </div>
+                    <div class="nav-group-children">
+                        <a href="#crm-tasks" class="nav-item" data-page="crm-tasks"><span>同步任务</span></a>
+                        <a href="#crm-leads?status=pending" class="nav-item" data-page="crm-leads"><span>待同步</span></a>
+                        <a href="#crm-leads?status=synced" class="nav-item" data-page="crm-leads"><span>已同步</span></a>
+                        <a href="#crm-leads?status=failed" class="nav-item" data-page="crm-leads"><span>同步失败</span></a>
                     </div>
                 </div>
             </nav>
@@ -172,7 +188,6 @@
     </div>
 
     <script>
-        // 子菜单折叠/展开
         function toggleNavGroup(groupId) {
             const group = document.getElementById(groupId);
             if (group) {

@@ -920,6 +920,182 @@ app.post('/api/import/leads/sync-crm', async (req, res) => {
     }
 });
 
+// ============ CRM 同步管理 ============
+
+// 查询任务的CRM同步统计
+app.get('/api/crm/tasks', async (req: any, res: any) => {
+    try {
+        const page = parseInt(req.query.page as string) || 1;
+        const pageSize = parseInt(req.query.pageSize as string) || 20;
+        const offset = (page - 1) * pageSize;
+
+        // 查询所有任务及其CRM同步统计
+        const tasksResult = await db.execute(sql`
+            SELECT 
+                t.id,
+                t.name,
+                t.source,
+                t.query,
+                t.total_leads as "totalLeads",
+                t.created_at as "createdAt",
+                COUNT(CASE WHEN l.crm_sync_status = 'pending' THEN 1 END) as "pendingCount",
+                COUNT(CASE WHEN l.crm_sync_status = 'synced' THEN 1 END) as "syncedCount",
+                COUNT(CASE WHEN l.crm_sync_status = 'failed' THEN 1 END) as "failedCount"
+            FROM tasks t
+            LEFT JOIN leads l ON t.id = l.task_id
+            GROUP BY t.id, t.name, t.source, t.query, t.total_leads, t.created_at
+            ORDER BY t.created_at DESC
+            LIMIT ${pageSize} OFFSET ${offset}
+        `);
+
+        // 获取总数
+        const countResult = await db.execute(sql`
+            SELECT COUNT(*) as count FROM tasks
+        `);
+        const total = parseInt(countResult.rows[0].count as string);
+
+        res.json({
+            tasks: tasksResult.rows,
+            pagination: {
+                page,
+                pageSize,
+                total,
+                totalPages: Math.ceil(total / pageSize)
+            }
+        });
+    } catch (error: any) {
+        logger.error('查询CRM任务统计失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 按CRM同步状态查询线索
+app.get('/api/crm/leads', async (req: any, res: any) => {
+    try {
+        const crmStatus = req.query.status as string || 'pending';
+        const taskId = req.query.taskId as string;
+        const page = parseInt(req.query.page as string) || 1;
+        const pageSize = parseInt(req.query.pageSize as string) || 20;
+        const offset = (page - 1) * pageSize;
+
+        // 验证状态参数
+        const validStatuses = ['pending', 'synced', 'failed'];
+        if (!validStatuses.includes(crmStatus)) {
+            return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
+        }
+
+        // 构建查询条件
+        let whereClause = sql`l.crm_sync_status = ${crmStatus}`;
+        if (taskId) {
+            whereClause = sql`${whereClause} AND l.task_id = ${taskId}`;
+        }
+
+        // 查询总数
+        const countResult = await db.execute(sql`
+            SELECT COUNT(*) as count
+            FROM leads l
+            WHERE ${whereClause}
+        `);
+        const total = parseInt(countResult.rows[0].count as string);
+
+        // 查询数据
+        const leadsResult = await db.execute(sql`
+            SELECT
+                l.id,
+                l.company_name as "companyName",
+                l.website,
+                l.domain,
+                l.source,
+                l.rating_status as "ratingStatus",
+                l.crm_sync_status as "crmSyncStatus",
+                l.crm_synced_at as "crmSyncedAt",
+                l.created_at as "createdAt",
+                t.id as "taskId",
+                t.name as "taskName",
+                c.name as "contactName",
+                c.email as "contactEmail"
+            FROM leads l
+            JOIN tasks t ON l.task_id = t.id
+            LEFT JOIN contacts c ON l.id = c.lead_id AND c.is_primary = true
+            WHERE ${whereClause}
+            ORDER BY l.created_at DESC
+            LIMIT ${pageSize} OFFSET ${offset}
+        `);
+
+        res.json({
+            leads: leadsResult.rows,
+            status: crmStatus,
+            pagination: {
+                page,
+                pageSize,
+                total,
+                totalPages: Math.ceil(total / pageSize)
+            }
+        });
+    } catch (error: any) {
+        logger.error('查询CRM同步线索失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 重试失败的CRM同步
+app.post('/api/crm/leads/retry', async (req: any, res: any) => {
+    try {
+        const { leadIds } = req.body;
+
+        let leadsToRetry: any[];
+        if (leadIds && Array.isArray(leadIds) && leadIds.length > 0) {
+            // 查询指定的failed leads
+            const placeholders = leadIds.map(id => `'${id}'`).join(',');
+            const result = await db.execute(sql.raw(`
+                SELECT id
+                FROM leads
+                WHERE id IN (${placeholders}) AND crm_sync_status = 'failed'
+            `));
+            leadsToRetry = result.rows as any[];
+        } else {
+            // 查询所有failed的leads
+            const result = await db.execute(sql`
+                SELECT id
+                FROM leads
+                WHERE crm_sync_status = 'failed'
+            `);
+            leadsToRetry = result.rows as any[];
+        }
+
+        if (leadsToRetry.length === 0) {
+            return res.json({
+                success: true,
+                message: '没有找到需要重试的同步失败线索',
+                count: 0
+            });
+        }
+
+        // 更新状态并加入队列
+        for (const lead of leadsToRetry) {
+            await db.update(leads)
+                .set({ crmSyncStatus: 'pending' })
+                .where(eq(leads.id, lead.id));
+
+            await crmQueue.add('saveToCrm', {
+                type: 'saveToCrm',
+                leadId: lead.id
+            });
+        }
+
+        logger.info(`成功将 ${leadsToRetry.length} 条失败线索重新加入CRM同步队列`);
+
+        res.json({
+            success: true,
+            message: `成功将 ${leadsToRetry.length} 条线索重新加入CRM同步队列`,
+            count: leadsToRetry.length
+        });
+    } catch (error: any) {
+        logger.error('重试CRM同步失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // ============ 队列监控 ============
 
 app.get('/api/queues/stats', async (req, res) => {
