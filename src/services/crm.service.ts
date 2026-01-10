@@ -144,11 +144,9 @@ export async function callCrmApi(lead: CrmLead): Promise<{ success: boolean; mes
             "territoryHighSeaId": 3392360243429516,                                 // 所属区域公海,暂时固定为 RPA线索公海池[线索]
             "email": lead.email?.replace(/\s+/g, ""),        // 联系人邮箱
             "customItem200__c": lead.domain,                                        // 线索官网
-            "dimDepart": null,                                                      // TODO
             "dbcSelect2": leadCountryValue,                                         // 国家/地区
             "customItem211__c": ratingValue,                                        // 线索等级
             "phone": lead.phone?.replace(/\s+/g, ""),        // 联系人电话
-            "dbcSelect3": null,                                                     // TODO 州(仅限美国)
         }
     }
     logger.info(`[CRM同步] 封装推送数据: ${JSON.stringify(createLeadBody)}`);
