@@ -109,11 +109,25 @@ export async function getLeadForCrm(leadId: string): Promise<CrmLead | null> {
  * TODO: 替换为实际的 CRM API 调用
  */
 export async function callCrmApi(lead: CrmLead): Promise<{ success: boolean; message: string }> {
-    // 获取token
+    // 1.1. 获取token
     const accessToken = await getAccessToken();
     logger.info(`[CRM同步] 获取token: ${accessToken}`);
 
-    // 封装请求参数
+    // 1.2. 查询lead描述
+    const leadDescResponse = await fetch('https://api.xiaoshouyi.com/rest/data/v2.0/xobjects/lead/description', {
+        method: 'GET',
+        headers: {
+            'Authorization': accessToken as string,
+        },
+    });
+    const leadDescResult: any = await leadDescResponse.json();
+    const leadCountrySelectItem = leadDescResult.data.fields.find((field: any) => field.apiKey === 'dbcSelect2').selectitem;
+    logger.info(`[CRM同步] lead描述-国家: ${leadCountrySelectItem.length}`)
+    const leadCountryValue = leadCountrySelectItem.find((item: any) => item.label.slice(0, -2).endsWith(lead.country))?.value;
+
+    // 1.3. 根据国家映射国家
+
+    // 2. 封装请求参数
     const createLeadBody = {
         "data": {
             "entityType": 3112761,                                                  // 写死即可
@@ -125,15 +139,15 @@ export async function callCrmApi(lead: CrmLead): Promise<{ success: boolean; mes
             "email": lead.email?.replace(/\s+/g, ""),        // 联系人邮箱
             "customItem200__c": lead.domain,                                        // 线索官网
             "dimDepart": null,                                                      // TODO
-            "dbcSelect2": 137,                                                      // TODO 国家/地区
+            "dbcSelect2": leadCountryValue,                                         // TODO 国家/地区
             "customItem211__c": 11,                                                 // TODO 线索等级
             "phone": lead.phone?.replace(/\s+/g, ""),        // 联系人电话
-            "dbcSelect3": 13,                                                       // TODO 州(仅限美国)
+            "dbcSelect3": null,                                                     // TODO 州(仅限美国)
         }
     }
     logger.info(`[CRM同步] 封装推送数据: ${JSON.stringify(createLeadBody)}`);
 
-    // 调用接口
+    // 3. 调用接口
     const response = await fetch('https://api.xiaoshouyi.com/rest/data/v2.0/xobjects/lead', {
         method: 'POST',
         headers: {

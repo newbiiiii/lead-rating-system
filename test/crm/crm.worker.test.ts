@@ -57,7 +57,8 @@ const testGetLeadForCrm = async () => {
 // 测试2: 模拟 CRM API 调用
 console.log('\n测试2: 模拟 CRM API 调用');
 const testCallCrmApi = async () => {
-    const leadId = await getTestLeadId();
+    // const leadId = await getTestLeadId();
+    const leadId = 'd31e9003-c5eb-45b3-9f20-42b38e398c39';
     if (!leadId) return;
     const crmLead: CrmLead | null = await getLeadForCrm(leadId);
     if (!crmLead) {
