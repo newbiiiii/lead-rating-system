@@ -1039,27 +1039,38 @@ app.get('/api/crm/leads', async (req: any, res: any) => {
     }
 });
 
-// 重试失败的CRM同步
+// 重试CRM同步（将线索重新加入队列）
 app.post('/api/crm/leads/retry', async (req: any, res: any) => {
     try {
-        const { leadIds } = req.body;
+        const { leadIds, status } = req.body;
+
+        // status 参数必填
+        if (!status) {
+            return res.status(400).json({ error: 'status 参数必填，可选值: pending, failed' });
+        }
+
+        // 验证状态参数（只允许 pending 和 failed 状态重新加入队列）
+        const validStatuses = ['pending', 'failed'];
+        if (!validStatuses.includes(status)) {
+            return res.status(400).json({ error: `status 参数无效，可选值: ${validStatuses.join(', ')}` });
+        }
 
         let leadsToRetry: any[];
         if (leadIds && Array.isArray(leadIds) && leadIds.length > 0) {
-            // 查询指定的failed leads
-            const placeholders = leadIds.map(id => `'${id}'`).join(',');
+            // 查询指定的leads（按status筛选）
+            const placeholders = leadIds.map((id: string) => `'${id}'`).join(',');
             const result = await db.execute(sql.raw(`
                 SELECT id
                 FROM leads
-                WHERE id IN (${placeholders}) AND crm_sync_status = 'failed'
+                WHERE id IN (${placeholders}) AND crm_sync_status = '${status}'
             `));
             leadsToRetry = result.rows as any[];
         } else {
-            // 查询所有failed的leads
+            // 查询指定状态的所有leads
             const result = await db.execute(sql`
                 SELECT id
                 FROM leads
-                WHERE crm_sync_status = 'failed'
+                WHERE crm_sync_status = ${status}
             `);
             leadsToRetry = result.rows as any[];
         }
@@ -1067,7 +1078,7 @@ app.post('/api/crm/leads/retry', async (req: any, res: any) => {
         if (leadsToRetry.length === 0) {
             return res.json({
                 success: true,
-                message: '没有找到需要重试的同步失败线索',
+                message: '没有找到需要重新同步的线索',
                 count: 0
             });
         }
@@ -1075,7 +1086,10 @@ app.post('/api/crm/leads/retry', async (req: any, res: any) => {
         // 更新状态并加入队列
         for (const lead of leadsToRetry) {
             await db.update(leads)
-                .set({ crmSyncStatus: 'pending' })
+                .set({
+                    crmSyncStatus: 'pending',
+                    crmSyncError: null  // 清除之前的错误信息
+                })
                 .where(eq(leads.id, lead.id));
 
             await crmQueue.add('saveToCrm', {
@@ -1084,7 +1098,7 @@ app.post('/api/crm/leads/retry', async (req: any, res: any) => {
             });
         }
 
-        logger.info(`成功将 ${leadsToRetry.length} 条失败线索重新加入CRM同步队列`);
+        logger.info(`成功将 ${leadsToRetry.length} 条线索重新加入CRM同步队列`);
 
         res.json({
             success: true,

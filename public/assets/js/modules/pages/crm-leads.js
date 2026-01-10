@@ -1,5 +1,5 @@
 // CRM Leads页面逻辑模块
-import { fetchAPI } from '../api.js';
+import { fetchAPI, postAPI } from '../api.js';
 import { formatDate, showNotification, getSourceName } from '../utils.js';
 
 let currentPage = 1;
@@ -124,11 +124,11 @@ async function loadCrmLeads(page = 1) {
             </td>
             <td>${formatDate(lead.createdAt)}</td>
             <td>
-                ${currentStatus === 'failed' ? `
+                ${lead.crmSyncStatus !== 'synced' ? `
                     <button class="btn-secondary btn-sm" onclick="retrySingleCrm('${lead.id}')">
                         重新同步
                     </button>
-                ` : '-'}
+                ` : '<span style="color: #9ca3af;">-</span>'}
             </td>
         </tr>
     `).join('');
@@ -177,12 +177,9 @@ function switchCrmStatus(status) {
 }
 
 async function retryAllCrm() {
-    if (!confirm('确定要重新同步所有失败的线索吗？')) return;
+    if (!confirm(`确定要重新同步所有${STATUS_NAMES[currentStatus]}的线索吗？`)) return;
 
-    const result = await fetchAPI('/api/crm/leads/retry', {
-        method: 'POST',
-        body: JSON.stringify({})
-    });
+    const result = await postAPI('/api/crm/leads/retry', { status: currentStatus });
 
     if (result && result.success) {
         showNotification(`已将 ${result.count} 条线索加入同步队列`, 'success');
@@ -193,10 +190,7 @@ async function retryAllCrm() {
 }
 
 async function retrySingleCrm(leadId) {
-    const result = await fetchAPI('/api/crm/leads/retry', {
-        method: 'POST',
-        body: JSON.stringify({ leadIds: [leadId] })
-    });
+    const result = await postAPI('/api/crm/leads/retry', { leadIds: [leadId], status: currentStatus });
 
     if (result && result.success) {
         showNotification('已加入同步队列', 'success');
