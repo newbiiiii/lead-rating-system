@@ -42,31 +42,27 @@
                     </svg>
                     <span>数据概览</span>
                 </a>
-                <a href="#tasks" class="nav-item" data-page="tasks">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                        <path fill-rule="evenodd"
-                            d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm9.707 5.707a1 1 0 00-1.414-1.414L9 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                            clip-rule="evenodd" />
-                    </svg>
-                    <span>发起谷歌地图搜索任务</span>
-                </a>
-                <a href="#import" class="nav-item" data-page="import">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd"
-                            d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z"
-                            clip-rule="evenodd" />
-                    </svg>
-                    <span>数据导入</span>
-                </a>
-                <a href="#management" class="nav-item" data-page="management">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd"
-                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-                            clip-rule="evenodd" />
-                    </svg>
-                    <span>任务管理</span>
-                </a>
+
+                <!-- 任务管理 - 带子菜单 -->
+                <div class="nav-group expanded" id="task-management-group">
+                    <div class="nav-group-header" onclick="toggleNavGroup('task-management-group')">
+                        <div class="nav-group-left">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                                <path fill-rule="evenodd"
+                                    d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm9.707 5.707a1 1 0 00-1.414-1.414L9 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            <span>任务管理</span>
+                        </div>
+                        <span class="nav-group-arrow">▶</span>
+                    </div>
+                    <div class="nav-group-children">
+                        <a href="#tasks" class="nav-item" data-page="tasks"><span>谷歌地图搜索</span></a>
+                        <a href="#import" class="nav-item" data-page="import"><span>数据导入</span></a>
+                        <a href="#management" class="nav-item" data-page="management"><span>任务列表</span></a>
+                    </div>
+                </div>
 
                 <!-- 评分管理 - 带子菜单 -->
                 <div class="nav-group expanded" id="leads-status-group">
