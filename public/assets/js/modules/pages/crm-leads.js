@@ -124,11 +124,9 @@ async function loadCrmLeads(page = 1) {
             </td>
             <td>${formatDate(lead.createdAt)}</td>
             <td>
-                ${lead.crmSyncStatus !== 'synced' ? `
-                    <button class="btn-secondary btn-sm" onclick="retrySingleCrm('${lead.id}')">
-                        重新同步
-                    </button>
-                ` : '<span style="color: #9ca3af;">-</span>'}
+                <button class="btn-secondary btn-sm" onclick="retrySingleCrm('${lead.id}')">
+                    重新同步
+                </button>
             </td>
         </tr>
     `).join('');

@@ -16,11 +16,34 @@
         </div>
     </div>
 
+    <!-- 评级状态 -->
+    <div class="stat-card">
+        <div class="stat-icon orange">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon
+                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                </polygon>
+            </svg>
+        </div>
+        <div class="stat-content">
+            <div class="stat-value-dual" style="gap: 2px;">
+                <span style="font-size: 18px; font-weight: 700; color: #10b981;" id="rated-count">-</span>
+                <span style="font-size: 14px; color: #94a3b8; margin: 0 2px;">/</span>
+                <span style="font-size: 18px; font-weight: 700; color: #f59e0b;" id="pending-rating-count">-</span>
+                <span style="font-size: 14px; color: #94a3b8; margin: 0 2px;">/</span>
+                <span style="font-size: 18px; font-weight: 700; color: #ef4444;" id="rating-failed-count">-</span>
+            </div>
+            <div class="stat-label">已评级 / 待评级 / 失败</div>
+        </div>
+    </div>
+
     <!-- 优质线索 (A+B级) -->
     <div class="stat-card">
         <div class="stat-icon green">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                <polygon
+                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                </polygon>
             </svg>
         </div>
         <div class="stat-content">
@@ -35,23 +58,6 @@
         </div>
     </div>
 
-    <!-- 评级状态 -->
-    <div class="stat-card">
-        <div class="stat-icon orange">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-            </svg>
-        </div>
-        <div class="stat-content">
-            <div class="stat-value-dual">
-                <span class="dual-primary" id="rated-count">-</span>
-                <span class="dual-separator">/</span>
-                <span class="dual-secondary" id="pending-rating-count">-</span>
-            </div>
-            <div class="stat-label">已评级 / 待评级</div>
-        </div>
-    </div>
-
     <!-- CRM 同步状态 -->
     <div class="stat-card">
         <div class="stat-icon blue">
@@ -63,12 +69,14 @@
             </svg>
         </div>
         <div class="stat-content">
-            <div class="stat-value-dual">
-                <span class="dual-primary" id="crm-synced-count">-</span>
-                <span class="dual-separator">/</span>
-                <span class="dual-secondary" id="crm-pending-count">-</span>
+            <div class="stat-value-dual" style="gap: 2px;">
+                <span style="font-size: 18px; font-weight: 700; color: #10b981;" id="crm-synced-count">-</span>
+                <span style="font-size: 14px; color: #94a3b8; margin: 0 2px;">/</span>
+                <span style="font-size: 18px; font-weight: 700; color: #f59e0b;" id="crm-pending-count">-</span>
+                <span style="font-size: 14px; color: #94a3b8; margin: 0 2px;">/</span>
+                <span style="font-size: 18px; font-weight: 700; color: #ef4444;" id="crm-failed-count">-</span>
             </div>
-            <div class="stat-label">已同步 / 待同步</div>
+            <div class="stat-label">CRM 已同步 / 待同步 / 失败</div>
         </div>
     </div>
 </div>

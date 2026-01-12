@@ -1047,11 +1047,11 @@ app.post('/api/crm/leads/retry', async (req: any, res: any) => {
 
         // status 参数必填
         if (!status) {
-            return res.status(400).json({ error: 'status 参数必填，可选值: pending, failed' });
+            return res.status(400).json({ error: 'status 参数必填，可选值: pending, failed, synced' });
         }
 
         // 验证状态参数（只允许 pending 和 failed 状态重新加入队列）
-        const validStatuses = ['pending', 'failed'];
+        const validStatuses = ['pending', 'failed', 'synced'];
         if (!validStatuses.includes(status)) {
             return res.status(400).json({ error: `status 参数无效，可选值: ${validStatuses.join(', ')}` });
         }
@@ -1117,9 +1117,15 @@ app.post('/api/crm/leads/retry', async (req: any, res: any) => {
 // 获取评级分布统计 (A, B, C, D)
 app.get('/api/dashboard/grade-stats', async (req, res) => {
     try {
-        const result = await db.execute(sql`
+        // 统计所有线索总数
+        const totalResult = await db.execute(sql`
+            SELECT COUNT(*) as total FROM leads
+        `);
+        const totalCount = parseInt((totalResult.rows[0] as any).total) || 0;
+
+        // 统计各评级分布（只统计已完成评级的）
+        const gradeResult = await db.execute(sql`
             SELECT 
-                COUNT(*) as total,
                 COUNT(CASE WHEN lr.overall_rating = 'A' THEN 1 END) as "A",
                 COUNT(CASE WHEN lr.overall_rating = 'B' THEN 1 END) as "B",
                 COUNT(CASE WHEN lr.overall_rating = 'C' THEN 1 END) as "C",
@@ -1129,9 +1135,9 @@ app.get('/api/dashboard/grade-stats', async (req, res) => {
             WHERE l.rating_status = 'completed'
         `);
 
-        const stats = result.rows[0] as any;
+        const stats = gradeResult.rows[0] as any;
         res.json({
-            total: parseInt(stats.total) || 0,
+            total: totalCount,
             A: parseInt(stats.A) || 0,
             B: parseInt(stats.B) || 0,
             C: parseInt(stats.C) || 0,
@@ -1143,20 +1149,24 @@ app.get('/api/dashboard/grade-stats', async (req, res) => {
     }
 });
 
-// 获取评级状态统计 (已评级/待评级)
+// 获取评级状态统计 (已评级/待评级/评级失败)
 app.get('/api/dashboard/rating-stats', async (req, res) => {
     try {
         const result = await db.execute(sql`
             SELECT 
-                COUNT(CASE WHEN rating_status = 'completed' THEN 1 END) as rated,
-                COUNT(CASE WHEN rating_status = 'pending' THEN 1 END) as pending
+                COUNT(*) as total,
+                COUNT(CASE WHEN rating_status IN ('completed', 'skipped') THEN 1 END) as rated,
+                COUNT(CASE WHEN rating_status = 'pending' THEN 1 END) as pending,
+                COUNT(CASE WHEN rating_status IN ('failed', 'pending_config') THEN 1 END) as failed
             FROM leads
         `);
 
         const stats = result.rows[0] as any;
         res.json({
+            total: parseInt(stats.total) || 0,
             rated: parseInt(stats.rated) || 0,
-            pending: parseInt(stats.pending) || 0
+            pending: parseInt(stats.pending) || 0,
+            failed: parseInt(stats.failed) || 0
         });
     } catch (error: any) {
         logger.error('获取评级状态统计失败:', error);
@@ -1164,20 +1174,24 @@ app.get('/api/dashboard/rating-stats', async (req, res) => {
     }
 });
 
-// 获取CRM同步状态统计 (已同步/待同步)
+// 获取CRM同步状态统计 (已同步/待同步/同步失败)
 app.get('/api/dashboard/crm-stats', async (req, res) => {
     try {
         const result = await db.execute(sql`
             SELECT 
+                COUNT(*) as total,
                 COUNT(CASE WHEN crm_sync_status = 'synced' THEN 1 END) as synced,
-                COUNT(CASE WHEN crm_sync_status = 'pending' THEN 1 END) as pending
+                COUNT(CASE WHEN crm_sync_status = 'pending' THEN 1 END) as pending,
+                COUNT(CASE WHEN crm_sync_status = 'failed' THEN 1 END) as failed
             FROM leads
         `);
 
         const stats = result.rows[0] as any;
         res.json({
+            total: parseInt(stats.total) || 0,
             synced: parseInt(stats.synced) || 0,
-            pending: parseInt(stats.pending) || 0
+            pending: parseInt(stats.pending) || 0,
+            failed: parseInt(stats.failed) || 0
         });
     } catch (error: any) {
         logger.error('获取CRM同步状态统计失败:', error);
@@ -1230,26 +1244,59 @@ app.get('/api/dashboard/recent-leads', async (req, res) => {
 
 app.get('/api/queues/stats', async (req, res) => {
     try {
-        const queues = {
-            scrape: scrapeQueue,
-            rating: ratingQueue,
-            crm: crmQueue
-        };
+        // 从数据库查询爬虫队列状态 (基于 tasks 表)
+        const scrapeResult = await db.execute(sql`
+            SELECT 
+                COUNT(CASE WHEN status = 'pending' THEN 1 END) as waiting,
+                COUNT(CASE WHEN status = 'running' THEN 1 END) as active,
+                COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
+                COUNT(CASE WHEN status IN ('failed', 'cancelled') THEN 1 END) as failed
+            FROM tasks
+        `);
+        const scrapeStats = scrapeResult.rows[0] as any;
 
-        const stats: any = {};
+        // 从数据库查询评级队列状态 (基于 leads 表的 rating_status)
+        const ratingResult = await db.execute(sql`
+            SELECT 
+                COUNT(CASE WHEN rating_status = 'pending' THEN 1 END) as waiting,
+                COUNT(CASE WHEN rating_status = 'processing' THEN 1 END) as active,
+                COUNT(CASE WHEN rating_status = 'completed' THEN 1 END) as completed,
+                COUNT(CASE WHEN rating_status IN ('failed', 'pending_config') THEN 1 END) as failed
+            FROM leads
+        `);
+        const ratingStats = ratingResult.rows[0] as any;
 
-        for (const [name, queue] of Object.entries(queues)) {
-            const [waiting, active, completed, failed] = await Promise.all([
-                queue.getWaitingCount(),
-                queue.getActiveCount(),
-                queue.getCompletedCount(),
-                queue.getFailedCount()
-            ]);
+        // 从数据库查询CRM队列状态 (基于 leads 表的 crm_sync_status)
+        const crmResult = await db.execute(sql`
+            SELECT 
+                COUNT(CASE WHEN crm_sync_status = 'pending' THEN 1 END) as waiting,
+                COUNT(CASE WHEN crm_sync_status = 'processing' THEN 1 END) as active,
+                COUNT(CASE WHEN crm_sync_status = 'synced' THEN 1 END) as completed,
+                COUNT(CASE WHEN crm_sync_status = 'failed' THEN 1 END) as failed
+            FROM leads
+        `);
+        const crmStats = crmResult.rows[0] as any;
 
-            stats[name] = { waiting, active, completed, failed };
-        }
-
-        res.json(stats);
+        res.json({
+            scrape: {
+                waiting: parseInt(scrapeStats.waiting) || 0,
+                active: parseInt(scrapeStats.active) || 0,
+                completed: parseInt(scrapeStats.completed) || 0,
+                failed: parseInt(scrapeStats.failed) || 0
+            },
+            rating: {
+                waiting: parseInt(ratingStats.waiting) || 0,
+                active: parseInt(ratingStats.active) || 0,
+                completed: parseInt(ratingStats.completed) || 0,
+                failed: parseInt(ratingStats.failed) || 0
+            },
+            crm: {
+                waiting: parseInt(crmStats.waiting) || 0,
+                active: parseInt(crmStats.active) || 0,
+                completed: parseInt(crmStats.completed) || 0,
+                failed: parseInt(crmStats.failed) || 0
+            }
+        });
     } catch (error: any) {
         logger.error('获取队列状态失败:', error);
         res.status(500).json({ error: error.message });

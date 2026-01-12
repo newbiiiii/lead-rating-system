@@ -87,7 +87,7 @@ function initCharts() {
                     },
                     tooltip: {
                         callbacks: {
-                            label: function(context) {
+                            label: function (context) {
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                 const value = context.parsed;
                                 const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
@@ -151,7 +151,7 @@ function initCharts() {
                 plugins: {
                     legend: {
                         position: 'bottom',
-                        labels: { 
+                        labels: {
                             color: '#64748b',
                             usePointStyle: true,
                             padding: 20
@@ -264,17 +264,21 @@ function updateGradeStats(stats) {
 function updateRatingStats(stats) {
     const ratedEl = document.getElementById('rated-count');
     const pendingEl = document.getElementById('pending-rating-count');
+    const failedEl = document.getElementById('rating-failed-count');
 
     if (ratedEl) ratedEl.textContent = stats.rated || 0;
     if (pendingEl) pendingEl.textContent = stats.pending || 0;
+    if (failedEl) failedEl.textContent = stats.failed || 0;
 }
 
 function updateCrmStats(stats) {
     const syncedEl = document.getElementById('crm-synced-count');
     const pendingEl = document.getElementById('crm-pending-count');
+    const failedEl = document.getElementById('crm-failed-count');
 
     if (syncedEl) syncedEl.textContent = stats.synced || 0;
     if (pendingEl) pendingEl.textContent = stats.pending || 0;
+    if (failedEl) failedEl.textContent = stats.failed || 0;
 }
 
 function updateGradeChart(stats) {
@@ -322,7 +326,7 @@ function updateRecentLeads(data) {
     tbody.innerHTML = data.map(item => {
         const grade = item.overallRating || item.rating?.overallRating || '-';
         const gradeClass = ['A', 'B', 'C', 'D'].includes(grade) ? `grade-${grade.toLowerCase()}` : 'grade-unknown';
-        
+
         return `
             <tr>
                 <td><strong>${item.companyName || item.company?.name || '未知公司'}</strong></td>
@@ -337,7 +341,7 @@ function updateRecentLeads(data) {
 
 // 导出给HTML调用的函数
 window.refreshDashboard = loadDashboardData;
-window.loadRecentLeads = async function() {
+window.loadRecentLeads = async function () {
     const recentLeads = await fetchAPI('/api/dashboard/recent-leads?grades=A,B&limit=10');
     if (recentLeads) {
         updateRecentLeads(recentLeads.data || recentLeads);
