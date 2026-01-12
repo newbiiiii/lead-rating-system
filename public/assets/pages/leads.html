@@ -1,0 +1,295 @@
+<div class="section-card detail-header-card">
+    <div class="section-header no-border">
+        <div class="header-left">
+            <a href="javascript:history.back()" class="back-link">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                <span>返回任务详情</span>
+            </a>
+            <div class="header-title-group">
+                <h3 id="page-title-display">任务线索列表</h3>
+                <span class="header-id-badge" id="task-name-display">加载中...</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-secondary btn-sm icon-btn" onclick="refreshLeads()">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                刷新列表
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="section-card content-card">
+    <div class="table-container">
+        <table class="leads-table">
+            <thead>
+                <tr>
+                    <th style="width: 25%">公司名称</th>
+                    <th style="width: 20%">网站</th>
+                    <th style="width: 10%">评分</th>
+                    <th style="width: 25%">AI建议</th>
+                    <th style="width: 10%">状态</th>
+                    <th style="width: 10%">创建时间</th>
+                </tr>
+            </thead>
+            <tbody id="leads-body">
+                <tr>
+                    <td colspan="6" class="empty-state">
+                        <div class="loading-spinner"></div>
+                        <p>正在加载线索数据...</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div id="pagination-container" class="pagination-container"></div>
+</div>
+
+<style>
+    /* 复用 aggregate-task-detail.html 的样式变量 */
+    :root {
+        --card-bg-gradient: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    }
+
+    .detail-header-card {
+        background: var(--card-bg-gradient);
+        border: 1px solid #e2e8f0;
+        margin-bottom: 1.5rem;
+        padding: 1.5rem;
+        border-radius: 16px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .no-border {
+        border-bottom: none !important;
+        padding-bottom: 0 !important;
+    }
+
+    .header-left {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #64748b;
+        text-decoration: none;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: color 0.2s;
+        cursor: pointer;
+    }
+
+    .back-link:hover {
+        color: #4f46e5;
+    }
+
+    .header-title-group {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .header-title-group h3 {
+        font-size: 1.5rem;
+        color: #1e293b;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    .header-id-badge {
+        font-size: 0.875rem;
+        color: #4f46e5;
+        background: #eef2ff;
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        font-weight: 500;
+        border: 1px solid #e0e7ff;
+    }
+
+    .icon-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .content-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        overflow: hidden;
+    }
+
+    /* 表格样式优化 */
+    .leads-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .leads-table th {
+        padding: 1rem 1.5rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        white-space: nowrap;
+        text-align: left;
+    }
+
+    .leads-table td {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #e2e8f0;
+        vertical-align: middle;
+        transition: background 0.2s;
+        color: #334155;
+        font-size: 0.875rem;
+    }
+
+    .leads-table tbody tr:hover td {
+        background: #f8fafc;
+    }
+
+    .leads-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    /* 评分徽章 */
+    .grade-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        font-weight: 700;
+        font-size: 0.875rem;
+        border: 2px solid transparent;
+    }
+
+    .grade-a {
+        background: #dcfce7;
+        color: #15803d;
+        border-color: #86efac;
+    }
+
+    .grade-b {
+        background: #dbeafe;
+        color: #1d4ed8;
+        border-color: #93c5fd;
+    }
+
+    .grade-c {
+        background: #fef3c7;
+        color: #b45309;
+        border-color: #fcd34d;
+    }
+
+    .grade-d {
+        background: #fee2e2;
+        color: #b91c1c;
+        border-color: #fca5a5;
+    }
+
+    .grade-unknown {
+        background: #f1f5f9;
+        color: #64748b;
+        border-color: #e2e8f0;
+    }
+
+    /* 状态徽章 */
+    .status-badge {
+        display: inline-flex;
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    /* 分页 */
+    .pagination-container {
+        padding: 1.5rem;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .pagination-btn {
+        min-width: 36px;
+        height: 36px;
+        padding: 0 0.75rem;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        background: white;
+        color: #64748b;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .pagination-btn:hover:not(:disabled) {
+        border-color: #cbd5e1;
+        background: #f8fafc;
+        color: #1e293b;
+    }
+
+    .pagination-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background: #f1f5f9;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 3rem !important;
+        color: #64748b;
+    }
+
+    .loading-spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid #e2e8f0;
+        border-top-color: #4f46e5;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    /* 链接样式 */
+    .link-primary {
+        color: #4f46e5;
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.2s;
+    }
+
+    .link-primary:hover {
+        color: #4338ca;
+        text-decoration: underline;
+    }
+</style>

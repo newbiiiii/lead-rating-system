@@ -26,7 +26,8 @@
     "css:watch": "node node_modules/@tailwindcss/cli/dist/index.mjs -i ./public/assets/css/tailwind.css -o ./public/assets/css/styles.css --watch",
     "docker:build": "docker build -t lead-rating-system .",
     "docker:dev": "docker run -p 3000:3000 -e NODE_ENV=development lead-rating-system",
-    "docker:push": "echo 9tNykta8t39V | docker login 192.168.80.226:8080 -u admin --password-stdin && npm run docker:build && docker tag lead-rating-system:latest 192.168.80.226:8080/tes/lead-rating-system:latest && docker push 192.168.80.226:8080/tes/lead-rating-system:latest"
+    "docker:push": "echo 9tNykta8t39V | docker login 192.168.80.226:8080 -u admin --password-stdin && npm run docker:build && docker tag lead-rating-system:latest 192.168.80.226:8080/tes/lead-rating-system:latest && docker push 192.168.80.226:8080/tes/lead-rating-system:latest",
+    "start:prod": "pm2-runtime start ecosystem.config.js"
   },
   "keywords": [
     "scraping",
