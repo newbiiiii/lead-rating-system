@@ -9,7 +9,7 @@ import { randomUUID } from 'crypto';
 import { logger } from '../utils/logger';
 import { configLoader } from '../config/config-loader';
 import { db } from '../db';
-import { tasks, leads, contacts, companies, searchPoints } from '../db/schema';
+import { tasks, leads, contacts, companies, searchPoints, aggregateTasks } from '../db/schema';
 import { eq, sql, and } from 'drizzle-orm';
 import { GoogleMapsAdapter } from '../scraper/adapters/google-maps.adapter';
 import type { ScrapeParams } from '../scraper/base.adapter';
@@ -30,6 +30,8 @@ interface ScrapeJobData {
     limit: number;
     priority?: number;
     config?: any;  // 包含geolocation等配置
+    taskId?: string;        // 聚合任务传入的子任务ID
+    aggregateTaskId?: string; // 聚合任务ID
 }
 
 class ScraperWorker {
@@ -100,7 +102,8 @@ class ScraperWorker {
                         source: task.source,
                         query: task.query,
                         limit: task.targetCount || 100,
-                        config: task.config
+                        config: task.config,
+                        taskId: task.id // 恢复时也携带ID
                     },
                     {
                         priority: 1  // 高优先级
@@ -114,8 +117,64 @@ class ScraperWorker {
         }
     }
 
+    // 添加更新聚合任务进度的方法
+    private async updateAggregateTaskProgress(aggregateTaskId: string, type: 'completed' | 'failed') {
+        try {
+            // 1. 更新计数
+            if (type === 'completed') {
+                await db.update(aggregateTasks)
+                    .set({
+                        completedSubTasks: sql`${aggregateTasks.completedSubTasks} + 1`,
+                        updatedAt: new Date()
+                    })
+                    .where(eq(aggregateTasks.id, aggregateTaskId));
+            } else {
+                await db.update(aggregateTasks)
+                    .set({
+                        failedSubTasks: sql`${aggregateTasks.failedSubTasks} + 1`,
+                        updatedAt: new Date()
+                    })
+                    .where(eq(aggregateTasks.id, aggregateTaskId));
+            }
+
+            // 2. 检查是否全部完成
+            const aggTask = await db.query.aggregateTasks.findFirst({
+                where: eq(aggregateTasks.id, aggregateTaskId)
+            });
+
+            if (aggTask) {
+                const total = aggTask.totalSubTasks || 0;
+                const completed = aggTask.completedSubTasks || 0;
+                const failed = aggTask.failedSubTasks || 0;
+
+                if (completed + failed >= total) {
+                    // 全部子任务已结束
+                    const finalStatus = completed > 0 ? 'completed' : 'failed';
+
+                    if (aggTask.status !== 'completed' && aggTask.status !== 'failed' && aggTask.status !== 'cancelled') {
+                        await db.update(aggregateTasks)
+                            .set({
+                                status: finalStatus,
+                                completedAt: new Date(),
+                                updatedAt: new Date()
+                            })
+                            .where(eq(aggregateTasks.id, aggregateTaskId));
+
+                        logger.info(`[聚合任务结束] ${aggTask.name} (ID: ${aggregateTaskId}) - ${finalStatus}`);
+                    }
+                }
+            }
+        } catch (error) {
+            logger.error(`[聚合任务更新失败] ${aggregateTaskId}:`, error);
+        }
+    }
+
     private async processJob(job: Job<ScrapeJobData>) {
-        const { source, query, limit, config } = job.data;
+        const { source, query, limit, config, taskId: providedTaskId } = job.data;
+
+        logger.info(`[DEBUG] Worker received job ${job.id}`);
+        logger.info(`[DEBUG] Job Data: ${JSON.stringify(job.data)}`);
+        logger.info(`[DEBUG] Provided TaskID: ${providedTaskId}`);
 
         // 1. 检查是否有未完成的任务（恢复模式）
         const cityName = config?.geolocation?.city || config?.geolocation?.country || '全国';
@@ -124,47 +183,96 @@ class ScraperWorker {
         let taskId: string;
         let isResume = false;
 
-        // 查找是否存在相同配置的运行中任务
-        const existingTasks = await db.select()
-            .from(tasks)
-            .where(
-                and(
-                    eq(tasks.source, source),
-                    eq(tasks.query, query),
-                    eq(tasks.status, 'running')
-                )
-            )
-            .limit(1);
+        // 如果Job中提供了taskId，优先使用它
+        if (providedTaskId) {
+            taskId = providedTaskId;
+            logger.info(`[DEBUG] Using provided taskId: ${taskId}`);
 
-        if (existingTasks.length > 0) {
-            // 恢复现有任务
-            taskId = existingTasks[0].id;
-            isResume = true;
-            logger.info(`\n${'='.repeat(60)}`);
-            logger.info(`[任务恢复] ${source} - "${query}"`);
-            logger.info(`[任务ID] ${taskId}`);
-            logger.info(`[恢复模式] 从中断点继续执行`);
-            logger.info(`${'='.repeat(60)}\n`);
-        } else {
-            // 创建新Task记录
-            taskId = randomUUID();
-
-            await db.insert(tasks).values({
-                id: taskId,
-                name: taskName,
-                source,
-                query,
-                targetCount: limit,
-                config: config || {},
-                status: 'running',
-                startedAt: new Date()
+            // 检查数据库中是否存在该任务
+            const existingTask = await db.query.tasks.findFirst({
+                where: eq(tasks.id, taskId)
             });
 
-            logger.info(`\n${'='.repeat(60)}`);
-            logger.info(`[任务开始] ${source} - "${query}"`);
-            logger.info(`[任务ID] ${taskId}`);
-            logger.info(`[目标数量] ${limit} 条线索`);
-            logger.info(`${'='.repeat(60)}\n`);
+            if (existingTask) {
+                logger.info(`[DEBUG] Found existing task in DB: ${existingTask.id}, status: ${existingTask.status}`);
+                // 如果任务存在，更新状态为running
+                if (existingTask.status !== 'running') {
+                    await db.update(tasks)
+                        .set({ status: 'running', startedAt: new Date() })
+                        .where(eq(tasks.id, taskId));
+                }
+
+                // 如果之前已经在运行（比如重启Worker），标记为恢复模式
+                if (existingTask.status === 'running') {
+                    isResume = true;
+                }
+
+                logger.info(`\n${'='.repeat(60)}`);
+                logger.info(`[任务启动] 使用指定ID: ${taskId}`);
+                logger.info(`[任务名称] ${existingTask.name}`);
+                logger.info(`${'='.repeat(60)}\n`);
+            } else {
+                logger.warn(`[DEBUG] Task ${taskId} NOT FOUND in DB. Creating new record.`);
+                // 如果提供了ID但数据库不存在（极端情况），创建一个新记录
+                logger.warn(`[任务警告] 指定ID ${taskId} 不存在，创建新记录`);
+                await db.insert(tasks).values({
+                    id: taskId,
+                    name: taskName,
+                    source,
+                    query,
+                    targetCount: limit,
+                    config: config || {},
+                    status: 'running',
+                    startedAt: new Date(),
+                    aggregateTaskId: job.data.aggregateTaskId // 关联聚合任务
+                });
+            }
+        } else {
+            logger.info(`[DEBUG] No taskId provided. Using legacy logic.`);
+            // 旧逻辑：自动检测重复或创建新任务
+            // 查找是否存在相同配置的运行中任务
+            const existingTasks = await db.select()
+                .from(tasks)
+                .where(
+                    and(
+                        eq(tasks.source, source),
+                        eq(tasks.query, query),
+                        eq(tasks.status, 'running')
+                    )
+                )
+                .limit(1);
+
+            if (existingTasks.length > 0) {
+                // 恢复现有任务
+                taskId = existingTasks[0].id;
+                isResume = true;
+                logger.info(`\n${'='.repeat(60)}`);
+                logger.info(`[任务恢复] ${source} - "${query}"`);
+                logger.info(`[任务ID] ${taskId}`);
+                logger.info(`[恢复模式] 从中断点继续执行`);
+                logger.info(`${'='.repeat(60)}\n`);
+            } else {
+                // 创建新Task记录
+                taskId = randomUUID();
+                logger.info(`[DEBUG] Legacy logic creating NEW task ID: ${taskId}`);
+
+                await db.insert(tasks).values({
+                    id: taskId,
+                    name: taskName,
+                    source,
+                    query,
+                    targetCount: limit,
+                    config: config || {},
+                    status: 'running',
+                    startedAt: new Date()
+                });
+
+                logger.info(`\n${'='.repeat(60)}`);
+                logger.info(`[任务开始] ${source} - "${query}"`);
+                logger.info(`[任务ID] ${taskId}`);
+                logger.info(`[目标数量] ${limit} 条线索`);
+                logger.info(`${'='.repeat(60)}\n`);
+            }
         }
 
         const adapter = this.adapters[source];
@@ -341,6 +449,11 @@ class ScraperWorker {
                     })
                     .where(eq(tasks.id, taskId));
 
+                // NEW: 更新聚合任务状态
+                if (currentTask?.aggregateTaskId) {
+                    await this.updateAggregateTaskProgress(currentTask.aggregateTaskId, 'completed');
+                }
+
                 logger.info(`[任务完成] 状态已更新为 completed`);
             } else {
                 logger.info(`[任务终止] 任务已被用户取消，保持cancelled状态`);
@@ -392,6 +505,14 @@ class ScraperWorker {
                         completedAt: new Date()
                     })
                     .where(eq(tasks.id, taskId));
+
+                // NEW: 更新聚合任务状态 (失败)
+                const currentTask = await db.query.tasks.findFirst({
+                    where: eq(tasks.id, taskId)
+                });
+                if (currentTask?.aggregateTaskId) {
+                    await this.updateAggregateTaskProgress(currentTask.aggregateTaskId, 'failed');
+                }
 
                 logger.error(`[任务失败] ${taskId} - 所有重试已用尽:`, error.message);
             } else {
