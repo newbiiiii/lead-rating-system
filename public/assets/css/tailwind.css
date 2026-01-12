@@ -247,6 +247,41 @@
         color: var(--color-text-primary);
     }
 
+    .stat-value-dual {
+        @apply flex items-baseline gap-1 mb-1 flex-wrap;
+    }
+
+    .dual-primary {
+        @apply text-[28px] font-bold;
+        color: var(--color-text-primary);
+    }
+
+    .dual-separator {
+        @apply text-lg font-medium mx-0.5;
+        color: var(--color-text-muted);
+    }
+
+    .dual-secondary {
+        @apply text-lg font-semibold;
+        color: var(--color-text-secondary);
+    }
+
+    .dual-detail {
+        @apply flex gap-2 text-sm font-medium ml-1;
+    }
+
+    .grade-a-tag {
+        @apply px-1.5 py-0.5 rounded text-xs font-semibold;
+        background: rgba(16, 185, 129, 0.15);
+        color: #059669;
+    }
+
+    .grade-b-tag {
+        @apply px-1.5 py-0.5 rounded text-xs font-semibold;
+        background: rgba(59, 130, 246, 0.15);
+        color: #2563eb;
+    }
+
     .stat-label {
         @apply text-sm;
         color: var(--color-text-muted);

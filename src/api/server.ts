@@ -1143,6 +1143,48 @@ app.get('/api/dashboard/grade-stats', async (req, res) => {
     }
 });
 
+// 获取评级状态统计 (已评级/待评级)
+app.get('/api/dashboard/rating-stats', async (req, res) => {
+    try {
+        const result = await db.execute(sql`
+            SELECT 
+                COUNT(CASE WHEN rating_status = 'completed' THEN 1 END) as rated,
+                COUNT(CASE WHEN rating_status = 'pending' THEN 1 END) as pending
+            FROM leads
+        `);
+
+        const stats = result.rows[0] as any;
+        res.json({
+            rated: parseInt(stats.rated) || 0,
+            pending: parseInt(stats.pending) || 0
+        });
+    } catch (error: any) {
+        logger.error('获取评级状态统计失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 获取CRM同步状态统计 (已同步/待同步)
+app.get('/api/dashboard/crm-stats', async (req, res) => {
+    try {
+        const result = await db.execute(sql`
+            SELECT 
+                COUNT(CASE WHEN crm_sync_status = 'synced' THEN 1 END) as synced,
+                COUNT(CASE WHEN crm_sync_status = 'pending' THEN 1 END) as pending
+            FROM leads
+        `);
+
+        const stats = result.rows[0] as any;
+        res.json({
+            synced: parseInt(stats.synced) || 0,
+            pending: parseInt(stats.pending) || 0
+        });
+    } catch (error: any) {
+        logger.error('获取CRM同步状态统计失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // 获取最新优质客户 (支持按评级筛选)
 app.get('/api/dashboard/recent-leads', async (req, res) => {
     try {

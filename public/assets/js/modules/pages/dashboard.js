@@ -166,16 +166,17 @@ function initCharts() {
 async function loadDashboardData() {
     try {
         // 并行加载所有数据
-        const [queueStats, gradeStats, recentLeads] = await Promise.all([
+        const [queueStats, gradeStats, ratingStats, crmStats, recentLeads] = await Promise.all([
             fetchAPI('/api/queues/stats'),
             fetchAPI('/api/dashboard/grade-stats'),
+            fetchAPI('/api/dashboard/rating-stats'),
+            fetchAPI('/api/dashboard/crm-stats'),
             fetchAPI('/api/dashboard/recent-leads?grades=A,B&limit=10')
         ]);
 
         // 更新队列卡片
         if (queueStats) {
             renderQueueCards(queueStats);
-            updatePendingCount(queueStats);
         }
 
         // 更新评级统计
@@ -183,6 +184,16 @@ async function loadDashboardData() {
             updateGradeStats(gradeStats);
             updateGradeChart(gradeStats);
             renderGradeLegend(gradeStats);
+        }
+
+        // 更新评级状态统计
+        if (ratingStats) {
+            updateRatingStats(ratingStats);
+        }
+
+        // 更新CRM同步统计
+        if (crmStats) {
+            updateCrmStats(crmStats);
         }
 
         // 更新最新优质客户
@@ -233,24 +244,37 @@ function renderQueueCards(stats) {
     container.innerHTML = html;
 }
 
-function updatePendingCount(stats) {
-    const pending = Object.values(stats).reduce((sum, q) => {
-        return sum + (q.waiting || 0) + (q.active || 0);
-    }, 0);
-    
-    const el = document.getElementById('pending-count');
-    if (el) el.textContent = pending;
-}
-
 function updateGradeStats(stats) {
     // 更新统计卡片
     const totalEl = document.getElementById('total-leads');
+    const qualityTotalEl = document.getElementById('quality-total');
     const gradeAEl = document.getElementById('grade-a-count');
     const gradeBEl = document.getElementById('grade-b-count');
 
+    const gradeA = stats.A || 0;
+    const gradeB = stats.B || 0;
+    const qualityTotal = gradeA + gradeB;
+
     if (totalEl) totalEl.textContent = stats.total || 0;
-    if (gradeAEl) gradeAEl.textContent = stats.A || 0;
-    if (gradeBEl) gradeBEl.textContent = stats.B || 0;
+    if (qualityTotalEl) qualityTotalEl.textContent = qualityTotal;
+    if (gradeAEl) gradeAEl.textContent = gradeA;
+    if (gradeBEl) gradeBEl.textContent = gradeB;
+}
+
+function updateRatingStats(stats) {
+    const ratedEl = document.getElementById('rated-count');
+    const pendingEl = document.getElementById('pending-rating-count');
+
+    if (ratedEl) ratedEl.textContent = stats.rated || 0;
+    if (pendingEl) pendingEl.textContent = stats.pending || 0;
+}
+
+function updateCrmStats(stats) {
+    const syncedEl = document.getElementById('crm-synced-count');
+    const pendingEl = document.getElementById('crm-pending-count');
+
+    if (syncedEl) syncedEl.textContent = stats.synced || 0;
+    if (pendingEl) pendingEl.textContent = stats.pending || 0;
 }
 
 function updateGradeChart(stats) {
