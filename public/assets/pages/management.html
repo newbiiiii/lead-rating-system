@@ -5,16 +5,14 @@
     </div>
 
     <!-- 搜索和筛选 -->
-    <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: flex-end;">
-        <div style="flex: 1; min-width: 200px;">
-            <label style="display: block; color: #6b7280; font-size: 12px; margin-bottom: 4px;">关键词搜索</label>
-            <input type="text" id="query-filter" placeholder="搜索任务名称或关键词..."
-                style="width: 100%; padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 14px;">
+    <div class="filter-bar">
+        <div class="filter-group flex-1">
+            <label>关键词搜索</label>
+            <input type="text" id="query-filter" placeholder="搜索任务名称或关键词..." class="filter-input">
         </div>
-        <div style="min-width: 150px;">
-            <label style="display: block; color: #6b7280; font-size: 12px; margin-bottom: 4px;">任务状态</label>
-            <select id="status-filter"
-                style="width: 100%; padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 14px;">
+        <div class="filter-group">
+            <label>任务状态</label>
+            <select id="status-filter" class="filter-select">
                 <option value="">全部状态</option>
                 <option value="pending">等待中</option>
                 <option value="running">运行中</option>
@@ -22,24 +20,17 @@
                 <option value="failed">失败</option>
             </select>
         </div>
-        <div style="min-width: 120px;">
-            <label style="display: block; color: #6b7280; font-size: 12px; margin-bottom: 4px;">每页显示</label>
-            <select id="page-size-selector" onchange="changePageSize(this.value)"
-                style="width: 100%; padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 14px;">
+        <div class="filter-group">
+            <label>每页显示</label>
+            <select id="page-size-selector" onchange="changePageSize(this.value)" class="filter-select">
                 <option value="5" selected>5条</option>
                 <option value="10">10条</option>
                 <option value="20">20条</option>
                 <option value="50">50条</option>
             </select>
         </div>
-        <button onclick="applyFilters()"
-            style="padding: 8px 16px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
-            搜索
-        </button>
-        <button onclick="resetFilters()"
-            style="padding: 8px 16px; background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer;">
-            重置
-        </button>
+        <button onclick="applyFilters()" class="btn-filter">搜索</button>
+        <button onclick="resetFilters()" class="btn-reset">重置</button>
     </div>
 
     <div class="table-container">
@@ -66,25 +57,17 @@
 </div>
 
 <!-- 任务详情弹窗 -->
-<div id="task-detail-modal"
-    style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; padding: 40px;">
-    <div
-        style="max-width: 1200px; margin: 0 auto; background: #1a1a2e; border-radius: 12px; padding: 24px; max-height: 90vh; overflow-y: auto;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h2 id="modal-task-name" style="color: #fff; margin: 0;">任务详情</h2>
-            <div style="display: flex; gap: 10px;">
-                <button onclick="terminateTask(window.currentTaskId)"
-                    style="background: #ef4444; border: none; color: #fff; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
-                    终止任务
-                </button>
-                <button onclick="closeTaskDetail()"
-                    style="background: #374151; border: none; color: #fff; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
-                    关闭
-                </button>
+<div id="task-detail-modal" class="modal-dark-overlay">
+    <div class="modal-dark-container">
+        <div class="modal-dark-header">
+            <h2 id="modal-task-name">任务详情</h2>
+            <div class="modal-dark-actions">
+                <button onclick="terminateTask(window.currentTaskId)" class="btn-danger">终止任务</button>
+                <button onclick="closeTaskDetail()" class="btn-dark">关闭</button>
             </div>
         </div>
-        <div id="task-detail-info" style="margin-bottom: 24px;"></div>
-        <h3 style="color: #cbd5e1; margin-bottom: 16px;">关联线索</h3>
+        <div id="task-detail-info" class="mb-6"></div>
+        <h3 class="modal-dark-subtitle">关联线索</h3>
         <div class="table-container">
             <table class="data-table">
                 <thead>

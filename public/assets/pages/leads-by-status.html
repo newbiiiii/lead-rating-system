@@ -1,18 +1,14 @@
 <div class="section-card">
     <div class="section-header">
         <h3 id="status-page-title">线索管理</h3>
-        <div style="display: flex; gap: 10px;">
-            <button class="btn-primary" onclick="retryAllLeads()"
-                style="background: linear-gradient(135deg, #10b981, #059669);">
-                批量重新评分
-            </button>
+        <div class="header-actions">
+            <button class="btn-success" onclick="retryAllLeads()">批量重新评分</button>
             <button class="btn-secondary btn-sm" onclick="refreshLeadsList()">刷新</button>
         </div>
     </div>
 
-    <div id="status-hint-box"
-        style="margin-bottom: 16px; padding: 16px; background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px;">
-        <p style="margin: 0; color: #92400e; font-size: 14px;">
+    <div id="status-hint-box" class="hint-box warning">
+        <p>
             <strong>说明：</strong><span id="status-hint-text">加载中...</span>
         </p>
     </div>

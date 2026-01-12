@@ -5,16 +5,14 @@
     </div>
 
     <!-- 搜索和筛选 -->
-    <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: flex-end;">
-        <div style="flex: 1; min-width: 200px;">
-            <label style="display: block; color: #6b7280; font-size: 12px; margin-bottom: 4px;">关键词搜索</label>
-            <input type="text" id="query-filter-rating" placeholder="搜索任务名称或关键词..."
-                style="width: 100%; padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 14px;">
+    <div class="filter-bar">
+        <div class="filter-group flex-1">
+            <label>关键词搜索</label>
+            <input type="text" id="query-filter-rating" placeholder="搜索任务名称或关键词..." class="filter-input">
         </div>
-        <div style="min-width: 150px;">
-            <label style="display: block; color: #6b7280; font-size: 12px; margin-bottom: 4px;">任务状态</label>
-            <select id="status-filter-rating"
-                style="width: 100%; padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 14px;">
+        <div class="filter-group">
+            <label>任务状态</label>
+            <select id="status-filter-rating" class="filter-select">
                 <option value="">全部状态</option>
                 <option value="pending">等待中</option>
                 <option value="running">运行中</option>
@@ -22,24 +20,17 @@
                 <option value="failed">失败</option>
             </select>
         </div>
-        <div style="min-width: 120px;">
-            <label style="display: block; color: #6b7280; font-size: 12px; margin-bottom: 4px;">每页显示</label>
-            <select id="page-size-selector-rating" onchange="changePageSizeRating(this.value)"
-                style="width: 100%; padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 14px;">
+        <div class="filter-group">
+            <label>每页显示</label>
+            <select id="page-size-selector-rating" onchange="changePageSizeRating(this.value)" class="filter-select">
                 <option value="5" selected>5条</option>
                 <option value="10">10条</option>
                 <option value="20">20条</option>
                 <option value="50">50条</option>
             </select>
         </div>
-        <button onclick="applyFiltersRating()"
-            style="padding: 8px 16px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
-            搜索
-        </button>
-        <button onclick="resetFiltersRating()"
-            style="padding: 8px 16px; background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer;">
-            重置
-        </button>
+        <button onclick="applyFiltersRating()" class="btn-filter">搜索</button>
+        <button onclick="resetFiltersRating()" class="btn-reset">重置</button>
     </div>
 
     <div class="table-container">
