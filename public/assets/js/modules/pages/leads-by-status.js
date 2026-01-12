@@ -109,18 +109,18 @@ function updatePageUI() {
         hintText.parentElement.style.color = config.hintColor;
     }
 
-    // 更新表头（失败状态显示额外的"失败原因"列）
+    // 更新表头（不同状态显示不同列）
     const thead = document.querySelector('.data-table thead tr');
     if (thead) {
         const showError = currentStatus === 'failed';
+        const showRatingDetails = currentStatus === 'completed';
         thead.innerHTML = `
             <th>公司名称</th>
             <th>网站</th>
             <th>所属任务</th>
-            <th>状态</th>
+            ${showRatingDetails ? '<th>评级</th><th>AI建议</th><th>AI分析</th><th>评级时间</th>' : '<th>状态</th>'}
             ${showError ? '<th>失败原因</th>' : ''}
-            <th>创建时间</th>
-            <th>操作</th>
+            ${!showRatingDetails ? '<th>创建时间</th><th>操作</th>' : ''}
         `;
     }
 }
@@ -146,12 +146,52 @@ export async function loadLeadsByStatus(page = 1, size = 20) {
 
     const config = STATUS_CONFIG[currentStatus];
     const showError = currentStatus === 'failed';
+    const showRatingDetails = currentStatus === 'completed';
     tbody.innerHTML = leads.map((lead, index) => {
         const globalIndex = (pagination.page - 1) * pagination.pageSize + index + 1;
         const errorColumn = showError ? `
             <td style="max-width: 200px;">
                 ${lead.ratingError ? `<span style="color: #dc2626; font-size: 12px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${lead.ratingError.replace(/"/g, '&quot;')}">${lead.ratingError.substring(0, 50)}${lead.ratingError.length > 50 ? '...' : ''}</span>` : '<span style="color:#9ca3af;">-</span>'}
             </td>` : '';
+
+        // 评级徽章颜色
+        const ratingColors = {
+            'A': { bg: '#dcfce7', color: '#16a34a', border: '#86efac' },
+            'B': { bg: '#dbeafe', color: '#2563eb', border: '#93c5fd' },
+            'C': { bg: '#fef3c7', color: '#d97706', border: '#fcd34d' },
+            'D': { bg: '#fee2e2', color: '#dc2626', border: '#fca5a5' }
+        };
+        const ratingStyle = ratingColors[lead.overallRating] || { bg: '#f3f4f6', color: '#6b7280', border: '#e5e7eb' };
+
+        // completed 状态的详情列
+        const ratingDetailsColumns = showRatingDetails ? `
+            <td>
+                <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: ${ratingStyle.bg}; color: ${ratingStyle.color}; font-size: 14px; font-weight: 700; border: 2px solid ${ratingStyle.border};">${lead.overallRating || '-'}</span>
+            </td>
+            <td style="max-width: 200px;">
+                ${lead.suggestion ? `<span style="color: #374151; font-size: 12px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${lead.suggestion.replace(/"/g, '&quot;')}">${lead.suggestion.substring(0, 60)}${lead.suggestion.length > 60 ? '...' : ''}</span>` : '<span style="color:#9ca3af;">-</span>'}
+            </td>
+            <td style="max-width: 150px;">
+                ${lead.think ? `<span style="color: #6b7280; font-size: 11px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${lead.think.replace(/"/g, '&quot;')}">${lead.think.substring(0, 40)}${lead.think.length > 40 ? '...' : ''}</span>` : '<span style="color:#9ca3af;">-</span>'}
+            </td>
+            <td style="color: #6b7280; font-size: 13px;">${lead.ratedAt ? formatDate(lead.ratedAt) : '-'}</td>
+        ` : `
+            <td>
+                <span style="display: inline-block; padding: 6px 12px; border-radius: 12px; background: ${config.badgeBg}; color: ${config.badgeColor}; font-size: 11px; font-weight: 700; border: 1px solid ${config.badgeBorder};">${config.badgeText}</span>
+            </td>
+        `;
+
+        // 操作列（completed状态不显示）
+        const actionColumns = !showRatingDetails ? `
+            <td style="color: #6b7280; font-size: 13px;">${formatDate(lead.createdAt)}</td>
+            <td>
+                <button onclick="retrySingleLead('${lead.id}')" 
+                    style="padding: 6px 12px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">
+                    重新评分
+                </button>
+            </td>
+        ` : '';
+
         return `<tr style="background: white; transition: all 0.2s; border-bottom: 1px solid #f3f4f6;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='white'">
             <td>
                 <div style="display: flex; align-items: center; gap: 10px;">
@@ -163,17 +203,9 @@ export async function loadLeadsByStatus(page = 1, size = 20) {
                 ${lead.website ? `<a href="${lead.website}" target="_blank" style="color: #667eea; text-decoration: none; font-weight: 500;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${lead.website.substring(0, 40)}${lead.website.length > 40 ? '...' : ''}</a>` : '<span style="color:#9ca3af;">-</span>'}
             </td>
             <td style="color: #6b7280; font-weight: 500;">${lead.taskName || '-'}</td>
-            <td>
-                <span style="display: inline-block; padding: 6px 12px; border-radius: 12px; background: ${config.badgeBg}; color: ${config.badgeColor}; font-size: 11px; font-weight: 700; border: 1px solid ${config.badgeBorder};">${config.badgeText}</span>
-            </td>
+            ${ratingDetailsColumns}
             ${errorColumn}
-            <td style="color: #6b7280; font-size: 13px;">${formatDate(lead.createdAt)}</td>
-            <td>
-                <button onclick="retrySingleLead('${lead.id}')" 
-                    style="padding: 6px 12px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">
-                    重新评分
-                </button>
-            </td>
+            ${actionColumns}
         </tr>`;
     }).join('');
 

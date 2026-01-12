@@ -451,9 +451,14 @@ app.get('/api/leads/by-status', async (req, res) => {
                 l.rating_status as "ratingStatus",
                 l.rating_error as "ratingError",
                 t.id as "taskId",
-                t.name as "taskName"
+                t.name as "taskName",
+                lr.overall_rating as "overallRating",
+                lr.suggestion,
+                lr.think,
+                lr.rated_at as "ratedAt"
             FROM leads l
             JOIN tasks t ON l.task_id = t.id
+            LEFT JOIN lead_ratings lr ON l.id = lr.lead_id
             WHERE l.rating_status = ${status}
             ORDER BY l.created_at DESC
             LIMIT ${pageSize} OFFSET ${offset}
