@@ -109,6 +109,7 @@ export const leads = pgTable('leads', {
 
     // CRM同步状态
     crmSyncStatus: varchar('crm_sync_status', { length: 20 }).default('pending'), // pending, synced, failed
+    crmLeadId: varchar('crm_lead_id', { length: 50 }), // CRM系统返回的线索ID，存在则表示已同步
     crmSyncedAt: timestamp('crm_synced_at'),
     crmSyncError: text('crm_sync_error'), // 同步失败原因
 

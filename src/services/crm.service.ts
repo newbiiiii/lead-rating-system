@@ -35,6 +35,8 @@ export interface CrmLead {
     mobile: string;
     linkedinUrl: string;
     crmSyncStatus: string | null;
+    crmLeadId: string | null;
+    crmSyncedAt: Date | null;
 }
 
 /**
@@ -76,6 +78,8 @@ export async function getLeadForCrm(leadId: string): Promise<CrmLead | null> {
                l.industry,
                l.scraped_at AS "scrapedAt",
                l.rating,
+               l.crm_lead_id AS "crmLeadId",
+               l.crm_synced_at AS "crmSyncedAt",
                lr.overall_rating AS "overallRating",
                lr.suggestion,
                lr.think,
@@ -104,7 +108,7 @@ export async function getLeadForCrm(leadId: string): Promise<CrmLead | null> {
 /**
  * 调用 CRM API
  */
-export async function callCrmApi(lead: CrmLead): Promise<{ success: boolean; message: string }> {
+export async function callCrmApi(lead: CrmLead): Promise<{ success: boolean; message: string; crmLeadId?: string }> {
     // 1.1. 获取token
     const accessToken = await getAccessToken();
     logger.info(`[CRM同步] 获取token: ${accessToken}`);
@@ -174,16 +178,18 @@ export async function callCrmApi(lead: CrmLead): Promise<{ success: boolean; mes
     }
 
     logger.info(`[CRM同步] 线索创建成功: ${lead.companyName}`);
+    const crmLeadId = result?.data?.id ? String(result.data.id) : undefined;
     return {
         success: true,
-        message: `Lead ${lead.companyName} synced successfully`
+        message: `Lead ${lead.companyName} synced successfully`,
+        crmLeadId
     };
 }
 
 /**
  * 更新 Lead 同步状态为成功
  */
-export async function markLeadAsSynced(leadId: string): Promise<void> {
+export async function markLeadAsSynced(leadId: string, crmLeadId?: string): Promise<void> {
     await db.transaction(async (tx) => {
         // 更新 Lead 状态，清除错误信息
         await tx.update(leads)
@@ -191,7 +197,8 @@ export async function markLeadAsSynced(leadId: string): Promise<void> {
                 crmSyncStatus: 'synced',
                 crmSyncedAt: new Date(),
                 crmSyncError: null,
-                updatedAt: new Date()
+                updatedAt: new Date(),
+                crmLeadId: crmLeadId || null,
             })
             .where(eq(leads.id, leadId));
 
@@ -243,6 +250,12 @@ export async function syncLeadToCrm(leadId: string): Promise<CrmSyncResult> {
         if (!lead) {
             throw new Error(`Lead not found: ${leadId}`);
         }
+
+        if (lead.crmLeadId) {
+            logger.info(`[CRM同步] 跳过: 已同步, ID: ${lead.crmLeadId}`);
+            return { success: true, leadId, message: 'Already synced' };
+        }
+
         // 2. 调用 CRM API
         const apiResult = await callCrmApi(lead);
 
@@ -258,7 +271,7 @@ export async function syncLeadToCrm(leadId: string): Promise<CrmSyncResult> {
         }
 
         // 3. 更新数据库状态为成功
-        await markLeadAsSynced(leadId);
+        await markLeadAsSynced(leadId, apiResult.crmLeadId);
 
         return {
             success: true,
