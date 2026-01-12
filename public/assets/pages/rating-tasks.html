@@ -56,3 +56,34 @@
     </div>
     <div id="pagination-container-rating"></div>
 </div>
+
+<!-- 任务详情弹窗 -->
+<div id="task-detail-modal" class="modal-dark-overlay">
+    <div class="modal-dark-container">
+        <div class="modal-dark-header">
+            <h2 id="modal-task-name">任务详情</h2>
+            <div class="modal-dark-actions">
+                <button onclick="closeTaskDetail()" class="btn-dark">关闭</button>
+            </div>
+        </div>
+        <div id="task-detail-info" class="mb-6"></div>
+        <h3 class="modal-dark-subtitle">关联线索</h3>
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>公司名称</th>
+                        <th>网站</th>
+                        <th>行业</th>
+                        <th>评分</th>
+                        <th>评级状态</th>
+                        <th>综合评级</th>
+                        <th>建议</th>
+                    </tr>
+                </thead>
+                <tbody id="task-leads-body"></tbody>
+            </table>
+        </div>
+        <div id="detail-pagination"></div>
+    </div>
+</div>
