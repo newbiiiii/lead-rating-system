@@ -449,6 +449,7 @@ app.get('/api/leads/by-status', async (req, res) => {
                 l.website,
                 l.created_at as "createdAt",
                 l.rating_status as "ratingStatus",
+                l.rating_error as "ratingError",
                 t.id as "taskId",
                 t.name as "taskName"
             FROM leads l

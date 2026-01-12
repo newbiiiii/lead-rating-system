@@ -95,6 +95,21 @@ function updatePageUI() {
         hintText.innerHTML = config.hint;
         hintText.parentElement.style.color = config.hintColor;
     }
+
+    // 更新表头（失败状态显示额外的"失败原因"列）
+    const thead = document.querySelector('.data-table thead tr');
+    if (thead) {
+        const showError = currentStatus === 'failed';
+        thead.innerHTML = `
+            <th>公司名称</th>
+            <th>网站</th>
+            <th>所属任务</th>
+            <th>状态</th>
+            ${showError ? '<th>失败原因</th>' : ''}
+            <th>创建时间</th>
+            <th>操作</th>
+        `;
+    }
 }
 
 /**
@@ -117,8 +132,13 @@ export async function loadLeadsByStatus(page = 1, size = 20) {
     }
 
     const config = STATUS_CONFIG[currentStatus];
+    const showError = currentStatus === 'failed';
     tbody.innerHTML = leads.map((lead, index) => {
         const globalIndex = (pagination.page - 1) * pagination.pageSize + index + 1;
+        const errorColumn = showError ? `
+            <td style="max-width: 200px;">
+                ${lead.ratingError ? `<span style="color: #dc2626; font-size: 12px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${lead.ratingError.replace(/"/g, '&quot;')}">${lead.ratingError.substring(0, 50)}${lead.ratingError.length > 50 ? '...' : ''}</span>` : '<span style="color:#9ca3af;">-</span>'}
+            </td>` : '';
         return `<tr style="background: white; transition: all 0.2s; border-bottom: 1px solid #f3f4f6;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='white'">
             <td>
                 <div style="display: flex; align-items: center; gap: 10px;">
@@ -133,6 +153,7 @@ export async function loadLeadsByStatus(page = 1, size = 20) {
             <td>
                 <span style="display: inline-block; padding: 6px 12px; border-radius: 12px; background: ${config.badgeBg}; color: ${config.badgeColor}; font-size: 11px; font-weight: 700; border: 1px solid ${config.badgeBorder};">${config.badgeText}</span>
             </td>
+            ${errorColumn}
             <td style="color: #6b7280; font-size: 13px;">${formatDate(lead.createdAt)}</td>
             <td>
                 <button onclick="retrySingleLead('${lead.id}')" 

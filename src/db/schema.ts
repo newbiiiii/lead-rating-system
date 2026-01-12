@@ -105,6 +105,7 @@ export const leads = pgTable('leads', {
 
     // AI评级状态
     ratingStatus: varchar('rating_status', { length: 20 }).default('pending'),
+    ratingError: text('rating_error'), // 评分失败原因
 
     // CRM同步状态
     crmSyncStatus: varchar('crm_sync_status', { length: 20 }).default('pending'), // pending, synced, failed

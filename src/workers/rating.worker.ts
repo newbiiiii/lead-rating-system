@@ -92,10 +92,11 @@ class RatingWorker {
                         ratedAt: new Date()
                     });
 
-                    // 更新线索状态
+                    // 更新线索状态，清除之前的错误信息
                     await tx.update(leads)
                         .set({
                             ratingStatus: 'completed',
+                            ratingError: null,
                             updatedAt: new Date()
                         })
                         .where(eq(leads.id, leadId));
@@ -124,10 +125,12 @@ class RatingWorker {
             const retryDecision = shouldRetry(error, attemptsMade, maxAttempts);
 
             if (!retryDecision.shouldRetry) {
-                // 标记为永久失败
+                // 标记为永久失败，保存错误信息
+                const errorMessage = error.message || String(error);
                 await db.update(leads)
                     .set({
                         ratingStatus: 'failed',
+                        ratingError: errorMessage.substring(0, 2000), // 限制长度
                         updatedAt: new Date()
                     })
                     .where(eq(leads.id, leadId));
