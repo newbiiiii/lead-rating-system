@@ -923,14 +923,14 @@ app.post('/api/import/leads/sync-crm', async (req, res) => {
 
 // ============ CRM 同步管理 ============
 
-// 查询任务的CRM同步统计
+// 查询任务的CRM同步统计 (仅统计A/B级线索)
 app.get('/api/crm/tasks', async (req: any, res: any) => {
     try {
         const page = parseInt(req.query.page as string) || 1;
         const pageSize = parseInt(req.query.pageSize as string) || 20;
         const offset = (page - 1) * pageSize;
 
-        // 查询所有任务及其CRM同步统计
+        // 查询所有任务及其CRM同步统计 (只统计A/B级线索)
         const tasksResult = await db.execute(sql`
             SELECT 
                 t.id,
@@ -939,11 +939,12 @@ app.get('/api/crm/tasks', async (req: any, res: any) => {
                 t.query,
                 t.total_leads as "totalLeads",
                 t.created_at as "createdAt",
-                COUNT(CASE WHEN l.crm_sync_status = 'pending' THEN 1 END) as "pendingCount",
-                COUNT(CASE WHEN l.crm_sync_status = 'synced' THEN 1 END) as "syncedCount",
-                COUNT(CASE WHEN l.crm_sync_status = 'failed' THEN 1 END) as "failedCount"
+                COUNT(CASE WHEN l.crm_sync_status = 'pending' AND lr.overall_rating IN ('A', 'B') THEN 1 END) as "pendingCount",
+                COUNT(CASE WHEN l.crm_sync_status = 'synced' AND lr.overall_rating IN ('A', 'B') THEN 1 END) as "syncedCount",
+                COUNT(CASE WHEN l.crm_sync_status = 'failed' AND lr.overall_rating IN ('A', 'B') THEN 1 END) as "failedCount"
             FROM tasks t
             LEFT JOIN leads l ON t.id = l.task_id
+            LEFT JOIN lead_ratings lr ON l.id = lr.lead_id
             GROUP BY t.id, t.name, t.source, t.query, t.total_leads, t.created_at
             ORDER BY t.created_at DESC
             LIMIT ${pageSize} OFFSET ${offset}
@@ -985,8 +986,8 @@ app.get('/api/crm/leads', async (req: any, res: any) => {
             return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
         }
 
-        // 构建查询条件
-        let whereClause = sql`l.crm_sync_status = ${crmStatus}`;
+        // 构建查询条件 (只查询A/B级线索)
+        let whereClause = sql`l.crm_sync_status = ${crmStatus} AND lr.overall_rating IN ('A', 'B')`;
         if (taskId) {
             whereClause = sql`${whereClause} AND l.task_id = ${taskId}`;
         }
@@ -995,6 +996,7 @@ app.get('/api/crm/leads', async (req: any, res: any) => {
         const countResult = await db.execute(sql`
             SELECT COUNT(*) as count
             FROM leads l
+            LEFT JOIN lead_ratings lr ON l.id = lr.lead_id
             WHERE ${whereClause}
         `);
         const total = parseInt(countResult.rows[0].count as string);
@@ -1015,10 +1017,12 @@ app.get('/api/crm/leads', async (req: any, res: any) => {
                 t.id as "taskId",
                 t.name as "taskName",
                 c.name as "contactName",
-                c.email as "contactEmail"
+                c.email as "contactEmail",
+                lr.overall_rating as "overallRating"
             FROM leads l
             JOIN tasks t ON l.task_id = t.id
             LEFT JOIN contacts c ON l.id = c.lead_id AND c.is_primary = true
+            LEFT JOIN lead_ratings lr ON l.id = lr.lead_id
             WHERE ${whereClause}
             ORDER BY l.created_at DESC
             LIMIT ${pageSize} OFFSET ${offset}
@@ -1174,16 +1178,19 @@ app.get('/api/dashboard/rating-stats', async (req, res) => {
     }
 });
 
-// 获取CRM同步状态统计 (已同步/待同步/同步失败)
+// 获取CRM同步状态统计 (已同步/待同步/同步失败) - 仅统计A/B级线索
 app.get('/api/dashboard/crm-stats', async (req, res) => {
     try {
+        // 只统计已评级为A或B的线索的CRM同步状态
         const result = await db.execute(sql`
             SELECT 
                 COUNT(*) as total,
-                COUNT(CASE WHEN crm_sync_status = 'synced' THEN 1 END) as synced,
-                COUNT(CASE WHEN crm_sync_status = 'pending' THEN 1 END) as pending,
-                COUNT(CASE WHEN crm_sync_status = 'failed' THEN 1 END) as failed
-            FROM leads
+                COUNT(CASE WHEN l.crm_sync_status = 'synced' THEN 1 END) as synced,
+                COUNT(CASE WHEN l.crm_sync_status = 'pending' THEN 1 END) as pending,
+                COUNT(CASE WHEN l.crm_sync_status = 'failed' THEN 1 END) as failed
+            FROM leads l
+            LEFT JOIN lead_ratings lr ON l.id = lr.lead_id
+            WHERE lr.overall_rating IN ('A', 'B')
         `);
 
         const stats = result.rows[0] as any;
