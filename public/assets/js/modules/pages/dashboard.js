@@ -3,47 +3,134 @@ import { fetchAPI } from '../api.js';
 import { formatDate, showNotification } from '../utils.js';
 
 let charts = {
-    queue: null,
-    score: null
+    grade: null,
+    trend: null
+};
+
+// 队列配置 - 方便后期扩展
+const QUEUE_CONFIG = [
+    {
+        key: 'scrape',
+        name: '爬虫队列',
+        type: 'scraper',
+        icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="2" y1="12" x2="22" y2="12"></line>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+        </svg>`
+    },
+    {
+        key: 'rating',
+        name: '评级队列',
+        type: 'rating',
+        icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+        </svg>`
+    },
+    {
+        key: 'crm',
+        name: 'CRM队列',
+        type: 'crm',
+        icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>`
+    }
+    // 后期可以添加更多队列，例如：
+    // { key: 'email', name: '邮件队列', type: 'automation', icon: '...' }
+];
+
+// 评级颜色配置
+const GRADE_COLORS = {
+    A: { bg: '#10b981', label: 'A级 - 优质' },
+    B: { bg: '#3b82f6', label: 'B级 - 良好' },
+    C: { bg: '#f59e0b', label: 'C级 - 一般' },
+    D: { bg: '#ef4444', label: 'D级 - 较差' }
 };
 
 export async function init() {
     // 初始化图表
     initCharts();
 
-    // 加载数据
+    // 加载所有数据
     await loadDashboardData();
-
-    // 绑定事件（如果有刷新按钮）
-    const refreshBtn = document.querySelector('.section-header button');
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', loadDashboardData);
-    }
 }
 
 function initCharts() {
-    // 队列状态图表
-    const queueCtx = document.getElementById('queueChart');
-    if (queueCtx) {
-        charts.queue = new Chart(queueCtx, {
-            type: 'bar',
+    // 评级分布图表
+    const gradeCtx = document.getElementById('gradeChart');
+    if (gradeCtx) {
+        charts.grade = new Chart(gradeCtx, {
+            type: 'doughnut',
             data: {
-                labels: ['爬取队列', '处理队列', '评级队列', '自动化队列'],
+                labels: ['A级', 'B级', 'C级', 'D级'],
+                datasets: [{
+                    data: [0, 0, 0, 0],
+                    backgroundColor: [
+                        GRADE_COLORS.A.bg,
+                        GRADE_COLORS.B.bg,
+                        GRADE_COLORS.C.bg,
+                        GRADE_COLORS.D.bg
+                    ],
+                    borderWidth: 0,
+                    cutout: '65%'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false // 使用自定义图例
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const value = context.parsed;
+                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return `${context.label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // 趋势图表（可选，显示最近处理趋势）
+    const trendCtx = document.getElementById('trendChart');
+    if (trendCtx) {
+        charts.trend = new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                labels: ['6天前', '5天前', '4天前', '3天前', '2天前', '昨天', '今天'],
                 datasets: [
                     {
-                        label: '等待中',
-                        data: [0, 0, 0, 0],
-                        backgroundColor: 'rgba(102, 126, 234, 0.6)',
+                        label: '爬取',
+                        data: [0, 0, 0, 0, 0, 0, 0],
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        fill: true,
+                        tension: 0.4
                     },
                     {
-                        label: '处理中',
-                        data: [0, 0, 0, 0],
-                        backgroundColor: 'rgba(237, 137, 54, 0.6)',
+                        label: '评级',
+                        data: [0, 0, 0, 0, 0, 0, 0],
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        fill: true,
+                        tension: 0.4
                     },
                     {
-                        label: '已完成',
-                        data: [0, 0, 0, 0],
-                        backgroundColor: 'rgba(72, 187, 120, 0.6)',
+                        label: 'CRM同步',
+                        data: [0, 0, 0, 0, 0, 0, 0],
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: true,
+                        tension: 0.4
                     }
                 ]
             },
@@ -53,48 +140,20 @@ function initCharts() {
                 scales: {
                     y: {
                         beginAtZero: true,
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                        ticks: { color: '#cbd5e1' }
+                        grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                        ticks: { color: '#64748b' }
                     },
                     x: {
                         grid: { display: false },
-                        ticks: { color: '#cbd5e1' }
+                        ticks: { color: '#64748b' }
                     }
                 },
                 plugins: {
                     legend: {
-                        labels: { color: '#cbd5e1' }
-                    }
-                }
-            }
-        });
-    }
-
-    // 评分分布图表
-    const scoreCtx = document.getElementById('scoreChart');
-    if (scoreCtx) {
-        charts.score = new Chart(scoreCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['高分 (≥9)', '中分 (6-9)', '低分 (<6)'],
-                datasets: [{
-                    data: [0, 0, 0],
-                    backgroundColor: [
-                        'rgba(72, 187, 120, 0.8)',
-                        'rgba(237, 137, 54, 0.8)',
-                        'rgba(245, 101, 101, 0.8)'
-                    ],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
                         position: 'bottom',
-                        labels: {
-                            color: '#cbd5e1',
+                        labels: { 
+                            color: '#64748b',
+                            usePointStyle: true,
                             padding: 20
                         }
                     }
@@ -105,86 +164,158 @@ function initCharts() {
 }
 
 async function loadDashboardData() {
-    // 加载队列统计
-    const queueStats = await fetchAPI('/api/queues/stats');
-    if (queueStats) {
-        updateQueueCharts(queueStats);
-        updateTaskStats(queueStats);
-    }
+    try {
+        // 并行加载所有数据
+        const [queueStats, gradeStats, recentLeads] = await Promise.all([
+            fetchAPI('/api/queues/stats'),
+            fetchAPI('/api/dashboard/grade-stats'),
+            fetchAPI('/api/dashboard/recent-leads?grades=A,B&limit=10')
+        ]);
 
-    // 加载公司统计
-    const companies = await fetchAPI('/api/companies?limit=1');
-    if (companies) {
-        document.querySelector('#total-companies').textContent = companies.data?.length || 0;
-    }
+        // 更新队列卡片
+        if (queueStats) {
+            renderQueueCards(queueStats);
+            updatePendingCount(queueStats);
+        }
 
-    // 加载高分线索
-    const ratings = await fetchAPI('/api/ratings?minScore=9&limit=5');
-    if (ratings) {
-        updateRecentLeads(ratings.data);
-        document.querySelector('#high-score-leads').textContent = ratings.data?.length || 0;
+        // 更新评级统计
+        if (gradeStats) {
+            updateGradeStats(gradeStats);
+            updateGradeChart(gradeStats);
+            renderGradeLegend(gradeStats);
+        }
+
+        // 更新最新优质客户
+        if (recentLeads) {
+            updateRecentLeads(recentLeads.data || recentLeads);
+        }
+
+    } catch (error) {
+        console.error('Dashboard load error:', error);
+        showNotification('数据加载失败', 'error');
     }
 }
 
-function updateQueueCharts(stats) {
-    if (!charts.queue) return;
+function renderQueueCards(stats) {
+    const container = document.getElementById('queue-grid');
+    if (!container) return;
 
-    const waiting = [
-        stats.scrape?.waiting || 0,
-        stats.process?.waiting || 0,
-        stats.rating?.waiting || 0,
-        stats.automation?.waiting || 0
-    ];
+    const html = QUEUE_CONFIG.map(queue => {
+        const queueData = stats[queue.key] || {};
+        return `
+            <div class="queue-card ${queue.type}">
+                <div class="queue-card-header">
+                    <div class="queue-card-icon">${queue.icon}</div>
+                    <div class="queue-card-title">${queue.name}</div>
+                </div>
+                <div class="queue-card-stats">
+                    <div class="queue-stat-item">
+                        <div class="queue-stat-value">${queueData.waiting || 0}</div>
+                        <div class="queue-stat-label">等待中</div>
+                    </div>
+                    <div class="queue-stat-item">
+                        <div class="queue-stat-value">${queueData.active || 0}</div>
+                        <div class="queue-stat-label">处理中</div>
+                    </div>
+                    <div class="queue-stat-item">
+                        <div class="queue-stat-value">${queueData.completed || 0}</div>
+                        <div class="queue-stat-label">已完成</div>
+                    </div>
+                    <div class="queue-stat-item">
+                        <div class="queue-stat-value">${queueData.failed || 0}</div>
+                        <div class="queue-stat-label">失败</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
 
-    const active = [
-        stats.scrape?.active || 0,
-        stats.process?.active || 0,
-        stats.rating?.active || 0,
-        stats.automation?.active || 0
-    ];
-
-    const completed = [
-        stats.scrape?.completed || 0,
-        stats.process?.completed || 0,
-        stats.rating?.completed || 0,
-        stats.automation?.completed || 0
-    ];
-
-    charts.queue.data.datasets[0].data = waiting;
-    charts.queue.data.datasets[1].data = active;
-    charts.queue.data.datasets[2].data = completed;
-    charts.queue.update();
+    container.innerHTML = html;
 }
 
-function updateTaskStats(stats) {
-    const totalCompleted = Object.values(stats).reduce((sum, q) => sum + (q.completed || 0), 0);
-    const totalPending = Object.values(stats).reduce((sum, q) => sum + (q.waiting || 0) + (q.active || 0), 0);
+function updatePendingCount(stats) {
+    const pending = Object.values(stats).reduce((sum, q) => {
+        return sum + (q.waiting || 0) + (q.active || 0);
+    }, 0);
+    
+    const el = document.getElementById('pending-count');
+    if (el) el.textContent = pending;
+}
 
-    document.querySelector('#tasks-completed').textContent = totalCompleted;
-    document.querySelector('#tasks-pending').textContent = totalPending;
+function updateGradeStats(stats) {
+    // 更新统计卡片
+    const totalEl = document.getElementById('total-leads');
+    const gradeAEl = document.getElementById('grade-a-count');
+    const gradeBEl = document.getElementById('grade-b-count');
+
+    if (totalEl) totalEl.textContent = stats.total || 0;
+    if (gradeAEl) gradeAEl.textContent = stats.A || 0;
+    if (gradeBEl) gradeBEl.textContent = stats.B || 0;
+}
+
+function updateGradeChart(stats) {
+    if (!charts.grade) return;
+
+    charts.grade.data.datasets[0].data = [
+        stats.A || 0,
+        stats.B || 0,
+        stats.C || 0,
+        stats.D || 0
+    ];
+    charts.grade.update();
+}
+
+function renderGradeLegend(stats) {
+    const container = document.getElementById('grade-legend');
+    if (!container) return;
+
+    const total = (stats.A || 0) + (stats.B || 0) + (stats.C || 0) + (stats.D || 0);
+
+    const grades = ['A', 'B', 'C', 'D'];
+    const html = grades.map(grade => {
+        const count = stats[grade] || 0;
+        const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
+        return `
+            <div class="legend-item">
+                <span class="legend-dot grade-${grade.toLowerCase()}"></span>
+                <span>${GRADE_COLORS[grade].label}: ${count} (${percentage}%)</span>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = html;
 }
 
 function updateRecentLeads(data) {
-    const tbody = document.querySelector('#recent-leads-body');
+    const tbody = document.getElementById('recent-leads-body');
+    if (!tbody) return;
+
     if (!data || data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" class="empty-state">暂无优质客户</td></tr>';
         return;
     }
 
-    tbody.innerHTML = data.map(item => `
-        <tr>
-            <td><strong>${item.company?.name || '未知公司'}</strong></td>
-            <td>${item.company?.industry || '-'}</td>
-            <td><span class="score-badge score-high">${item.rating?.totalScore?.toFixed(1) || '-'}</span></td>
-            <td>${formatDate(item.rating?.ratedAt)}</td>
-            <td>
-                <button class="btn-secondary btn-sm" onclick="viewDetail('${item.company?.id}')">
-                    查看详情
-                </button>
-            </td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = data.map(item => {
+        const grade = item.overallRating || item.rating?.overallRating || '-';
+        const gradeClass = ['A', 'B', 'C', 'D'].includes(grade) ? `grade-${grade.toLowerCase()}` : 'grade-unknown';
+        
+        return `
+            <tr>
+                <td><strong>${item.companyName || item.company?.name || '未知公司'}</strong></td>
+                <td>${item.taskName || item.task?.name || '-'}</td>
+                <td><span class="grade-badge ${gradeClass}">${grade}</span></td>
+                <td class="truncate" style="max-width: 200px;" title="${item.suggestion || '-'}">${item.suggestion || '-'}</td>
+                <td>${formatDate(item.ratedAt || item.rating?.ratedAt)}</td>
+            </tr>
+        `;
+    }).join('');
 }
 
 // 导出给HTML调用的函数
-window.loadRatings = loadDashboardData;
+window.refreshDashboard = loadDashboardData;
+window.loadRecentLeads = async function() {
+    const recentLeads = await fetchAPI('/api/dashboard/recent-leads?grades=A,B&limit=10');
+    if (recentLeads) {
+        updateRecentLeads(recentLeads.data || recentLeads);
+    }
+};

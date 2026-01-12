@@ -2,50 +2,67 @@
 <div class="stats-grid">
     <div class="stat-card">
         <div class="stat-icon purple">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
             </svg>
         </div>
         <div class="stat-content">
-            <div class="stat-value" id="total-companies">-</div>
+            <div class="stat-value" id="total-leads">-</div>
             <div class="stat-label">总线索数</div>
         </div>
     </div>
 
     <div class="stat-card">
-        <div class="stat-icon blue">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+        <div class="stat-icon green">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
             </svg>
         </div>
         <div class="stat-content">
-            <div class="stat-value" id="high-score-leads">-</div>
-            <div class="stat-label">优质客户</div>
+            <div class="stat-value" id="grade-a-count">-</div>
+            <div class="stat-label">A级客户</div>
         </div>
     </div>
 
     <div class="stat-card">
-        <div class="stat-icon green">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <div class="stat-icon blue">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
             </svg>
         </div>
         <div class="stat-content">
-            <div class="stat-value" id="tasks-completed">-</div>
-            <div class="stat-label">已完成</div>
+            <div class="stat-value" id="grade-b-count">-</div>
+            <div class="stat-label">B级客户</div>
         </div>
     </div>
 
     <div class="stat-card">
         <div class="stat-icon orange">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
             </svg>
         </div>
         <div class="stat-content">
-            <div class="stat-value" id="tasks-pending">-</div>
-            <div class="stat-label">进行中</div>
+            <div class="stat-value" id="pending-count">-</div>
+            <div class="stat-label">待评级</div>
         </div>
+    </div>
+</div>
+
+<!-- 队列状态区域 -->
+<div class="section-card">
+    <div class="section-header">
+        <h3>队列状态</h3>
+        <button class="btn-secondary btn-sm" onclick="refreshDashboard()">刷新</button>
+    </div>
+    <div class="queue-grid" id="queue-grid">
+        <!-- 队列卡片会通过 JS 动态渲染 -->
+        <div class="loading">加载中...</div>
     </div>
 </div>
 
@@ -53,38 +70,41 @@
 <div class="charts-grid">
     <div class="chart-card">
         <div class="chart-header">
-            <h3>搜索进度</h3>
+            <h3>评级分布</h3>
         </div>
         <div class="chart-body">
-            <canvas id="queueChart"></canvas>
+            <canvas id="gradeChart"></canvas>
+        </div>
+        <div class="chart-legend" id="grade-legend">
+            <!-- 图例通过 JS 渲染 -->
         </div>
     </div>
 
     <div class="chart-card">
         <div class="chart-header">
-            <h3>评分分布</h3>
+            <h3>队列处理趋势</h3>
         </div>
         <div class="chart-body">
-            <canvas id="scoreChart"></canvas>
+            <canvas id="trendChart"></canvas>
         </div>
     </div>
 </div>
 
-<!-- 最新高分线索 -->
+<!-- 最新优质客户 -->
 <div class="section-card">
     <div class="section-header">
-        <h3>最新优质客户</h3>
-        <button class="btn-secondary btn-sm" onclick="loadRatings()">刷新</button>
+        <h3>最新优质客户 (A/B级)</h3>
+        <button class="btn-secondary btn-sm" onclick="loadRecentLeads()">刷新</button>
     </div>
     <div class="table-container">
         <table class="data-table" id="recent-leads-table">
             <thead>
                 <tr>
                     <th>客户名称</th>
-                    <th>行业</th>
-                    <th>评分</th>
-                    <th>发现时间</th>
-                    <th>操作</th>
+                    <th>所属任务</th>
+                    <th>评级</th>
+                    <th>建议</th>
+                    <th>评分时间</th>
                 </tr>
             </thead>
             <tbody id="recent-leads-body">

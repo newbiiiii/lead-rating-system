@@ -1112,15 +1112,86 @@ app.post('/api/crm/leads/retry', async (req: any, res: any) => {
     }
 });
 
+// ============ Dashboard 统计 ============
+
+// 获取评级分布统计 (A, B, C, D)
+app.get('/api/dashboard/grade-stats', async (req, res) => {
+    try {
+        const result = await db.execute(sql`
+            SELECT 
+                COUNT(*) as total,
+                COUNT(CASE WHEN lr.overall_rating = 'A' THEN 1 END) as "A",
+                COUNT(CASE WHEN lr.overall_rating = 'B' THEN 1 END) as "B",
+                COUNT(CASE WHEN lr.overall_rating = 'C' THEN 1 END) as "C",
+                COUNT(CASE WHEN lr.overall_rating = 'D' THEN 1 END) as "D"
+            FROM leads l
+            LEFT JOIN lead_ratings lr ON l.id = lr.lead_id
+            WHERE l.rating_status = 'completed'
+        `);
+
+        const stats = result.rows[0] as any;
+        res.json({
+            total: parseInt(stats.total) || 0,
+            A: parseInt(stats.A) || 0,
+            B: parseInt(stats.B) || 0,
+            C: parseInt(stats.C) || 0,
+            D: parseInt(stats.D) || 0
+        });
+    } catch (error: any) {
+        logger.error('获取评级分布统计失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 获取最新优质客户 (支持按评级筛选)
+app.get('/api/dashboard/recent-leads', async (req, res) => {
+    try {
+        const grades = (req.query.grades as string)?.split(',') || ['A', 'B'];
+        const limit = parseInt(req.query.limit as string) || 10;
+
+        // 构建 IN 条件
+        const gradeList = grades.map(g => `'${g.toUpperCase()}'`).join(',');
+
+        const result = await db.execute(sql.raw(`
+            SELECT 
+                l.id,
+                l.company_name as "companyName",
+                l.website,
+                l.industry,
+                l.region,
+                l.created_at as "createdAt",
+                t.id as "taskId",
+                t.name as "taskName",
+                lr.overall_rating as "overallRating",
+                lr.suggestion,
+                lr.rated_at as "ratedAt"
+            FROM leads l
+            JOIN tasks t ON l.task_id = t.id
+            JOIN lead_ratings lr ON l.id = lr.lead_id
+            WHERE lr.overall_rating IN (${gradeList})
+            ORDER BY lr.rated_at DESC
+            LIMIT ${limit}
+        `));
+
+        res.json({
+            data: result.rows,
+            grades,
+            count: result.rows.length
+        });
+    } catch (error: any) {
+        logger.error('获取最新优质客户失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // ============ 队列监控 ============
 
 app.get('/api/queues/stats', async (req, res) => {
     try {
         const queues = {
             scrape: scrapeQueue,
-            process: processQueue,
             rating: ratingQueue,
-            import: importQueue
+            crm: crmQueue
         };
 
         const stats: any = {};
