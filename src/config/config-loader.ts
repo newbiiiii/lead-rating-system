@@ -42,7 +42,7 @@ class ConfigLoader {
         // 替换环境变量
         this.config = this.replaceEnvVars(rawConfig);
 
-        return this.config;
+        return this.config as AppConfig;
     }
 
     /**

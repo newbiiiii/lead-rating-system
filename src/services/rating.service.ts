@@ -87,7 +87,7 @@ export const getTaskLead = async (leadId: string): Promise<TaskLead> => {
         throw new Error('Lead not found');
     }
     logger.info('[taskLead]', result.rows[0])
-    return result.rows[0] as TaskLead;
+    return result.rows[0] as unknown as TaskLead;
 }
 
 /**

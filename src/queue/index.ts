@@ -75,7 +75,7 @@ export class TaskScheduler {
     }
 
     async setupRecurringTasks() {
-        const cronTasks = configLoader.get('cron', []);
+        const cronTasks: any[] = configLoader.get('cron', []);
 
         for (const task of cronTasks) {
             if (task.task === 'scrape') {

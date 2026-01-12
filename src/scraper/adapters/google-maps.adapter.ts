@@ -45,7 +45,8 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
 
     constructor() {
         super();
-        const sourceConfig = configLoader.get('scraper.sources', []).find((s: any) => s.name === 'google_maps');
+        const sourceConfigs: any[] = configLoader.get('scraper.sources', []);
+        const sourceConfig = sourceConfigs.find((s: any) => s.name === 'google_maps');
         this.config = (sourceConfig?.config || {}) as GoogleMapsAdapterConfig;
     }
 
@@ -61,10 +62,10 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
         if (!this.browser) await this.initialize();
 
         // 合并请求级配置
-        const effectiveConfig = {
+        const effectiveConfig: GoogleMapsAdapterConfig = {
             ...this.config,
             ...(params.config || {})
-        } as GoogleMapsAdapterConfig;
+        };
 
         // 确保geolocation也被正确合并
         if (params.config?.geolocation) {
@@ -72,7 +73,8 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
                 ...(this.config.geolocation || {}),
                 ...params.config.geolocation
             };
-            logger.info(`[GoogleMaps] 收到地理位置配置: country="${effectiveConfig.geolocation.country}", city="${effectiveConfig.geolocation.city}", lat=${effectiveConfig.geolocation.latitude}, lng=${effectiveConfig.geolocation.longitude}`);
+            const geo = effectiveConfig.geolocation!;
+            logger.info(`[GoogleMaps] 收到地理位置配置: country="${geo.country}", city="${geo.city}", lat=${geo.latitude}, lng=${geo.longitude}`);
         }
 
         const searchArea = this.getSearchArea(effectiveConfig);
