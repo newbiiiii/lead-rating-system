@@ -118,7 +118,7 @@
     }
 
     .nav-group.expanded .nav-group-children {
-        max-height: 200px;
+        max-height: 400px;
     }
 
     .nav-group-children .nav-item {

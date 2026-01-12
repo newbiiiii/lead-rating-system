@@ -43,7 +43,20 @@ const STATUS_CONFIG = {
         badgeBorder: '#93c5fd',
         badgeText: '待评分',
         indexColor: '#3b82f6'
-    }
+    },
+    'completed': {
+        title: '评分成功',
+        hint: '这些线索已成功完成评分。',
+        hintBg: '#dcfce7',
+        hintBorder: '#86efac',
+        hintColor: '#166534',
+        badgeBg: '#dcfce7',
+        badgeColor: '#16a34a',
+        badgeBorder: '#86efac',
+        badgeText: '成功',
+        indexColor: '#22c55e',
+        hideRetryButton: true
+    },
 };
 
 // 分页状态
