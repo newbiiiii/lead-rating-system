@@ -21,7 +21,9 @@
     "test:coverage": "jest --coverage",
     "typecheck": "tsc --noEmit",
     "db:migrate": "tsx src/db/migrate.ts",
-    "db:seed": "tsx src/db/seed.ts"
+    "db:seed": "tsx src/db/seed.ts",
+    "css:build": "node node_modules/@tailwindcss/cli/dist/index.mjs -i ./public/assets/css/tailwind.css -o ./public/assets/css/styles.css --minify",
+    "css:watch": "node node_modules/@tailwindcss/cli/dist/index.mjs -i ./public/assets/css/tailwind.css -o ./public/assets/css/styles.css --watch"
   },
   "keywords": [
     "scraping",
@@ -70,6 +72,7 @@
     "yaml": "^2.3.4"
   },
   "devDependencies": {
+    "@tailwindcss/cli": "^4.1.18",
     "@types/jest": "^29.5.10",
     "@types/lodash": "^4.14.202",
     "@types/node": "^20.10.4",

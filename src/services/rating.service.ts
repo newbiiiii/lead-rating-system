@@ -140,7 +140,7 @@ export async function rateLeadWithAI(taskLead: TaskLead): Promise<RatingResult |
         return null;
     }
     // 发送post请求，调用HiAgent接口
-    const url = 'http://127.0.0.1:7015/tps/hiagent/chat/chatAndGetMessage';
+    const url = 'http://wechatapp.intco.com.cn:8090/jeecgboot/tps/hiagent/chat/chatAndGetMessage';
 
     const requestData = {
         apiKey: "d3jlgsqmr84esluu3veg",
@@ -154,7 +154,7 @@ export async function rateLeadWithAI(taskLead: TaskLead): Promise<RatingResult |
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': 'tlU9pmT5OJapL6eOLK'
+                'x-api-key': 'dasjfnreiugnreiun'
             },
             body: JSON.stringify(requestData)
         });
@@ -173,9 +173,10 @@ export async function rateLeadWithAI(taskLead: TaskLead): Promise<RatingResult |
         logger.info('[评分结果]', content)
     } catch (error) {
         logger.error('[评分失败]', error)
+        throw error;  // 重新抛出错误，让 worker 的重试机制处理
     }
 
-    if (!content) {
+    if (!content || Object.keys(content).length === 0) {
         throw new Error('AI returned empty response');
     }
 

@@ -1,0 +1,299 @@
+@import "tailwindcss";
+
+/* Custom theme extensions */
+@theme {
+    --color-brand-purple: #667eea;
+    --color-brand-violet: #764ba2;
+}
+
+/* Component layer - reusable components */
+@layer components {
+
+    /* Card styles */
+    .section-card {
+        @apply bg-white rounded-xl shadow-md p-6 mb-6;
+    }
+
+    .section-header {
+        @apply flex items-center justify-between mb-4 pb-4 border-b border-gray-100;
+    }
+
+    .section-header h3 {
+        @apply text-lg font-semibold text-gray-800 m-0;
+    }
+
+    /* Button styles */
+    .btn-primary {
+        @apply px-5 py-2.5 text-white font-semibold rounded-lg hover:opacity-90 active:scale-95 transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer border-none;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .btn-secondary {
+        @apply px-4 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 active:scale-95 transition-all duration-200 cursor-pointer border border-gray-200;
+    }
+
+    .btn-sm {
+        @apply px-3 py-1.5 text-sm;
+    }
+
+    .btn-text {
+        @apply bg-transparent border-none text-red-500 cursor-pointer text-sm hover:underline;
+    }
+
+    .btn-view-detail {
+        @apply px-3 py-1.5 text-white border-none rounded-md cursor-pointer text-xs font-medium hover:opacity-90;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+    }
+
+    /* Form styles */
+    .form-group {
+        @apply mb-4;
+    }
+
+    .form-group label {
+        @apply block text-sm font-medium text-gray-700 mb-2;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        @apply w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm outline-none transition-all;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        @apply ring-2 ring-purple-200 border-purple-500;
+    }
+
+    .form-hint {
+        @apply block text-xs text-gray-500 mt-1;
+    }
+
+    .form-actions {
+        @apply flex gap-3 mt-4;
+    }
+
+    /* File upload component */
+    .file-upload-area {
+        @apply rounded-xl p-8 text-center cursor-pointer relative transition-all duration-300;
+        border: 2px dashed rgba(102, 126, 234, 0.4);
+        background: rgba(102, 126, 234, 0.05);
+    }
+
+    .file-upload-area:hover {
+        border-color: rgba(102, 126, 234, 0.8);
+        background: rgba(102, 126, 234, 0.1);
+    }
+
+    .file-upload-area.dragover {
+        border-color: #667eea;
+        background: rgba(102, 126, 234, 0.15);
+    }
+
+    .file-upload-area input[type="file"] {
+        @apply absolute inset-0 w-full h-full opacity-0 cursor-pointer;
+    }
+
+    .file-upload-placeholder {
+        @apply text-gray-400;
+    }
+
+    .file-upload-placeholder svg {
+        @apply mb-3 opacity-60;
+    }
+
+    .file-upload-placeholder p {
+        @apply m-0 mb-2 text-base;
+    }
+
+    .file-types {
+        @apply text-sm opacity-70;
+    }
+
+    .file-selected {
+        @apply flex items-center justify-center gap-3;
+    }
+
+    .file-name {
+        @apply font-medium;
+        color: #667eea;
+    }
+
+    /* Table styles */
+    .data-table {
+        @apply w-full border-collapse;
+    }
+
+    .data-table thead {
+        @apply bg-gray-50;
+    }
+
+    .data-table th {
+        @apply px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider;
+    }
+
+    .data-table td {
+        @apply px-4 py-3 text-sm text-gray-700 border-b border-gray-100;
+    }
+
+    .data-table tbody tr {
+        @apply hover:bg-gray-50 transition-colors;
+    }
+
+    .table-container {
+        @apply overflow-x-auto;
+    }
+
+    /* Status badges */
+    .status-badge {
+        @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold;
+    }
+
+    .status-pending {
+        @apply bg-amber-100 text-amber-800;
+    }
+
+    .status-success {
+        @apply bg-green-100 text-green-800;
+    }
+
+    .status-error {
+        @apply bg-red-100 text-red-800;
+    }
+
+    /* Sync status badges */
+    .sync-stat {
+        @apply inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold;
+    }
+
+    .sync-stat.pending {
+        @apply bg-amber-100 text-amber-800;
+    }
+
+    .sync-stat.synced {
+        @apply bg-green-100 text-green-800;
+    }
+
+    .sync-stat.failed {
+        @apply bg-red-100 text-red-800;
+    }
+
+    /* CRM status badge */
+    .crm-status-badge {
+        @apply inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold;
+    }
+
+    .crm-status-badge.pending {
+        @apply bg-amber-100 text-amber-800;
+    }
+
+    .crm-status-badge.synced {
+        @apply bg-green-100 text-green-800;
+    }
+
+    .crm-status-badge.failed {
+        @apply bg-red-100 text-red-800;
+    }
+
+    /* Loading and empty states */
+    .loading {
+        @apply text-center py-8 text-gray-500;
+    }
+
+    .empty-state {
+        @apply text-center py-8 text-gray-400;
+    }
+
+    /* Modal styles */
+    .modal-overlay {
+        @apply fixed inset-0 flex items-center justify-center z-50;
+        background: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-container {
+        @apply bg-white rounded-xl flex flex-col shadow-2xl;
+        width: 90%;
+        max-width: 56rem;
+        max-height: 80vh;
+    }
+
+    .modal-header {
+        @apply flex items-center justify-between px-5 py-4 border-b border-gray-200;
+    }
+
+    .modal-header h3 {
+        @apply text-lg font-semibold text-gray-800 m-0;
+    }
+
+    .modal-close-btn {
+        @apply bg-transparent border-none text-2xl text-gray-400 hover:text-gray-600 cursor-pointer;
+    }
+
+    .modal-body {
+        @apply p-5 overflow-y-auto flex-1;
+    }
+
+    .modal-filter-bar {
+        @apply flex gap-2 mb-4;
+    }
+
+    .modal-table-container {
+        @apply overflow-y-auto;
+        max-height: 400px;
+    }
+
+    .task-stats-bar {
+        @apply flex gap-4 mb-4 p-3 bg-gray-50 rounded-lg;
+    }
+
+    /* Progress bar */
+    .progress-bar-container {
+        @apply flex items-center gap-2;
+    }
+
+    .progress-bar {
+        @apply flex-1 bg-gray-200 rounded h-2 overflow-hidden;
+        min-width: 6rem;
+    }
+
+    .progress-bar-fill {
+        @apply h-full transition-all duration-300;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+
+    .progress-text {
+        @apply text-xs text-gray-500;
+        min-width: 2.5rem;
+    }
+
+    /* Pagination */
+    .pagination {
+        @apply flex justify-center items-center gap-2 mt-5;
+    }
+
+    /* Header actions */
+    .header-actions {
+        @apply flex items-center gap-3;
+    }
+
+    /* Filter buttons */
+    .filter-btn {
+        @apply px-4 py-2 border border-gray-200 rounded-md bg-white text-gray-600 cursor-pointer text-sm transition-all;
+    }
+
+    .filter-btn:hover {
+        @apply border-purple-500 text-purple-500;
+    }
+
+    .filter-btn.active {
+        @apply text-white border-transparent;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+    }
+
+    /* Error text */
+    .error-text {
+        @apply text-red-600 text-xs truncate;
+        max-width: 200px;
+    }
+}
