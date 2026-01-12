@@ -1263,24 +1263,27 @@ app.get('/api/queues/stats', async (req, res) => {
         const scrapeStats = scrapeResult.rows[0] as any;
 
         // 从数据库查询评级队列状态 (基于 leads 表的 rating_status)
+        // completed 包含 skipped，与仪表盘卡片保持一致
         const ratingResult = await db.execute(sql`
             SELECT 
                 COUNT(CASE WHEN rating_status = 'pending' THEN 1 END) as waiting,
                 COUNT(CASE WHEN rating_status = 'processing' THEN 1 END) as active,
-                COUNT(CASE WHEN rating_status = 'completed' THEN 1 END) as completed,
+                COUNT(CASE WHEN rating_status IN ('completed', 'skipped') THEN 1 END) as completed,
                 COUNT(CASE WHEN rating_status IN ('failed', 'pending_config') THEN 1 END) as failed
             FROM leads
         `);
         const ratingStats = ratingResult.rows[0] as any;
 
-        // 从数据库查询CRM队列状态 (基于 leads 表的 crm_sync_status)
+        // 从数据库查询CRM队列状态 (只统计A/B级线索，与仪表盘卡片保持一致)
         const crmResult = await db.execute(sql`
             SELECT 
-                COUNT(CASE WHEN crm_sync_status = 'pending' THEN 1 END) as waiting,
-                COUNT(CASE WHEN crm_sync_status = 'processing' THEN 1 END) as active,
-                COUNT(CASE WHEN crm_sync_status = 'synced' THEN 1 END) as completed,
-                COUNT(CASE WHEN crm_sync_status = 'failed' THEN 1 END) as failed
-            FROM leads
+                COUNT(CASE WHEN l.crm_sync_status = 'pending' THEN 1 END) as waiting,
+                COUNT(CASE WHEN l.crm_sync_status = 'processing' THEN 1 END) as active,
+                COUNT(CASE WHEN l.crm_sync_status = 'synced' THEN 1 END) as completed,
+                COUNT(CASE WHEN l.crm_sync_status = 'failed' THEN 1 END) as failed
+            FROM leads l
+            LEFT JOIN lead_ratings lr ON l.id = lr.lead_id
+            WHERE lr.overall_rating IN ('A', 'B')
         `);
         const crmStats = crmResult.rows[0] as any;
 
