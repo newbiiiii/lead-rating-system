@@ -56,6 +56,23 @@ export function getQueueName(key) {
     return names[key] || key;
 }
 
+export function getStatusBadge(status) {
+    const statusConfig = {
+        pending: { label: '待执行', class: 'badge-warning' },
+        running: { label: '执行中', class: 'badge-info' },
+        completed: { label: '已完成', class: 'badge-success' },
+        failed: { label: '失败', class: 'badge-danger' },
+        cancelled: { label: '已取消', class: 'badge-secondary' },
+        processing: { label: '处理中', class: 'badge-info' },
+        synced: { label: '已同步', class: 'badge-success' },
+        pending_config: { label: '待配置', class: 'badge-warning' },
+        skipped: { label: '已跳过', class: 'badge-secondary' }
+    };
+    
+    const config = statusConfig[status] || { label: status, class: 'badge-secondary' };
+    return `<span class="status-badge ${config.class}">${config.label}</span>`;
+}
+
 export function viewDetail(companyId) {
     console.log('查看详情:', companyId);
     // TODO: 实现详情页面

@@ -1002,4 +1002,35 @@
     .grade-badge.grade-unknown {
         background: linear-gradient(135deg, #6b7280, #4b5563);
     }
+
+    /* ===== Additional Status Badge Variants ===== */
+    .badge-success {
+        @apply bg-green-100 text-green-800;
+    }
+
+    .badge-warning {
+        @apply bg-amber-100 text-amber-800;
+    }
+
+    .badge-danger {
+        @apply bg-red-100 text-red-800;
+    }
+
+    .badge-info {
+        @apply bg-blue-100 text-blue-800;
+    }
+
+    .badge-secondary {
+        @apply bg-gray-100 text-gray-800;
+    }
+
+    /* ===== Loading Placeholder ===== */
+    .loading-placeholder {
+        @apply text-center py-8 text-gray-400;
+    }
+
+    /* ===== Text Muted ===== */
+    .text-muted {
+        color: var(--color-text-muted);
+    }
 }

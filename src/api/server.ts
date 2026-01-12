@@ -14,7 +14,7 @@ import * as XLSX from 'xlsx';
 import { logger } from '../utils/logger';
 import { TaskScheduler, scrapeQueue, processQueue, ratingQueue, importQueue, crmQueue } from '../queue';
 import { db } from '../db';
-import { tasks, leads, contacts, companies, ratings, searchPoints } from '../db/schema';
+import { tasks, leads, contacts, companies, ratings, searchPoints, aggregateTasks } from '../db/schema';
 import { desc, sql, eq, and } from 'drizzle-orm';
 import { configLoader } from '../config/config-loader';
 import citiesRoutes from './cities.routes';
@@ -584,6 +584,348 @@ app.post('/api/tasks/scrape/batch', async (req, res) => {
         res.json({ success: true, message: `已添加 ${tasks.length} 个任务` });
     } catch (error: any) {
         logger.error('批量添加任务失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ============ 聚合任务管理 ============
+
+// 创建聚合任务
+app.post('/api/aggregate-tasks', async (req, res) => {
+    try {
+        const { name, description, keywords, countries, cities } = req.body;
+
+        // 验证参数
+        if (!name || !keywords || !Array.isArray(keywords) || keywords.length === 0) {
+            return res.status(400).json({ error: '请提供任务名称和至少一个关键词' });
+        }
+        if (!countries || !Array.isArray(countries) || countries.length === 0) {
+            return res.status(400).json({ error: '请选择至少一个国家/地区' });
+        }
+
+        const { randomUUID } = await import('crypto');
+        const aggregateTaskId = randomUUID();
+        const now = new Date();
+
+        // 计算子任务总数: 关键词数 × 城市数
+        // cities 格式: [{ country: "中国", city: "上海", lat, lng, radius }, ...]
+        const citiesArray = cities || [];
+        const totalSubTasks = keywords.length * citiesArray.length;
+
+        // 创建聚合任务
+        await db.insert(aggregateTasks).values({
+            id: aggregateTaskId,
+            name,
+            description,
+            keywords: keywords,
+            countries: countries,
+            totalSubTasks,
+            completedSubTasks: 0,
+            failedSubTasks: 0,
+            status: 'pending',
+            createdAt: now,
+            updatedAt: now
+        });
+
+        // 批量创建子任务
+        const subTasksToCreate: any[] = [];
+        const scrapeJobs: any[] = [];
+
+        for (const keyword of keywords) {
+            for (const cityInfo of citiesArray) {
+                const taskId = randomUUID();
+                const taskName = `${keyword} - ${cityInfo.city}, ${cityInfo.country}`;
+
+                subTasksToCreate.push({
+                    id: taskId,
+                    aggregateTaskId,
+                    name: taskName,
+                    description: `聚合任务子任务: ${name}`,
+                    source: 'google_maps',
+                    query: keyword,
+                    config: {
+                        geolocation: {
+                            country: cityInfo.country,
+                            city: cityInfo.city,
+                            latitude: cityInfo.lat,
+                            longitude: cityInfo.lng,
+                            radius: cityInfo.radius || 0.2,
+                            step: 0.1,
+                            zoom: 15
+                        }
+                    },
+                    status: 'pending',
+                    progress: 0,
+                    totalLeads: 0,
+                    successLeads: 0,
+                    failedLeads: 0,
+                    createdAt: now,
+                    updatedAt: now
+                });
+
+                // 准备添加到队列
+                scrapeJobs.push({
+                    name: 'scrape',
+                    data: {
+                        source: 'google_maps',
+                        query: keyword,
+                        limit: 99,
+                        priority: 5,
+                        taskId,
+                        aggregateTaskId,
+                        config: {
+                            geolocation: {
+                                country: cityInfo.country,
+                                city: cityInfo.city,
+                                latitude: cityInfo.lat,
+                                longitude: cityInfo.lng,
+                                radius: cityInfo.radius || 0.2,
+                                step: 0.1,
+                                zoom: 15
+                            }
+                        }
+                    },
+                    opts: {
+                        priority: 5,
+                        jobId: `aggregate-${aggregateTaskId}-${taskId}`
+                    }
+                });
+            }
+        }
+
+        // 批量插入子任务
+        if (subTasksToCreate.length > 0) {
+            await db.insert(tasks).values(subTasksToCreate);
+        }
+
+        // 更新聚合任务状态为running
+        await db.update(aggregateTasks)
+            .set({ status: 'running', startedAt: now, updatedAt: now })
+            .where(eq(aggregateTasks.id, aggregateTaskId));
+
+        // 批量添加到scrape队列
+        if (scrapeJobs.length > 0) {
+            await scrapeQueue.addBulk(scrapeJobs);
+        }
+
+        logger.info(`创建聚合任务成功: ${aggregateTaskId}, 子任务数: ${totalSubTasks}`);
+
+        res.json({
+            success: true,
+            message: `聚合任务创建成功，共创建 ${totalSubTasks} 个子任务`,
+            aggregateTaskId,
+            totalSubTasks,
+            keywords: keywords.length,
+            cities: citiesArray.length
+        });
+    } catch (error: any) {
+        logger.error('创建聚合任务失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 查询聚合任务列表
+app.get('/api/aggregate-tasks', async (req, res) => {
+    try {
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 20;
+        const offset = (page - 1) * limit;
+        const status = req.query.status as string;
+
+        // 构建WHERE条件
+        const whereConditions = [];
+        if (status) {
+            whereConditions.push(eq(aggregateTasks.status, status));
+        }
+
+        const tasksList = await db.query.aggregateTasks.findMany({
+            where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
+            orderBy: desc(aggregateTasks.createdAt),
+            limit,
+            offset
+        });
+
+        // 获取总数
+        const total = await db.select({ count: sql<number>`count(*)` })
+            .from(aggregateTasks)
+            .where(whereConditions.length > 0 ? and(...whereConditions) : undefined);
+
+        res.json({
+            aggregateTasks: tasksList,
+            total: Number(total[0].count),
+            page,
+            pageSize: limit
+        });
+    } catch (error: any) {
+        logger.error('查询聚合任务列表失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 查询聚合任务详情（含子任务）
+app.get('/api/aggregate-tasks/:id', async (req, res) => {
+    try {
+        const aggregateTaskId = req.params.id;
+        const page = parseInt(req.query.page as string) || 1;
+        const pageSize = parseInt(req.query.pageSize as string) || 20;
+        const offset = (page - 1) * pageSize;
+
+        // 查询聚合任务基本信息
+        const aggregateTask = await db.query.aggregateTasks.findFirst({
+            where: eq(aggregateTasks.id, aggregateTaskId)
+        });
+
+        if (!aggregateTask) {
+            return res.status(404).json({ error: '聚合任务未找到' });
+        }
+
+        // 查询子任务总数
+        const countResult = await db.select({ count: sql<number>`count(*)` })
+            .from(tasks)
+            .where(eq(tasks.aggregateTaskId, aggregateTaskId));
+        const total = Number(countResult[0].count);
+
+        // 查询子任务列表（分页）
+        const subTasks = await db.query.tasks.findMany({
+            where: eq(tasks.aggregateTaskId, aggregateTaskId),
+            orderBy: desc(tasks.createdAt),
+            limit: pageSize,
+            offset,
+            with: {
+                searchPoints: true
+            }
+        });
+
+        // 计算每个子任务的进度
+        const subTasksWithProgress = subTasks.map(task => {
+            const sp = task.searchPoints || [];
+            const totalPoints = sp.length;
+            const completedPoints = sp.filter(p => p.status === 'completed').length;
+            const failedPoints = sp.filter(p => p.status === 'failed').length;
+            const progress = totalPoints > 0
+                ? Math.round(((completedPoints + failedPoints) / totalPoints) * 100)
+                : task.progress || 0;
+
+            return {
+                ...task,
+                progress,
+                searchPoints: undefined
+            };
+        });
+
+        // 统计子任务状态
+        const statsResult = await db.execute(sql`
+            SELECT 
+                COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
+                COUNT(CASE WHEN status = 'running' THEN 1 END) as running,
+                COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
+                COUNT(CASE WHEN status IN ('failed', 'cancelled') THEN 1 END) as failed,
+                COALESCE(SUM(total_leads), 0) as "totalLeads",
+                COALESCE(SUM(success_leads), 0) as "successLeads"
+            FROM tasks
+            WHERE aggregate_task_id = ${aggregateTaskId}
+        `);
+        const stats = statsResult.rows[0] as any;
+
+        res.json({
+            aggregateTask,
+            subTasks: subTasksWithProgress,
+            stats: {
+                pending: parseInt(stats.pending) || 0,
+                running: parseInt(stats.running) || 0,
+                completed: parseInt(stats.completed) || 0,
+                failed: parseInt(stats.failed) || 0,
+                totalLeads: parseInt(stats.totalLeads) || 0,
+                successLeads: parseInt(stats.successLeads) || 0
+            },
+            pagination: {
+                page,
+                pageSize,
+                total,
+                totalPages: Math.ceil(total / pageSize)
+            }
+        });
+    } catch (error: any) {
+        logger.error('查询聚合任务详情失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 终止聚合任务（终止所有子任务）
+app.post('/api/aggregate-tasks/:id/terminate', async (req, res) => {
+    try {
+        const aggregateTaskId = req.params.id;
+
+        // 更新聚合任务状态
+        await db.update(aggregateTasks)
+            .set({ status: 'cancelled', updatedAt: new Date() })
+            .where(eq(aggregateTasks.id, aggregateTaskId));
+
+        // 终止所有pending/running的子任务
+        await db.update(tasks)
+            .set({ status: 'cancelled', error: 'Aggregate task terminated by user' })
+            .where(
+                and(
+                    eq(tasks.aggregateTaskId, aggregateTaskId),
+                    sql`${tasks.status} IN ('pending', 'running')`
+                )
+            );
+
+        // 取消所有pending/running的search points
+        await db.execute(sql`
+            UPDATE search_points 
+            SET status = 'cancelled', error = 'Aggregate task terminated by user'
+            WHERE task_id IN (
+                SELECT id FROM tasks WHERE aggregate_task_id = ${aggregateTaskId}
+            ) AND status IN ('pending', 'running')
+        `);
+
+        res.json({
+            success: true,
+            message: '聚合任务已终止'
+        });
+    } catch (error: any) {
+        logger.error('终止聚合任务失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 生成搜索关键词（基于用户需求描述）
+app.post('/api/aggregate-tasks/generate-keywords', async (req, res) => {
+    try {
+        const { description, count = 10 } = req.body;
+
+        if (!description) {
+            return res.status(400).json({ error: '请提供需求描述' });
+        }
+
+        // 基于描述生成关键词模板
+        // 这里使用简单的规则生成，后续可以接入AI生成
+        const baseKeywords = description.split(/[,，、\s]+/).filter((k: string) => k.trim());
+
+        // 生成变体关键词
+        const suffixes = ['manufacturer', 'supplier', 'factory', 'wholesale', 'company', 'exporter'];
+        const generatedKeywords: string[] = [];
+
+        for (const base of baseKeywords) {
+            generatedKeywords.push(base.trim());
+            for (const suffix of suffixes) {
+                if (generatedKeywords.length < count) {
+                    generatedKeywords.push(`${base.trim()} ${suffix}`);
+                }
+            }
+        }
+
+        // 去重并限制数量
+        const uniqueKeywords = [...new Set(generatedKeywords)].slice(0, count);
+
+        res.json({
+            success: true,
+            keywords: uniqueKeywords,
+            count: uniqueKeywords.length
+        });
+    } catch (error: any) {
+        logger.error('生成关键词失败:', error);
         res.status(500).json({ error: error.message });
     }
 });

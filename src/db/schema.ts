@@ -2,10 +2,43 @@ import { pgTable, text, varchar, integer, timestamp, jsonb, real, boolean, index
 import { relations } from 'drizzle-orm';
 
 /**
+ * 聚合任务表 - 用于批量管理多个子任务
+ */
+export const aggregateTasks = pgTable('aggregate_tasks', {
+    id: varchar('id', { length: 255 }).primaryKey(),
+
+    // 聚合任务基本信息
+    name: text('name').notNull(),
+    description: text('description'),        // 用户输入的需求描述
+    keywords: jsonb('keywords'),              // 生成的关键词列表 string[]
+    countries: jsonb('countries'),            // 选择的国家列表 string[]
+
+    // 统计信息
+    totalSubTasks: integer('total_sub_tasks').default(0),
+    completedSubTasks: integer('completed_sub_tasks').default(0),
+    failedSubTasks: integer('failed_sub_tasks').default(0),
+
+    // 状态管理: pending, running, completed, failed, cancelled
+    status: varchar('status', { length: 20 }).notNull().default('pending'),
+
+    // 时间戳
+    startedAt: timestamp('started_at'),
+    completedAt: timestamp('completed_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+    statusIdx: index('aggregate_tasks_status_idx').on(table.status),
+    createdIdx: index('aggregate_tasks_created_idx').on(table.createdAt),
+}));
+
+/**
  * 任务表 - 用于追溯所有爬取任务
  */
 export const tasks = pgTable('tasks', {
     id: varchar('id', { length: 255 }).primaryKey(),
+
+    // 聚合任务关联
+    aggregateTaskId: varchar('aggregate_task_id', { length: 255 }).references(() => aggregateTasks.id),
 
     // 任务基本信息
     name: text('name').notNull(),
@@ -38,6 +71,7 @@ export const tasks = pgTable('tasks', {
     statusIdx: index('tasks_status_idx').on(table.status),
     sourceIdx: index('tasks_source_idx').on(table.source),
     createdIdx: index('tasks_created_idx').on(table.createdAt),
+    aggregateTaskIdx: index('tasks_aggregate_task_idx').on(table.aggregateTaskId),
 }));
 
 /**
@@ -284,7 +318,15 @@ export const searchPoints = pgTable('search_points', {
 
 
 // Relations for new tables
-export const tasksRelations = relations(tasks, ({ many }) => ({
+export const aggregateTasksRelations = relations(aggregateTasks, ({ many }) => ({
+    tasks: many(tasks),
+}));
+
+export const tasksRelations = relations(tasks, ({ one, many }) => ({
+    aggregateTask: one(aggregateTasks, {
+        fields: [tasks.aggregateTaskId],
+        references: [aggregateTasks.id],
+    }),
     leads: many(leads),
     searchPoints: many(searchPoints),
 }));
