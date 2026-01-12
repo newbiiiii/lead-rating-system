@@ -35,7 +35,7 @@ export async function init() {
 }
 
 // 生成关键词
-window.generateKeywords = async function() {
+window.generateKeywords = async function () {
     const description = document.getElementById('keyword-description').value.trim();
     if (!description) {
         showNotification('请先输入需求描述', 'warning');
@@ -56,7 +56,7 @@ window.generateKeywords = async function() {
 };
 
 // 手动添加关键词
-window.addManualKeyword = function() {
+window.addManualKeyword = function () {
     const input = document.getElementById('manual-keyword-input');
     const keyword = input.value.trim();
 
@@ -71,7 +71,7 @@ window.addManualKeyword = function() {
 };
 
 // 移除关键词
-window.removeKeyword = function(index) {
+window.removeKeyword = function (index) {
     keywords.splice(index, 1);
     renderKeywordTags();
 };
@@ -107,7 +107,7 @@ async function loadCountriesForSelection() {
 }
 
 // 切换国家选择
-window.toggleCountry = async function(country) {
+window.toggleCountry = async function (country) {
     currentCountry = country;
 
     // 更新国家选中状态
@@ -139,7 +139,7 @@ async function loadCitiesForCountry(country) {
 }
 
 // 切换城市选择
-window.toggleCity = function(country, cityName, lat, lng, radius) {
+window.toggleCity = function (country, cityName, lat, lng, radius) {
     const index = selectedCities.findIndex(c => c.country === country && c.city === cityName);
 
     if (index > -1) {
@@ -158,7 +158,7 @@ window.toggleCity = function(country, cityName, lat, lng, radius) {
 };
 
 // 全选当前国家的城市
-window.selectAllCities = function() {
+window.selectAllCities = function () {
     if (!currentCountry || !countriesData[currentCountry]) return;
 
     const cities = countriesData[currentCountry];
@@ -180,7 +180,7 @@ window.selectAllCities = function() {
 };
 
 // 取消全选当前国家的城市
-window.deselectAllCities = function() {
+window.deselectAllCities = function () {
     if (!currentCountry) return;
 
     selectedCities = selectedCities.filter(c => c.country !== currentCountry);
@@ -207,7 +207,7 @@ function renderSelectedCities() {
 }
 
 // 移除已选择的城市
-window.removeSelectedCity = function(index) {
+window.removeSelectedCity = function (index) {
     const removed = selectedCities.splice(index, 1)[0];
     renderSelectedCities();
 
@@ -218,7 +218,7 @@ window.removeSelectedCity = function(index) {
 };
 
 // 搜索国家
-window.filterCountries = function() {
+window.filterCountries = function () {
     const searchTerm = document.getElementById('country-search').value.toLowerCase();
     const items = document.querySelectorAll('.country-item');
 
@@ -229,7 +229,7 @@ window.filterCountries = function() {
 };
 
 // 步骤导航
-window.nextStep = function() {
+window.nextStep = function () {
     if (currentStep === 1 && keywords.length === 0) {
         showNotification('请先生成或添加关键词', 'warning');
         return;
@@ -249,7 +249,7 @@ window.nextStep = function() {
     }
 };
 
-window.prevStep = function() {
+window.prevStep = function () {
     if (currentStep > 1) {
         setStep(currentStep - 1);
     }
@@ -294,14 +294,14 @@ function updatePreview() {
     // 关键词预览（最多显示10个）
     const keywordsPreview = document.getElementById('preview-keywords');
     const displayKeywords = keywords.slice(0, 10);
-    keywordsPreview.innerHTML = displayKeywords.map(kw => 
+    keywordsPreview.innerHTML = displayKeywords.map(kw =>
         `<span class="preview-tag">${kw}</span>`
     ).join('') + (keywords.length > 10 ? `<span class="preview-tag">+${keywords.length - 10} 更多</span>` : '');
 
     // 城市预览（最多显示10个）
     const citiesPreview = document.getElementById('preview-cities');
     const displayCities = selectedCities.slice(0, 10);
-    citiesPreview.innerHTML = displayCities.map(city => 
+    citiesPreview.innerHTML = displayCities.map(city =>
         `<span class="preview-tag">${city.city}, ${city.country}</span>`
     ).join('') + (selectedCities.length > 10 ? `<span class="preview-tag">+${selectedCities.length - 10} 更多</span>` : '');
 }
@@ -373,11 +373,13 @@ function resetForm() {
 }
 
 // 加载聚合任务列表
-window.loadAggregateTasks = async function() {
+window.loadAggregateTasks = async function () {
     const container = document.getElementById('aggregate-tasks-container');
     container.innerHTML = '<div class="loading-placeholder">加载中...</div>';
 
-    const data = await fetchAPI('/api/aggregate-tasks?limit=20');
+    // 添加时间戳避免浏览器缓存
+    const timestamp = Date.now();
+    const data = await fetchAPI(`/api/aggregate-tasks?limit=20&_t=${timestamp}`);
     if (!data) {
         container.innerHTML = '<div class="empty-hint">加载失败</div>';
         return;
@@ -400,29 +402,48 @@ window.loadAggregateTasks = async function() {
                             ${getStatusBadge(task.status)}
                         </h4>
                         <div class="aggregate-task-meta">
-                            <span>关键词: ${Array.isArray(task.keywords) ? task.keywords.length : 0} 个</span>
-                            <span>国家: ${Array.isArray(task.countries) ? task.countries.join(', ') : '-'}</span>
-                            <span>创建时间: ${formatDate(task.createdAt)}</span>
+                            <span>
+                                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
+                                </svg>
+                                ${Array.isArray(task.keywords) ? task.keywords.length : 0} 个关键词
+                            </span>
+                            <span>
+                                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                ${Array.isArray(task.countries) ? task.countries.join(', ') : '-'}
+                            </span>
+                            <span>
+                                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                ${formatDate(task.createdAt)}
+                            </span>
                         </div>
                     </div>
-                    <div class="aggregate-task-stats">
+                    
+                    <div class="aggregate-task-stats-container">
                         <div class="task-stat">
                             <div class="task-stat-value">${task.totalSubTasks || 0}</div>
                             <div class="task-stat-label">总任务</div>
                         </div>
                         <div class="task-stat">
-                            <div class="task-stat-value" style="color: var(--success);">${task.completedSubTasks || 0}</div>
+                            <div class="task-stat-value" style="color: #10b981;">${task.completedSubTasks || 0}</div>
                             <div class="task-stat-label">已完成</div>
                         </div>
                         <div class="task-stat">
-                            <div class="task-stat-value" style="color: var(--danger);">${task.failedSubTasks || 0}</div>
+                            <div class="task-stat-value" style="color: #ef4444;">${task.failedSubTasks || 0}</div>
                             <div class="task-stat-label">失败</div>
                         </div>
                     </div>
+
                     <div class="aggregate-task-actions">
-                        <a href="#aggregate-task-detail?id=${task.id}" class="btn-secondary btn-sm">查看详情</a>
+                        <a href="#aggregate-task-detail?id=${task.id}" class="btn-secondary btn-sm" style="display:inline-flex; align-items:center; gap:0.5rem; border-radius:8px;">
+                            查看详情
+                        </a>
                         ${task.status === 'running' ? `
-                            <button class="btn-danger btn-sm" onclick="terminateAggregateTask('${task.id}')">终止</button>
+                            <button class="btn-danger btn-sm" style="border-radius:8px;" onclick="terminateAggregateTask('${task.id}')">终止任务</button>
                         ` : ''}
                     </div>
                 </div>
@@ -432,7 +453,7 @@ window.loadAggregateTasks = async function() {
 };
 
 // 终止聚合任务
-window.terminateAggregateTask = async function(taskId) {
+window.terminateAggregateTask = async function (taskId) {
     if (!confirm('确定要终止此聚合任务及其所有子任务吗？')) return;
 
     const result = await postAPI(`/api/aggregate-tasks/${taskId}/terminate`);

@@ -17,17 +17,27 @@ export async function init() {
         return;
     }
 
+    // 显示ID
+    const idDisplay = document.getElementById('task-id-display');
+    if (idDisplay) idDisplay.textContent = `ID: ${currentTaskId}`;
+
     await loadTaskDetail();
 }
 
 // 加载任务详情
 async function loadTaskDetail() {
-    const data = await fetchAPI(`/api/aggregate-tasks/${currentTaskId}?page=${currentPage}&pageSize=${pageSize}`);
+    // 添加时间戳避免浏览器缓存
+    const timestamp = Date.now();
+    const data = await fetchAPI(`/api/aggregate-tasks/${currentTaskId}?page=${currentPage}&pageSize=${pageSize}&_t=${timestamp}`);
 
     if (!data) {
         document.getElementById('task-overview').innerHTML = '<div class="empty-hint">加载失败</div>';
         return;
     }
+
+    // 更新子任务计数
+    const countBadge = document.getElementById('subtask-count');
+    if (countBadge) countBadge.textContent = data.aggregateTask.totalSubTasks || 0;
 
     renderOverview(data);
     renderSubTasks(data.subTasks, data.pagination);
@@ -60,40 +70,53 @@ function renderOverview(data) {
         <div class="overview-card">
             <h4>任务状态</h4>
             <div class="overview-value">${getStatusBadge(task.status)}</div>
-            <div class="overview-meta">创建于: ${formatDate(task.createdAt)}</div>
+            <div class="overview-meta">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                ${formatDate(task.createdAt)}
+            </div>
         </div>
-        <div class="overview-card">
+        
+        <div class="overview-card card-progress">
             <h4>总进度</h4>
             <div class="overview-value">${completedPercent}%</div>
-            <div class="progress-bar" style="margin-top: 0.5rem;">
+            <div class="progress-bar">
                 <div class="progress-fill ${stats.completed === task.totalSubTasks ? 'completed' : ''}" 
                      style="width: ${completedPercent}%"></div>
             </div>
+            <div class="overview-meta">共 ${task.totalSubTasks || 0} 个子任务</div>
         </div>
-        <div class="overview-card">
-            <h4>子任务统计</h4>
-            <div class="overview-value">${task.totalSubTasks || 0}</div>
-            <div class="overview-meta">
-                <span style="color: var(--success);">完成: ${stats.completed}</span> | 
-                <span style="color: var(--warning);">运行: ${stats.running}</span> | 
-                <span style="color: var(--danger);">失败: ${stats.failed}</span>
+
+        <div class="overview-card card-stats">
+            <h4>执行统计</h4>
+            <div class="overview-value" style="font-size: 1.5rem; display: flex; gap: 1rem; align-items: baseline;">
+                <span style="color: #10b981;" title="成功">${stats.completed}</span>
+                <span style="color: #ef4444;" title="失败">${stats.failed}</span>
+                <span style="color: #f59e0b;" title="运行中">${stats.running}</span>
             </div>
+            <div class="overview-meta">成功 / 失败 / 运行中</div>
         </div>
+
         <div class="overview-card">
-            <h4>线索统计</h4>
-            <div class="overview-value success">${stats.successLeads || 0}</div>
+            <h4>线索发现</h4>
+            <div class="overview-value" style="color: #4f46e5;">${stats.successLeads || 0}</div>
             <div class="overview-meta">总发现: ${stats.totalLeads || 0}</div>
         </div>
-        <div class="overview-card" style="grid-column: span 2;">
+
+        <div class="overview-card card-keywords">
             <h4>搜索关键词 (${keywords.length})</h4>
             <div class="keywords-list">
-                ${keywords.slice(0, 10).map(kw => `<span class="keyword-badge">${kw}</span>`).join('')}
-                ${keywords.length > 10 ? `<span class="keyword-badge">+${keywords.length - 10} 更多</span>` : ''}
+                ${keywords.slice(0, 15).map(kw => `<span class="keyword-badge">${kw}</span>`).join('')}
+                ${keywords.length > 15 ? `<span class="keyword-badge" style="background: transparent; border: 1px dashed #cbd5e1; color: #64748b;">+${keywords.length - 15} 更多</span>` : ''}
             </div>
         </div>
-        <div class="overview-card">
-            <h4>目标国家</h4>
-            <div class="countries-list">${countries.join(', ') || '-'}</div>
+
+        <div class="overview-card card-keywords" style="grid-column: span 2;">
+            <h4>目标地区</h4>
+            <div class="keywords-list">
+                 ${countries.map(c => `<span class="keyword-badge" style="background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;">${c}</span>`).join('')}
+            </div>
         </div>
     `;
 }
@@ -112,12 +135,11 @@ function renderSubTasks(subTasks, pagination) {
         <table class="sub-tasks-table">
             <thead>
                 <tr>
-                    <th>任务名称</th>
-                    <th>状态</th>
-                    <th>进度</th>
-                    <th>线索数</th>
-                    <th>创建时间</th>
-                    <th>操作</th>
+                    <th style="width: 35%">任务信息</th>
+                    <th style="width: 15%">状态</th>
+                    <th style="width: 20%">进度</th>
+                    <th style="width: 15%">线索数 (有效/总数)</th>
+                    <th style="width: 15%">操作</th>
                 </tr>
             </thead>
             <tbody>
@@ -125,23 +147,30 @@ function renderSubTasks(subTasks, pagination) {
                     <tr>
                         <td class="task-name-cell">
                             <span class="task-name" title="${task.name}">${task.name}</span>
-                            <span class="task-query">${task.query}</span>
+                            <span class="task-query">
+                                <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="margin-right: 2px;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                </svg>
+                                ${task.query}
+                            </span>
                         </td>
                         <td>${getStatusBadge(task.status)}</td>
                         <td>
-                            <div class="progress-bar">
-                                <div class="progress-fill ${task.status === 'completed' ? 'completed' : task.status === 'failed' ? 'failed' : ''}" 
-                                     style="width: ${task.progress || 0}%"></div>
+                            <div class="progress-container">
+                                <div class="progress-bar">
+                                    <div class="progress-fill ${task.status === 'completed' ? 'completed' : task.status === 'failed' ? 'failed' : ''}" 
+                                         style="width: ${task.progress || 0}%"></div>
+                                </div>
+                                <span class="progress-text">${task.progress || 0}%</span>
                             </div>
-                            <span style="font-size: 0.75rem; color: var(--text-muted);">${task.progress || 0}%</span>
                         </td>
                         <td>
-                            <span style="color: var(--success);">${task.successLeads || 0}</span>
-                            <span style="color: var(--text-muted);">/ ${task.totalLeads || 0}</span>
+                            <div style="font-weight: 600; color: #1e293b;">${task.successLeads || 0} <span style="color: #cbd5e1; font-weight: 400;">/ ${task.totalLeads || 0}</span></div>
                         </td>
-                        <td style="font-size: 0.875rem; color: var(--text-muted);">${formatDate(task.createdAt)}</td>
                         <td>
-                            <a href="#management?taskId=${task.id}" class="btn-text" style="font-size: 0.75rem;">查看</a>
+                             <a href="#leads?taskId=${task.id}" class="btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                                查看线索
+                            </a>
                         </td>
                     </tr>
                 `).join('')}
@@ -199,19 +228,19 @@ function renderPagination(pagination) {
 }
 
 // 跳转页面
-window.goToPage = function(page) {
+window.goToPage = function (page) {
     currentPage = page;
     loadTaskDetail();
 };
 
 // 刷新详情
-window.refreshDetail = async function() {
+window.refreshDetail = async function () {
     await loadTaskDetail();
     showNotification('已刷新', 'success');
 };
 
 // 终止任务
-window.terminateTask = async function() {
+window.terminateTask = async function () {
     if (!confirm('确定要终止此聚合任务及其所有子任务吗？此操作不可恢复。')) return;
 
     const result = await postAPI(`/api/aggregate-tasks/${currentTaskId}/terminate`);
@@ -222,7 +251,7 @@ window.terminateTask = async function() {
 };
 
 // 筛选子任务
-window.filterSubTasks = async function() {
+window.filterSubTasks = async function () {
     // 这个功能需要后端支持status筛选，目前先重新加载
     currentPage = 1;
     await loadTaskDetail();

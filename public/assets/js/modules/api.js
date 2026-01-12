@@ -3,7 +3,12 @@ const API_BASE = '';
 
 export async function fetchAPI(endpoint) {
     try {
-        const response = await fetch(`${API_BASE}${endpoint}`);
+        const response = await fetch(`${API_BASE}${endpoint}`, {
+            headers: {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+            }
+        });
         if (!response.ok) throw new Error('API 请求失败');
         return await response.json();
     } catch (error) {
