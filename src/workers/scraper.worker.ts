@@ -195,6 +195,28 @@ class ScraperWorker {
 
             if (existingTask) {
                 logger.info(`[DEBUG] Found existing task in DB: ${existingTask.id}, status: ${existingTask.status}`);
+
+                // 1. 检查任务是否已被终止或完成
+                if (['cancelled', 'completed', 'failed'].includes(existingTask.status)) {
+                    logger.warn(`[任务跳过] 任务 ${taskId} 处于 ${existingTask.status} 状态，不再执行`);
+                    return { skipped: true, reason: `Task status is ${existingTask.status}` };
+                }
+
+                // 2. 检查所属聚合任务是否已被终止
+                if (existingTask.aggregateTaskId) {
+                    const aggTask = await db.query.aggregateTasks.findFirst({
+                        where: eq(aggregateTasks.id, existingTask.aggregateTaskId)
+                    });
+                    if (aggTask && ['cancelled', 'completed'].includes(aggTask.status)) {
+                        logger.warn(`[任务跳过] 聚合任务 ${aggTask.id} 处于 ${aggTask.status} 状态，不再执行子任务 ${taskId}`);
+                        // 同步更新子任务状态
+                        await db.update(tasks)
+                            .set({ status: 'cancelled', error: 'Parent aggregate task terminated' })
+                            .where(eq(tasks.id, taskId));
+                        return { skipped: true, reason: `Aggregate task status is ${aggTask.status}` };
+                    }
+                }
+
                 // 如果任务存在，更新状态为running
                 if (existingTask.status !== 'running') {
                     await db.update(tasks)
