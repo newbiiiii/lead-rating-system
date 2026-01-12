@@ -419,13 +419,14 @@ app.post('/api/leads/retry-rating', async (req, res) => {
 });
 
 // ============ 通用状态管理 ============
-// 查询指定状态的线索 (支持 pending_config, failed, pending)
+// 查询指定状态的线索 (支持 pending_config, failed, pending, completed)
 app.get('/api/leads/by-status', async (req, res) => {
     try {
         const status = req.query.status as string || 'pending_config';
         const page = parseInt(req.query.page as string) || 1;
         const pageSize = parseInt(req.query.pageSize as string) || 20;
         const offset = (page - 1) * pageSize;
+        const overallRating = req.query.overallRating as string || '';
 
         // 验证状态参数
         const validStatuses = ['pending_config', 'failed', 'pending', 'completed'];
@@ -433,16 +434,23 @@ app.get('/api/leads/by-status', async (req, res) => {
             return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
         }
 
+        // 构建 WHERE 条件
+        let whereClause = `l.rating_status = '${status}'`;
+        if (overallRating && ['A', 'B', 'C', 'D'].includes(overallRating)) {
+            whereClause += ` AND lr.overall_rating = '${overallRating}'`;
+        }
+
         // 查询总数
-        const countResult = await db.execute(sql`
+        const countResult = await db.execute(sql.raw(`
             SELECT COUNT(*) as count
-            FROM leads
-            WHERE rating_status = ${status}
-        `);
+            FROM leads l
+            LEFT JOIN lead_ratings lr ON l.id = lr.lead_id
+            WHERE ${whereClause}
+        `));
         const total = parseInt(countResult.rows[0].count as string);
 
         // 查询数据
-        const leadsResult = await db.execute(sql`
+        const leadsResult = await db.execute(sql.raw(`
             SELECT 
                 l.id,
                 l.company_name as "companyName",
@@ -459,10 +467,10 @@ app.get('/api/leads/by-status', async (req, res) => {
             FROM leads l
             JOIN tasks t ON l.task_id = t.id
             LEFT JOIN lead_ratings lr ON l.id = lr.lead_id
-            WHERE l.rating_status = ${status}
+            WHERE ${whereClause}
             ORDER BY l.created_at DESC
             LIMIT ${pageSize} OFFSET ${offset}
-        `);
+        `));
 
         res.json({
             leads: leadsResult.rows,

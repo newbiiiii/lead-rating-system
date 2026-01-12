@@ -123,7 +123,39 @@ function updatePageUI() {
             ${!showRatingDetails ? '<th>创建时间</th><th>操作</th>' : ''}
         `;
     }
+
+    // 动态添加筛选器 (仅在 completed 状态显示)
+    const headerActions = document.querySelector('.header-actions');
+    // 先移除已存在的筛选器
+    const existingFilter = document.getElementById('rating-filter-container');
+    if (existingFilter) existingFilter.remove();
+
+    if (currentStatus === 'completed' && headerActions) {
+        const filterHtml = `
+            <div id="rating-filter-container" style="margin-right: 10px; display: inline-block;">
+                <select id="rating-filter" onchange="filterByRating(this.value)" style="padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; color: #374151; background-color: #fff; cursor: pointer; outline: none; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);">
+                    <option value="">全部评级</option>
+                    <option value="A" ${overallRatingFilter === 'A' ? 'selected' : ''}>A级 (优质)</option>
+                    <option value="B" ${overallRatingFilter === 'B' ? 'selected' : ''}>B级 (良好)</option>
+                    <option value="C" ${overallRatingFilter === 'C' ? 'selected' : ''}>C级 (一般)</option>
+                    <option value="D" ${overallRatingFilter === 'D' ? 'selected' : ''}>D级 (不符)</option>
+                </select>
+            </div>
+        `;
+        headerActions.insertAdjacentHTML('afterbegin', filterHtml);
+    }
 }
+
+/**
+ * 按评级筛选
+ */
+function filterByRating(rating) {
+    overallRatingFilter = rating;
+    loadLeadsByStatus(1, pageSize);
+}
+
+// 评级筛选
+let overallRatingFilter = '';
 
 /**
  * 加载指定状态的线索列表
@@ -132,14 +164,19 @@ export async function loadLeadsByStatus(page = 1, size = 20) {
     currentPage = page;
     pageSize = size;
 
-    const data = await fetchAPI(`/api/leads/by-status?status=${currentStatus}&page=${page}&pageSize=${size}`);
+    let url = `/api/leads/by-status?status=${currentStatus}&page=${page}&pageSize=${size}`;
+    if (currentStatus === 'completed' && overallRatingFilter) {
+        url += `&overallRating=${overallRatingFilter}`;
+    }
+
+    const data = await fetchAPI(url);
     if (!data) return;
 
     const { leads, pagination } = data;
 
     const tbody = document.getElementById('leads-status-body');
     if (!leads || leads.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="empty-state">暂无${STATUS_CONFIG[currentStatus]?.badgeText || ''}的线索</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="empty-state">暂无${STATUS_CONFIG[currentStatus]?.badgeText || ''}的线索</td></tr>`;
         document.getElementById('pagination-container').innerHTML = '';
         return;
     }
@@ -303,3 +340,4 @@ export async function retrySingleLead(leadId) {
 window.refreshLeadsList = refreshLeadsList;
 window.retryAllLeads = retryAllLeads;
 window.retrySingleLead = retrySingleLead;
+window.filterByRating = filterByRating;
