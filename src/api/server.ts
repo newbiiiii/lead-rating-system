@@ -428,7 +428,7 @@ app.get('/api/leads/by-status', async (req, res) => {
         const offset = (page - 1) * pageSize;
 
         // 验证状态参数
-        const validStatuses = ['pending_config', 'failed', 'pending'];
+        const validStatuses = ['pending_config', 'failed', 'pending', 'completed'];
         if (!validStatuses.includes(status)) {
             return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
         }
