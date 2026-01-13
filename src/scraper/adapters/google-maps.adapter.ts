@@ -280,13 +280,15 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
                 const searchUrl = `https://www.google.com/maps/search/${encodeURIComponent(optimizedQuery)}/@${point.latitude},${point.longitude},${zoom}z`;
 
                 try {
+                    logger.info(`[GoogleMaps] 正在访问搜索 URL...`);
                     await page.goto(searchUrl, {
                         waitUntil: 'domcontentloaded',
                         timeout: this.config.timeout || 60000
                     });
 
-                    await page.waitForSelector('[role="feed"]', { timeout: 15000 });
-                    await page.waitForSelector('[role="article"]', { timeout: 15000 });
+                    logger.info(`[GoogleMaps] 等待结果列表加载...`);
+                    await page.waitForSelector('[role="feed"]', { timeout: 60000 });
+                    await page.waitForSelector('[role="article"]', { timeout: 60000 });
 
                     // 深度滚动
                     const limit = params.limit && params.limit > 0 ? params.limit : 1000;
@@ -296,8 +298,9 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
                     let newCount = 0;
                     const batchResults: RawData[] = [];  // 本点新增的数据
 
-                    for (const listing of listings) {
+                    for (const [index, listing] of listings.entries()) {
                         try {
+                            logger.info(`[GoogleMaps] [${point.sequenceNumber}/${totalPoints}] 正在处理第 ${index + 1}/${listings.length} 个结果...`);
                             await listing.click();
                             await page.waitForTimeout(3000);
 
@@ -350,7 +353,18 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
                     }
 
                 } catch (error: any) {
-                    logger.error(`[GoogleMaps] [#${point.sequenceNumber}/${totalPoints}] 搜索失败:`, error.message);
+                    logger.error(`[GoogleMaps] [#${point.sequenceNumber}/${totalPoints}] 搜索失败详情:`, error);
+                    if (error.stack) {
+                        logger.error(`[GoogleMaps] 错误堆栈:`, error.stack);
+                    }
+                    // 截图留证 (可选，如果是headless调试很有用)
+                    try {
+                        const screenshotPath = `dist/public/error-${point.sequenceNumber}-${Date.now()}.png`;
+                        await page.screenshot({ path: screenshotPath });
+                        logger.error(`[GoogleMaps] 已保存错误截图: ${screenshotPath}`);
+                    } catch (e) {
+                        // ignore
+                    }
 
                     // 标记搜索点失败
                     if (params.taskId && point.id) {
@@ -422,6 +436,7 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
 
             for (const [index, listing] of listings.entries()) {
                 try {
+                    logger.info(`[GoogleMaps] 正在处理第 ${index + 1}/${listings.length} 个结果...`);
                     await listing.click();
                     await page.waitForTimeout(3000);
 
