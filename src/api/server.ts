@@ -61,6 +61,40 @@ io.on('connection', (socket) => {
     });
 });
 
+// ============ 监控中心 ============
+app.get('/api/monitoring/status', async (req, res) => {
+    try {
+        const queues = {
+            scraper: scrapeQueue,
+            rating: ratingQueue,
+            crm: crmQueue
+        };
+
+        const stats: Record<string, any> = {};
+
+        for (const [name, queue] of Object.entries(queues)) {
+            const counts = await queue.getJobCounts(
+                'active',
+                'waiting',
+                'completed',
+                'failed',
+                'delayed',
+                'paused'
+            );
+            stats[name] = counts;
+        }
+
+        res.json({
+            success: true,
+            timestamp: new Date().toISOString(),
+            stats
+        });
+    } catch (error: any) {
+        logger.error('获取监控状态失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.use(express.json());
 
 // 托管静态文件
