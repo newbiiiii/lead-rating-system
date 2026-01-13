@@ -52,14 +52,22 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
 
     async initialize() {
         logger.info('[GoogleMaps] 初始化浏览器...');
-        this.browser = await chromium.launch({
-            headless: this.config.headless !== false,
-            args: [
-                '--disable-blink-features=AutomationControlled',
-                '--no-sandbox',
-                '--disable-setuid-sandbox'
-            ]
-        });
+        try {
+            this.browser = await chromium.launch({
+                headless: this.config.headless !== false,
+                args: [
+                    '--disable-blink-features=AutomationControlled',
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox'
+                ]
+            });
+            logger.info('[GoogleMaps] 浏览器初始化成功');
+        } catch (error: any) {
+            logger.error('[GoogleMaps] 浏览器启动失败详细信息:', error);
+            // 尝试打印环境变量以辅助调试
+            logger.error(`[GoogleMaps] PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: ${process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH}`);
+            throw error;
+        }
     }
 
     async scrape(params: ScrapeParams): Promise<RawData[]> {
