@@ -67,7 +67,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: npm run start:api
+    command: node dist/api/server.js
+    volumes:
+      - ./config.yaml:/app/config.yaml
     networks:
       - lead-rating-network
     restart: unless-stopped
@@ -101,7 +103,9 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
-    command: npm run worker:scraper
+    command: node dist/workers/scraper.worker.js
+    volumes:
+      - ./config.yaml:/app/config.yaml
     networks:
       - lead-rating-network
     restart: unless-stopped
@@ -128,7 +132,9 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-    command: npm run worker:rating
+    command: node dist/workers/rating.worker.js
+    volumes:
+      - ./config.yaml:/app/config.yaml
     networks:
       - lead-rating-network
     restart: unless-stopped
@@ -160,7 +166,9 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-    command: npm run worker:crm
+    command: node dist/workers/crm.worker.js
+    volumes:
+      - ./config.yaml:/app/config.yaml
     networks:
       - lead-rating-network
     restart: unless-stopped
@@ -172,6 +180,3 @@ networks:
 volumes:
   postgres_data:
   redis_data:
-  minio_data:
-  prometheus_data:
-  grafana_data:
