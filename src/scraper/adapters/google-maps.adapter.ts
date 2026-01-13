@@ -55,13 +55,16 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
         try {
             this.browser = await chromium.launch({
                 headless: this.config.headless !== false,
+                executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,
                 args: [
                     '--disable-blink-features=AutomationControlled',
                     '--no-sandbox',
-                    '--disable-setuid-sandbox'
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage', // 防止 /dev/shm 溢出
+                    '--disable-gpu' // 无头模式下通常不需要GPU
                 ]
             });
-            logger.info('[GoogleMaps] 浏览器初始化成功');
+            logger.info(`[GoogleMaps] 浏览器初始化成功 (executablePath: ${process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || 'default'})`);
         } catch (error: any) {
             logger.error('[GoogleMaps] 浏览器启动失败详细信息:', error);
             // 尝试打印环境变量以辅助调试
