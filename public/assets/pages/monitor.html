@@ -1,84 +1,11 @@
 <div class="monitor-container p-6 space-y-6">
     <!-- 状态概览卡片 -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <!-- 爬虫队列状态 -->
-        <div class="card p-4 bg-white rounded-lg shadow border border-gray-100">
-            <div class="flex items-center justify-between mb-2">
-                <h3 class="text-sm font-medium text-gray-500">爬虫队列</h3>
-                <span class="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full status-scraper">Running</span>
-            </div>
-            <div class="grid grid-cols-2 gap-4 mt-4">
-                <div>
-                    <span class="text-2xl font-bold text-gray-900" id="scraper-active">0</span>
-                    <p class="text-xs text-gray-500">运行中</p>
-                </div>
-                <div>
-                    <span class="text-2xl font-bold text-gray-900" id="scraper-waiting">0</span>
-                    <p class="text-xs text-gray-500">等待中</p>
-                </div>
-                <div>
-                    <span class="text-2xl font-bold text-green-600" id="scraper-completed">0</span>
-                    <p class="text-xs text-gray-500">已完成</p>
-                </div>
-                <div>
-                    <span class="text-2xl font-bold text-red-600" id="scraper-failed">0</span>
-                    <p class="text-xs text-gray-500">已失败</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- 评分队列状态 -->
-        <div class="card p-4 bg-white rounded-lg shadow border border-gray-100">
-            <div class="flex items-center justify-between mb-2">
-                <h3 class="text-sm font-medium text-gray-500">评分队列</h3>
-                <span
-                    class="px-2 py-0.5 text-xs bg-purple-100 text-purple-800 rounded-full status-rating">Running</span>
-            </div>
-            <div class="grid grid-cols-2 gap-4 mt-4">
-                <div>
-                    <span class="text-2xl font-bold text-gray-900" id="rating-active">0</span>
-                    <p class="text-xs text-gray-500">运行中</p>
-                </div>
-                <div>
-                    <span class="text-2xl font-bold text-gray-900" id="rating-waiting">0</span>
-                    <p class="text-xs text-gray-500">等待中</p>
-                </div>
-                <div>
-                    <span class="text-2xl font-bold text-green-600" id="rating-completed">0</span>
-                    <p class="text-xs text-gray-500">已完成</p>
-                </div>
-                <div>
-                    <span class="text-2xl font-bold text-red-600" id="rating-failed">0</span>
-                    <p class="text-xs text-gray-500">已失败</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- CRM队列状态 -->
-        <div class="card p-4 bg-white rounded-lg shadow border border-gray-100">
-            <div class="flex items-center justify-between mb-2">
-                <h3 class="text-sm font-medium text-gray-500">CRM 同步队列</h3>
-                <span class="px-2 py-0.5 text-xs bg-orange-100 text-orange-800 rounded-full status-crm">Running</span>
-            </div>
-            <div class="grid grid-cols-2 gap-4 mt-4">
-                <div>
-                    <span class="text-2xl font-bold text-gray-900" id="crm-active">0</span>
-                    <p class="text-xs text-gray-500">运行中</p>
-                </div>
-                <div>
-                    <span class="text-2xl font-bold text-gray-900" id="crm-waiting">0</span>
-                    <p class="text-xs text-gray-500">等待中</p>
-                </div>
-                <div>
-                    <span class="text-2xl font-bold text-green-600" id="crm-completed">0</span>
-                    <p class="text-xs text-gray-500">已完成</p>
-                </div>
-                <div>
-                    <span class="text-2xl font-bold text-red-600" id="crm-failed">0</span>
-                    <p class="text-xs text-gray-500">已失败</p>
-                </div>
-            </div>
-        </div>
+    <!-- 状态概览卡片 (由 JS 动态渲染，保持与 Dashboard 一致) -->
+    <div id="queue-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Loading state -->
+        <div class="card p-4 bg-white rounded-lg shadow border border-gray-100 animate-pulse h-40"></div>
+        <div class="card p-4 bg-white rounded-lg shadow border border-gray-100 animate-pulse h-40"></div>
+        <div class="card p-4 bg-white rounded-lg shadow border border-gray-100 animate-pulse h-40"></div>
     </div>
 
     <!-- 实时日志终端 -->
