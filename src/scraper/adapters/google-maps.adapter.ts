@@ -54,7 +54,11 @@ export class GoogleMapsAdapter extends BaseScraperAdapter {
         logger.info('[GoogleMaps] 初始化浏览器...');
         this.browser = await chromium.launch({
             headless: this.config.headless !== false,
-            args: ['--disable-blink-features=AutomationControlled']
+            args: [
+                '--disable-blink-features=AutomationControlled',
+                '--no-sandbox',
+                '--disable-setuid-sandbox'
+            ]
         });
     }
 
