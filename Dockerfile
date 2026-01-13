@@ -30,6 +30,9 @@ FROM node:18-alpine AS runner
 WORKDIR /app
 
 # 安装系统依赖 (Playwright 需要)
+# 切换到阿里云镜像源以解决网络问题
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
 RUN apk add --no-cache \
     chromium \
     nss \
