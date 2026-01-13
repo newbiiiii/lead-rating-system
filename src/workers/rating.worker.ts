@@ -12,7 +12,7 @@ import { configLoader } from '../config/config-loader';
 import { logger as baseLogger } from '../utils/logger';
 const logger = baseLogger.child({ service: 'rating' });
 import { randomUUID } from 'crypto';
-import { getTaskLead, rateLeadWithAI, shouldRetry } from '../services/rating.service';
+import { getTaskLead, rateLeadWithAI, shouldRetry, findExistingRatingByDomain } from '../services/rating.service';
 import { RatingResult } from "../model/model";
 
 const redisConfig = configLoader.get('database.redis');
@@ -76,8 +76,55 @@ class RatingWorker {
             return;
         }
 
+        // 2. 域名去重：检查是否有同域名的已评级记录
+        if (lead.domain && !job.data.force) {
+            const existingRating = await findExistingRatingByDomain(lead.domain, leadId);
+            if (existingRating) {
+                logger.info(`[域名重复] 找到同域名已评级记录: ${lead.domain}, 来源: ${existingRating.sourceCompanyName}`);
+
+                // 复制评级结果，标记为重复
+                const duplicateRating = `${existingRating.overallRating}(duplicate)`;
+
+                await db.transaction(async (tx) => {
+                    // 插入复制的评分结果
+                    await tx.insert(leadRatings).values({
+                        id: randomUUID(),
+                        leadId: lead.leadId,
+                        overallRating: duplicateRating,
+                        suggestion: existingRating.suggestion,
+                        think: existingRating.think || `复制自同域名线索: ${existingRating.sourceCompanyName}`,
+                        ratedAt: new Date()
+                    });
+
+                    // 更新线索状态为已完成
+                    await tx.update(leads)
+                        .set({
+                            ratingStatus: 'completed',
+                            ratingError: null,
+                            updatedAt: new Date()
+                        })
+                        .where(eq(leads.id, leadId));
+                });
+
+                logger.info(`[评分完成-复制] ${lead.companyName}: ${duplicateRating}`);
+
+                // 同样触发CRM同步（如果是A或B）
+                const originalRating = existingRating.overallRating.replace('(duplicate)', '').trim();
+                if (['A', 'B'].includes(originalRating)) {
+                    const { crmQueue } = await import('../queue');
+                    await crmQueue.add('saveToCrm', {
+                        type: 'saveToCrm',
+                        leadId: lead.leadId
+                    });
+                    logger.info(`[自动流程] 已触发 CRM 同步: ${lead.companyName}`);
+                }
+
+                return { overallRating: duplicateRating, suggestion: existingRating.suggestion, think: existingRating.think };
+            }
+        }
+
         try {
-            // 2. 调用评分服务
+            // 3. 调用评分服务
             const result: RatingResult | null = await rateLeadWithAI(lead);
             if (!!result) {
                 // 3. 保存结果

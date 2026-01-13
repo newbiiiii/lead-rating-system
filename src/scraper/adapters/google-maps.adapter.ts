@@ -5,7 +5,8 @@
 
 import { chromium, Browser, Page } from 'playwright';
 import { BaseScraperAdapter, ScrapeParams, RawData, StandardData } from '../base.adapter';
-import { logger } from '../../utils/logger';
+import { logger as baseLogger } from '../../utils/logger';
+const logger = baseLogger.child({ service: 'scraper' });
 import { configLoader } from '../../config/config-loader';
 import { GLOBAL_CITIES, CityData } from '../../data/cities';
 import { db } from '../../db';

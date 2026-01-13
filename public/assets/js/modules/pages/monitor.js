@@ -72,36 +72,34 @@ function renderQueueCards(stats) {
     const container = document.getElementById('queue-grid');
     if (!container) return;
 
-    // 如果还没有内容（第一次），或者只是为了更新数字，
-    // 这里我们直接innerHTML重绘，因为元素不多，性能影响不大。
-    // 如果想要更精细的 updates，可以做 DOM diff，但这里没必要。
-
     container.innerHTML = QUEUE_CONFIG.map(queue => {
         const queueData = stats[queue.key] || {};
         return `
-            <div class="queue-card ${queue.type} p-4 bg-white rounded-lg shadow border border-gray-100 flex flex-col justify-between h-40">
-                <div class="queue-card-header flex items-center mb-4">
-                    <div class="queue-card-icon p-2 rounded-lg bg-gray-50 text-gray-600 mr-3">
-                        ${queue.icon}
+            <div class="queue-card ${queue.type} p-3 bg-white rounded-lg shadow border border-gray-100">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center">
+                        <div class="queue-card-icon p-1.5 rounded-lg bg-gray-50 text-gray-600 mr-2">
+                            ${queue.icon}
+                        </div>
+                        <div class="queue-card-title text-sm font-medium text-gray-700">${queue.name}</div>
                     </div>
-                    <div class="queue-card-title font-medium text-gray-700">${queue.name}</div>
                 </div>
-                <div class="queue-card-stats grid grid-cols-4 gap-2 text-center">
+                <div class="queue-card-stats grid grid-cols-4 gap-1 text-center">
                     <div class="queue-stat-item">
-                        <div class="queue-stat-value text-lg font-bold text-gray-500">${queueData.waiting || 0}</div>
-                        <div class="queue-stat-label text-xs text-gray-400">等待中</div>
+                        <div class="text-base font-bold text-gray-500">${queueData.waiting || 0}</div>
+                        <div class="text-[10px] text-gray-400">等待</div>
                     </div>
                     <div class="queue-stat-item">
-                        <div class="queue-stat-value text-lg font-bold text-blue-600">${queueData.active || 0}</div>
-                        <div class="queue-stat-label text-xs text-gray-400">运行中</div>
+                        <div class="text-base font-bold text-blue-600">${queueData.active || 0}</div>
+                        <div class="text-[10px] text-gray-400">运行</div>
                     </div>
                     <div class="queue-stat-item">
-                        <div class="queue-stat-value text-lg font-bold text-green-600">${queueData.completed || 0}</div>
-                        <div class="queue-stat-label text-xs text-gray-400">已完成</div>
+                        <div class="text-base font-bold text-green-600">${queueData.completed || 0}</div>
+                        <div class="text-[10px] text-gray-400">完成</div>
                     </div>
                     <div class="queue-stat-item">
-                        <div class="queue-stat-value text-lg font-bold text-red-600">${queueData.failed || 0}</div>
-                        <div class="queue-stat-label text-xs text-gray-400">已失败</div>
+                        <div class="text-base font-bold text-red-600">${queueData.failed || 0}</div>
+                        <div class="text-[10px] text-gray-400">失败</div>
                     </div>
                 </div>
             </div>
@@ -109,11 +107,33 @@ function renderQueueCards(stats) {
     }).join('');
 }
 
+
 function setupLogStream(socket) {
+    if (!socket) {
+        console.error('[Monitor] Socket is null! Log streaming will not work.');
+        return;
+    }
+
+    console.log('[Monitor] Setting up log stream, socket connected:', socket.connected);
+
     // 订阅所有频道
-    socket.on('log:scraper', (log) => appendLogToTerminal('terminal-scraper', log));
-    socket.on('log:rating', (log) => appendLogToTerminal('terminal-rating', log));
-    socket.on('log:crm', (log) => appendLogToTerminal('terminal-crm', log));
+    socket.on('log:scraper', (log) => {
+        console.log('[Monitor] Received scraper log:', log.message);
+        appendLogToTerminal('terminal-scraper', log);
+    });
+    socket.on('log:rating', (log) => {
+        console.log('[Monitor] Received rating log:', log.message);
+        appendLogToTerminal('terminal-rating', log);
+    });
+    socket.on('log:crm', (log) => {
+        console.log('[Monitor] Received crm log:', log.message);
+        appendLogToTerminal('terminal-crm', log);
+    });
+
+    // 也监听通用 log 事件作为备份
+    socket.on('log', (log) => {
+        console.log('[Monitor] Received generic log:', log.message, 'service:', log.service);
+    });
 
     // 绑定清除按钮
     document.querySelectorAll('.clear-logs').forEach(btn => {
@@ -125,17 +145,25 @@ function setupLogStream(socket) {
     });
 }
 
+
 function appendLogToTerminal(terminalId, log) {
+    console.log('[Monitor] appendLogToTerminal called with:', terminalId, log.message);
+
     const terminal = document.getElementById(terminalId);
-    if (!terminal) return;
+    console.log('[Monitor] Terminal element found:', !!terminal, terminalId);
+
+    if (!terminal) {
+        console.error('[Monitor] Terminal not found:', terminalId);
+        return;
+    }
 
     // 清除"Waiting..." 提示
-    if (terminal.querySelector('.italic')) {
-        const italic = terminal.querySelector('.italic');
-        if (italic.textContent.includes('Waiting')) {
-            terminal.removeChild(italic);
-        }
+    const italic = terminal.querySelector('.italic');
+    if (italic && italic.textContent.includes('Waiting')) {
+        console.log('[Monitor] Removing waiting placeholder');
+        terminal.removeChild(italic);
     }
+
 
     const div = document.createElement('div');
     div.className = 'font-mono break-all border-b border-gray-800 pb-0.5 mb-0.5';

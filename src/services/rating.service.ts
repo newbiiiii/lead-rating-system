@@ -2,11 +2,69 @@
  * Rating 服务 - 核心评分逻辑
  * 从 worker 中提取出来，方便测试
  */
-import { logger } from '../utils/logger';
+import { logger as baseLogger } from '../utils/logger';
+const logger = baseLogger.child({ service: 'rating' });
 import { RatingResult, TaskLead } from "../model/model";
 import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { Task } from "langchain/dist/experimental/babyagi";
+
+/**
+ * 查找同域名的已有评级结果
+ * @param domain 域名
+ * @param currentLeadId 当前 lead ID（排除自己）
+ * @returns 已有的评级结果，或 null
+ */
+export interface ExistingRating {
+    overallRating: string;
+    suggestion: string;
+    think: string | null;
+    sourceLeadId: string;
+    sourceCompanyName: string;
+}
+
+export async function findExistingRatingByDomain(
+    domain: string,
+    currentLeadId: string
+): Promise<ExistingRating | null> {
+    if (!domain || domain.trim() === '') {
+        return null;
+    }
+
+    try {
+        const result = await db.execute(sql`
+            SELECT 
+                lr.overall_rating AS "overallRating",
+                lr.suggestion,
+                lr.think,
+                l.id AS "sourceLeadId",
+                l.company_name AS "sourceCompanyName"
+            FROM leads l
+            JOIN lead_ratings lr ON l.id = lr.lead_id
+            WHERE l.domain = ${domain}
+              AND l.id != ${currentLeadId}
+              AND l.rating_status = 'completed'
+            ORDER BY lr.rated_at DESC
+            LIMIT 1
+        `);
+
+        if (result.rows.length > 0) {
+            const row = result.rows[0] as any;
+            return {
+                overallRating: row.overallRating,
+                suggestion: row.suggestion,
+                think: row.think,
+                sourceLeadId: row.sourceLeadId,
+                sourceCompanyName: row.sourceCompanyName,
+            };
+        }
+
+        return null;
+    } catch (error) {
+        logger.error('[域名查重失败]', error);
+        return null;
+    }
+}
 
 /**
  * 判断错误是否可重试

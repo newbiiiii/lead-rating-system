@@ -6,7 +6,8 @@
 import { db } from '../db';
 import { leads, automationLogs } from '../db/schema';
 import { eq, sql } from 'drizzle-orm';
-import { logger } from '../utils/logger';
+import { logger as baseLogger } from '../utils/logger';
+const logger = baseLogger.child({ service: 'crm' });
 import { randomUUID } from 'crypto';
 
 /**

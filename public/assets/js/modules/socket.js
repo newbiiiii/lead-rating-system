@@ -2,20 +2,34 @@
 let socket = null;
 
 export function initSocket() {
-    socket = io();
+    // 强制使用 WebSocket 传输，避免轮询延迟
+    socket = io({
+        transports: ['websocket'],
+        upgrade: false,
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 1000
+    });
 
     socket.on('connect', () => {
+        console.log('[Socket] Connected with id:', socket.id);
         appendLog({ type: 'system', message: '实时日志连接成功。' });
     });
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', (reason) => {
+        console.log('[Socket] Disconnected:', reason);
         appendLog({ type: 'system', message: '实时日志连接断开。' });
+    });
+
+    socket.on('connect_error', (error) => {
+        console.error('[Socket] Connection error:', error.message);
     });
 
     socket.on('log', (data) => {
         appendLog(data);
     });
 }
+
 
 export function appendLog(data) {
     const logContent = document.getElementById('log-content');

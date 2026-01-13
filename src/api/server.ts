@@ -79,6 +79,22 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// 测试日志推送 (用于调试)
+app.get('/api/test-log', (req, res) => {
+    const service = req.query.service as string || 'scraper';
+    const testLog = {
+        level: 'info',
+        message: `Test log from ${service} at ${new Date().toISOString()}`,
+        timestamp: new Date().toISOString(),
+        service: service
+    };
+    // 直接通过 Socket.IO 推送
+    io.emit('log', testLog);
+    io.emit(`log:${service}`, testLog);
+    res.json({ success: true, log: testLog });
+});
+
+
 // ============ 路由注册 ============
 // 城市数据
 app.use('/api/cities', citiesRoutes);
