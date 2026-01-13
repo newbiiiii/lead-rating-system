@@ -64,63 +64,71 @@ function updateElementText(id, text) {
 }
 
 function setupLogStream(socket) {
-    const terminal = document.getElementById('terminal-logs');
+    // 订阅所有频道
+    socket.on('log:scraper', (log) => appendLogToTerminal('terminal-scraper', log));
+    socket.on('log:rating', (log) => appendLogToTerminal('terminal-rating', log));
+    socket.on('log:crm', (log) => appendLogToTerminal('terminal-crm', log));
+
+    // 绑定清除按钮
+    document.querySelectorAll('.clear-logs').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const targetId = e.target.dataset.target;
+            const terminal = document.getElementById(targetId);
+            if (terminal) terminal.innerHTML = '';
+        });
+    });
+}
+
+function appendLogToTerminal(terminalId, log) {
+    const terminal = document.getElementById(terminalId);
     if (!terminal) return;
 
-    // 如果已经有 handler，先移除防止重复
-    if (logHandler) {
-        socket.off('log', logHandler);
+    // 清除"Waiting..." 提示
+    if (terminal.querySelector('.italic')) {
+        const italic = terminal.querySelector('.italic');
+        if (italic.textContent.includes('Waiting')) {
+            terminal.removeChild(italic);
+        }
     }
 
-    logHandler = (log) => {
-        // 如果不在当前页面，不处理（额外保险）
-        if (!document.getElementById('terminal-logs')) return;
+    const div = document.createElement('div');
+    div.className = 'font-mono break-all border-b border-gray-800 pb-0.5 mb-0.5';
 
-        const div = document.createElement('div');
-        div.className = 'font-mono break-all';
+    // 格式化时间戳
+    const time = new Date(log.timestamp).toLocaleTimeString();
 
-        // 格式化时间戳
-        const time = new Date(log.timestamp).toLocaleTimeString();
+    // 颜色映射
+    let colorClass = 'text-gray-300';
+    let levelLabel = '[INFO]';
 
-        // 颜色映射
-        let colorClass = 'text-gray-300';
-        let levelLabel = '[INFO]';
+    if (log.level === 'error') {
+        colorClass = 'text-red-400';
+        levelLabel = '[ERROR]';
+    } else if (log.level === 'warn') {
+        colorClass = 'text-yellow-400';
+        levelLabel = '[WARN]';
+    } else if (log.level === 'debug') {
+        colorClass = 'text-gray-500';
+        levelLabel = '[DEBUG]';
+    } else if (log.message.includes('Processing')) {
+        colorClass = 'text-blue-400';
+    } else if (log.message.includes('Completed')) {
+        colorClass = 'text-green-400';
+    }
 
-        if (log.level === 'error') {
-            colorClass = 'text-red-400';
-            levelLabel = '[ERROR]';
-        } else if (log.level === 'warn') {
-            colorClass = 'text-yellow-400';
-            levelLabel = '[WARN]';
-        } else if (log.level === 'debug') {
-            colorClass = 'text-gray-500';
-            levelLabel = '[DEBUG]';
-        } else if (log.message.includes('Processing')) {
-            colorClass = 'text-blue-400';
-        } else if (log.message.includes('Completed')) {
-            colorClass = 'text-green-400';
-        }
+    div.innerHTML = `
+        <span class="text-gray-600 text-[10px] w-16 inline-block">[${time}]</span>
+        <span class="${colorClass}">${log.message}</span>
+        ${log.meta && Object.keys(log.meta).length > 0 ? `<br/><span class="text-xs text-gray-600 ml-16 transform scale-90 origin-left inline-block">${JSON.stringify(log.meta)}</span>` : ''}
+    `;
 
-        div.innerHTML = `
-            <span class="text-gray-600">[${time}]</span>
-            <span class="${colorClass} font-bold">${levelLabel}</span>
-            <span class="${colorClass}">${log.message}</span>
-            ${log.meta && Object.keys(log.meta).length > 0 ? `<br/><span class="text-xs text-gray-500 ml-16">${JSON.stringify(log.meta)}</span>` : ''}
-        `;
+    terminal.appendChild(div);
 
-        terminal.appendChild(div);
+    // 限制日志条数 (每个终端保留 200 条)
+    while (terminal.children.length > 200) {
+        terminal.removeChild(terminal.firstChild);
+    }
 
-        // 限制日志条数，防止浏览器卡死 (保留最近 500 条)
-        while (terminal.children.length > 500) {
-            terminal.removeChild(terminal.firstChild);
-        }
-
-        // 自动滚动
-        const autoScroll = document.getElementById('auto-scroll');
-        if (autoScroll && autoScroll.checked) {
-            terminal.scrollTop = terminal.scrollHeight;
-        }
-    };
-
-    socket.on('log', logHandler);
+    // 始终自动滚动
+    terminal.scrollTop = terminal.scrollHeight;
 }

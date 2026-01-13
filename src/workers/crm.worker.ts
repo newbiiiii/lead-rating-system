@@ -6,7 +6,8 @@
 import 'dotenv/config';
 import { Worker, Job } from 'bullmq';
 import { configLoader } from '../config/config-loader';
-import { logger } from '../utils/logger';
+import { logger as baseLogger } from '../utils/logger';
+const logger = baseLogger.child({ service: 'crm' });
 import { syncLeadToCrm } from '../services/crm.service';
 
 const redisConfig = configLoader.get('database.redis');

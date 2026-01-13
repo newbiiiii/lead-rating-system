@@ -48,5 +48,9 @@ export function clearLogs() {
     }
 }
 
+export function getSocket() {
+    return socket;
+}
+
 // 全局导出给HTML调用
 window.clearLogs = clearLogs;

@@ -6,7 +6,8 @@
 import 'dotenv/config';
 import { Worker, Job, Queue } from 'bullmq';
 import { randomUUID } from 'crypto';
-import { logger } from '../utils/logger';
+import { logger as baseLogger } from '../utils/logger';
+const logger = baseLogger.child({ service: 'scraper' });
 import { configLoader } from '../config/config-loader';
 import { db } from '../db';
 import { tasks, leads, contacts, companies, searchPoints, aggregateTasks } from '../db/schema';

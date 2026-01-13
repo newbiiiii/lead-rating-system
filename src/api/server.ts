@@ -47,7 +47,13 @@ redisSub.on('message', (channel, message) => {
     if (channel === 'logs') {
         try {
             const logEntry = JSON.parse(message);
+            // 推送到通用频道
             io.emit('log', logEntry);
+
+            // 推送到特定服务频道 (例如 log:scraper, log:rating)
+            if (logEntry.service) {
+                io.emit(`log:${logEntry.service}`, logEntry);
+            }
         } catch (e) {
             // 忽略解析错误
         }
