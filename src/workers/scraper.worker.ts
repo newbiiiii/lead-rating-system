@@ -384,8 +384,8 @@ class ScraperWorker {
                         address: standardData.region,  // address is text, no limit
                         employeeCount: standardData.employeeCount,
                         estimatedSize: truncate(standardData.estimatedSize, 20),
-                        rating: raw.data.rating ? parseFloat(raw.data.rating) : null,
-                        reviewCount: raw.data.reviewCount ? parseInt(raw.data.reviewCount.replace(/[^\d]/g, '')) : null,
+                        rating: (raw.data.rating && !isNaN(parseFloat(raw.data.rating))) ? parseFloat(raw.data.rating) : null,
+                        reviewCount: (raw.data.reviewCount && !isNaN(parseInt(raw.data.reviewCount.replace(/[^\d]/g, '')))) ? parseInt(raw.data.reviewCount.replace(/[^\d]/g, '')) : null,
                         rawData: raw.data as any,
                         source,
                         sourceUrl: standardData.sourceUrl,
