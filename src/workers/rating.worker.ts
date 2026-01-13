@@ -82,8 +82,10 @@ class RatingWorker {
             if (existingRating) {
                 logger.info(`[域名重复] 找到同域名已评级记录: ${lead.domain}, 来源: ${existingRating.sourceCompanyName}`);
 
-                // 复制评级结果，标记为重复
-                const duplicateRating = `${existingRating.overallRating}(duplicate)`;
+                // 复制评级结果，标记为重复（如果原本没有duplicate标记）
+                const duplicateRating = existingRating.overallRating.includes('(duplicate)')
+                    ? existingRating.overallRating
+                    : `${existingRating.overallRating}(duplicate)`;
 
                 await db.transaction(async (tx) => {
                     // 插入复制的评分结果
