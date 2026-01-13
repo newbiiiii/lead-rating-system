@@ -436,9 +436,11 @@ class ScraperWorker {
                     logger.info(`  └─ 邮箱: ${standardData.email || '(无)'}`);
 
                 } catch (error: any) {
-                    logger.error(`[保存失败] ${standardData.name}:`, error?.message || error?.toString() || 'Unknown error');
+                    logger.error(`[保存失败] ${standardData.name} - 错误信息: ${error?.message || 'No message'}`);
                     if (error?.stack) {
-                        logger.debug(`错误详情:`, error.stack);
+                        logger.error(`[保存失败] 错误堆栈:`, error.stack);
+                    } else {
+                        logger.error(`[保存失败] 原始错误对象:`, JSON.stringify(error, Object.getOwnPropertyNames(error)));
                     }
                     await db.update(tasks)
                         .set({ failedLeads: sql`${tasks.failedLeads} + 1` })
