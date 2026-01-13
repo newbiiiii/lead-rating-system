@@ -1,0 +1,298 @@
+<div class="section-card">
+    <div class="section-header">
+        <h3>创建 Google 搜索任务</h3>
+        <p class="text-muted">从 Google 搜索结果中获取公司信息</p>
+    </div>
+    <form id="search-task-form" class="search-task-form">
+        <div class="form-group">
+            <label>搜索关键词 <span class="required">*</span></label>
+            <input type="text" name="query" id="search-query" placeholder="例如：Wall Panel Distributors USA" required>
+            <span class="form-hint">输入搜索关键词，可以包含地区、行业等限定词</span>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group half">
+                <label>目标数量</label>
+                <input type="number" name="limit" id="search-limit" value="50" min="10" max="200">
+                <span class="form-hint">最大获取结果数量 (10-200)</span>
+            </div>
+            <div class="form-group half">
+                <label>最大翻页数</label>
+                <input type="number" name="maxPages" id="search-max-pages" value="5" min="1" max="10">
+                <span class="form-hint">Google 搜索翻页次数 (1-10)</span>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group half">
+                <label>搜索区域</label>
+                <select name="region" id="search-region">
+                    <option value="">默认 (全球)</option>
+                    <option value="US">美国 (US)</option>
+                    <option value="UK">英国 (UK)</option>
+                    <option value="DE">德国 (DE)</option>
+                    <option value="FR">法国 (FR)</option>
+                    <option value="CA">加拿大 (CA)</option>
+                    <option value="AU">澳大利亚 (AU)</option>
+                    <option value="IN">印度 (IN)</option>
+                    <option value="BR">巴西 (BR)</option>
+                    <option value="MX">墨西哥 (MX)</option>
+                    <option value="JP">日本 (JP)</option>
+                    <option value="KR">韩国 (KR)</option>
+                </select>
+            </div>
+            <div class="form-group half">
+                <label>搜索语言</label>
+                <select name="language" id="search-language">
+                    <option value="en">英语 (en)</option>
+                    <option value="es">西班牙语 (es)</option>
+                    <option value="de">德语 (de)</option>
+                    <option value="fr">法语 (fr)</option>
+                    <option value="pt">葡萄牙语 (pt)</option>
+                    <option value="ja">日语 (ja)</option>
+                    <option value="ko">韩语 (ko)</option>
+                    <option value="zh">中文 (zh)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>高级搜索运算符 (可选)</label>
+            <input type="text" name="searchOperator" id="search-operator" placeholder="例如：site:*.com 或 inurl:contact">
+            <span class="form-hint">添加 Google 搜索运算符来过滤结果</span>
+        </div>
+
+        <div class="form-footer">
+            <button type="submit" class="btn-primary" id="submit-search-btn">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                    <path
+                        d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
+                </svg>
+                开始搜索
+            </button>
+        </div>
+    </form>
+</div>
+
+<div class="section-card">
+    <div class="section-header">
+        <h3>搜索任务列表</h3>
+        <button class="btn-secondary btn-sm" onclick="loadSearchTasks()">刷新</button>
+    </div>
+    <div id="search-tasks-container">
+        <div class="loading-placeholder">加载中...</div>
+    </div>
+</div>
+
+<style>
+    .search-task-form {
+        background: white;
+        border-radius: 16px;
+        padding: 2rem;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+
+    .form-group.half {
+        width: 100%;
+    }
+
+    .form-group label {
+        font-weight: 600;
+        color: #334155;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .form-group label .required {
+        color: #ef4444;
+    }
+
+    .form-group input[type="text"],
+    .form-group input[type="number"],
+    .form-group select {
+        width: 100%;
+        border: 2px solid #e2e8f0;
+        background: #f8fafc;
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+        background: white;
+        border-color: #6366f1;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        outline: none;
+    }
+
+    .form-hint {
+        font-size: 0.8rem;
+        color: #94a3b8;
+        margin-top: 0.35rem;
+        display: block;
+    }
+
+    .form-footer {
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+        border: none;
+        color: white;
+        padding: 0.875rem 1.75rem;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        transition: all 0.2s;
+    }
+
+    .btn-primary:hover {
+        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+        transform: translateY(-1px);
+    }
+
+    .btn-primary:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    /* 任务列表样式 */
+    .search-task-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .search-task-item {
+        background: white;
+        border-radius: 12px;
+        padding: 1.25rem 1.5rem;
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 1.5rem;
+        align-items: center;
+        border: 1px solid #e2e8f0;
+        transition: all 0.2s;
+    }
+
+    .search-task-item:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        border-color: rgba(99, 102, 241, 0.3);
+    }
+
+    .search-task-info h4 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #1e293b;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .search-task-meta {
+        display: flex;
+        gap: 1.5rem;
+        font-size: 0.85rem;
+        color: #64748b;
+    }
+
+    .search-task-stats {
+        display: flex;
+        gap: 1.5rem;
+        text-align: center;
+    }
+
+    .task-stat {
+        min-width: 60px;
+    }
+
+    .task-stat-value {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #1e293b;
+    }
+
+    .task-stat-label {
+        font-size: 0.75rem;
+        color: #94a3b8;
+        text-transform: uppercase;
+    }
+
+    .search-task-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 100px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .status-badge.pending {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .status-badge.running {
+        background: #dbeafe;
+        color: #2563eb;
+    }
+
+    .status-badge.completed {
+        background: #d1fae5;
+        color: #059669;
+    }
+
+    .status-badge.failed {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #94a3b8;
+    }
+
+    .empty-state svg {
+        width: 48px;
+        height: 48px;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    @media (max-width: 768px) {
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+
+        .search-task-item {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .search-task-stats {
+            justify-content: flex-start;
+        }
+    }
+</style>

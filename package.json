@@ -9,6 +9,7 @@
     "start": "node dist/index.js",
     "start:api": "tsx src/api/server.ts",
     "worker:scraper": "tsx src/workers/scraper.worker.ts",
+    "worker:search": "tsx src/workers/search-scraper.worker.ts",
     "worker:processor": "tsx src/workers/processor.worker.ts",
     "worker:rating": "tsx src/workers/rating.worker.ts",
     "worker:crm": "tsx src/workers/crm.worker.ts",

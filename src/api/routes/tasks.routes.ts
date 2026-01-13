@@ -91,6 +91,75 @@ router.post('/scrape/batch', async (req, res) => {
     }
 });
 
+// 添加 Google 搜索任务
+router.post('/search-scrape', async (req, res) => {
+    try {
+        const { query, limit = 50, config = {} } = req.body;
+
+        if (!query || query.trim() === '') {
+            return res.status(400).json({ error: '请提供搜索关键词' });
+        }
+
+        const { randomUUID } = await import('crypto');
+        const { Queue } = await import('bullmq');
+
+        const redisConfig = {
+            host: process.env.REDIS_HOST || 'localhost',
+            port: parseInt(process.env.REDIS_PORT || '6379'),
+            password: process.env.REDIS_PASSWORD || undefined
+        };
+
+        const searchScrapeQueue = new Queue('search-scrape', { connection: redisConfig });
+
+        const taskId = randomUUID();
+        const now = new Date();
+        const taskName = `Google Search - ${query}`;
+
+        // 创建任务记录
+        await db.insert(tasks).values({
+            id: taskId,
+            name: taskName,
+            source: 'google_search',
+            query: query.trim(),
+            targetCount: limit,
+            config: config,
+            status: 'pending',
+            progress: 0,
+            totalLeads: 0,
+            successLeads: 0,
+            failedLeads: 0,
+            createdAt: now,
+            updatedAt: now
+        });
+
+        // 添加到队列
+        await searchScrapeQueue.add('search-scrape', {
+            query: query.trim(),
+            limit,
+            config,
+            taskId
+        }, {
+            priority: 5,
+            jobId: `search-${taskId}`
+        });
+
+        await searchScrapeQueue.close();
+
+        logger.info(`创建 Google 搜索任务成功: ${taskId}, 关键词: ${query}`);
+
+        res.json({
+            success: true,
+            message: '搜索任务创建成功',
+            taskId,
+            query: query.trim(),
+            limit
+        });
+    } catch (error: any) {
+        logger.error('创建搜索任务失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // 查询任务列表
 router.get('/', async (req, res) => {
     try {
