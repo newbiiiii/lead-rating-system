@@ -47,6 +47,19 @@ router.get('/status', async (req, res) => {
         `);
         const crmStats = crmResult.rows[0] as any;
 
+        // Enrich Stats: 补充联系人队列 (只统计 A/B 级)
+        const enrichResult = await db.execute(sql`
+            SELECT 
+                COUNT(CASE WHEN l.enrich_status = 'processing' THEN 1 END) as active,
+                COUNT(CASE WHEN l.enrich_status = 'pending' THEN 1 END) as waiting,
+                COUNT(CASE WHEN l.enrich_status = 'enriched' THEN 1 END) as completed,
+                COUNT(CASE WHEN l.enrich_status = 'failed' THEN 1 END) as failed
+            FROM leads l
+            LEFT JOIN lead_ratings lr ON l.id = lr.lead_id
+            WHERE lr.overall_rating IN ('A', 'B')
+        `);
+        const enrichStats = enrichResult.rows[0] as any;
+
         res.json({
             success: true,
             timestamp: new Date().toISOString(),
@@ -62,6 +75,12 @@ router.get('/status', async (req, res) => {
                     waiting: parseInt(ratingStats.waiting) || 0,
                     completed: parseInt(ratingStats.completed) || 0,
                     failed: parseInt(ratingStats.failed) || 0
+                },
+                enrich: {
+                    active: parseInt(enrichStats.active) || 0,
+                    waiting: parseInt(enrichStats.waiting) || 0,
+                    completed: parseInt(enrichStats.completed) || 0,
+                    failed: parseInt(enrichStats.failed) || 0
                 },
                 crm: {
                     active: parseInt(crmStats.active) || 0,

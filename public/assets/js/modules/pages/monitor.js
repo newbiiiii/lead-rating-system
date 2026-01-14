@@ -48,6 +48,12 @@ const QUEUE_CONFIG = [
         type: 'queue-rating'
     },
     {
+        key: 'enrich',
+        name: '补充联系人队列',
+        icon: '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path><line x1="20" y1="8" x2="20" y2="14" stroke-width="2"></line><line x1="23" y1="11" x2="17" y2="11" stroke-width="2"></line></svg>',
+        type: 'queue-enrich'
+    },
+    {
         key: 'crm',
         name: 'CRM 同步队列',
         icon: '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>',
@@ -128,6 +134,10 @@ function setupLogStream(socket) {
     socket.on('log:crm', (log) => {
         console.log('[Monitor] Received crm log:', log.message);
         appendLogToTerminal('terminal-crm', log);
+    });
+    socket.on('log:enrich', (log) => {
+        console.log('[Monitor] Received enrich log:', log.message);
+        appendLogToTerminal('terminal-enrich', log);
     });
 
     // 也监听通用 log 事件作为备份
