@@ -97,7 +97,7 @@ function updateHintBox() {
 function updateRetryButton() {
     const retryBtn = document.getElementById('retry-all-btn');
     if (retryBtn) {
-        retryBtn.style.display = currentStatus === 'failed' ? 'block' : 'none';
+        retryBtn.style.display = (currentStatus === 'failed' || currentStatus === 'pending') ? 'block' : 'none';
     }
 }
 
