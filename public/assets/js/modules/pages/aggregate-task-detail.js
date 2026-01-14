@@ -138,7 +138,7 @@ function renderSubTasks(subTasks, pagination) {
                     <th style="width: 35%">任务信息</th>
                     <th style="width: 15%">状态</th>
                     <th style="width: 20%">进度</th>
-                    <th style="width: 15%">线索数 (有效/总数)</th>
+                    <th style="width: 15%">线索数</th>
                     <th style="width: 15%">操作</th>
                 </tr>
             </thead>
@@ -165,7 +165,7 @@ function renderSubTasks(subTasks, pagination) {
                             </div>
                         </td>
                         <td>
-                            <div style="font-weight: 600; color: #1e293b;">${task.successLeads || 0} <span style="color: #cbd5e1; font-weight: 400;">/ ${task.totalLeads || 0}</span></div>
+                            <div style="font-weight: 600; color: #1e293b;">${task.totalLeads || 0}</span></div>
                         </td>
                         <td>
                              <a href="#leads?taskId=${task.id}" class="btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; padding: 0.25rem 0.5rem;">
