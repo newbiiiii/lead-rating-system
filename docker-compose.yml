@@ -173,6 +173,36 @@ services:
       - lead-rating-network
     restart: unless-stopped
 
+  # Enrich Worker (补充联系人)
+  enrich-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 256M
+    environment:
+      NODE_ENV: production
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: lead_rating
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    command: node dist/workers/enrich.worker.js
+    volumes:
+      - ./config.yaml:/app/config.yaml
+    networks:
+      - lead-rating-network
+    restart: unless-stopped
+
 networks:
   lead-rating-network:
     driver: bridge
