@@ -368,13 +368,19 @@ function renderPipelineFunnel(data) {
         conversionBadge.textContent = `总转化率: ${summary.overallConversion}%`;
     }
 
+    // 计算条形宽度：基于数值比例（以总采集量为100%基准）
+    const maxCount = stages[0].count || 1; // 避免除以0
+
     // 生成漏斗HTML
     const html = `
         <div class="funnel-stages">
-            ${stages.map((stage, index) => `
+            ${stages.map((stage, index) => {
+        // 宽度按数值比例计算，最小10%
+        const widthPercent = Math.max((stage.count / maxCount) * 100, 10);
+        return `
                 <div class="funnel-stage">
                     <div class="funnel-bar-container">
-                        <div class="funnel-bar" style="width: ${Math.max(stage.percentage, 10)}%; background: ${stage.color};">
+                        <div class="funnel-bar" style="width: ${widthPercent.toFixed(1)}%; background: ${stage.color};">
                             <span class="funnel-count">${stage.count.toLocaleString()}</span>
                         </div>
                     </div>
@@ -391,7 +397,7 @@ function renderPipelineFunnel(data) {
                         </div>
                     ` : ''}
                 </div>
-            `).join('')}
+            `}).join('')}
         </div>
         <div class="funnel-summary">
             <div class="summary-item">
