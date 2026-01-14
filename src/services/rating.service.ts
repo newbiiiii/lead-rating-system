@@ -227,7 +227,7 @@ export async function rateLeadWithAI(taskLead: TaskLead): Promise<RatingResult |
             const errorText = JSON.stringify(result?.result);
             throw new Error(`请求失败: ${result?.code} - ${errorText}`);
         }
-        content = JSON.parse(result?.result?.messageInfo?.answerInfo?.answer);
+        content = JSON.parse(result?.result?.messageInfo?.answerInfo?.answer?.replace(/^```json\s*/i, '')?.replace(/\s*```$/, ''));
         logger.info('[评分结果]', content)
     } catch (error) {
         logger.error('[评分失败]', error)
