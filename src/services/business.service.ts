@@ -62,62 +62,16 @@ Please classify this company into Tier A, B, or C based on the following strict 
 3. **Invalid Source**: The page is not a corporate official website (e.g., B2B platform like Indiamart/Alibaba, directory site).
                 `.trim()
             },
-            {
-                name: '地板',
-                keywords: ['flooring', 'floor', 'spc floor', 'laminate floor', 'vinyl floor'],
-                ratingPrompt: `
-Task Context: We are looking for B2B clients in the flooring industry, including SPC, WPC, Laminate, and Vinyl flooring products.
-
-Please classify this company into Tier A, B, or C:
-
-### Tier A (Must meet ALL):
-1. **Product**: Explicitly sells or distributes flooring products (SPC, WPC, Laminate, Vinyl, or Hardwood).
-2. **Role**: Is a distributor, wholesaler, importer, or retailer.
-3. **Scale**: Has significant market presence or multiple locations.
-4. **Origin**: Is NOT a Chinese company.
-
-### Tier B (Must meet ALL):
-1. **Industry Synergy**: Operates in related sectors (home improvement, interior design, construction materials).
-2. **Potential**: Could expand into flooring distribution.
-3. **Origin**: Is NOT a Chinese company.
-
-### Tier C (Meets ANY):
-1. **Chinese Entity**: Is a Chinese manufacturer or trading company.
-2. **Irrelevant**: Main business unrelated to flooring or construction.
-3. **Invalid Source**: Not a corporate website.
-                `.trim()
-            },
-            {
-                name: '天花板',
-                keywords: ['ceiling', 'ceiling panel', 'suspended ceiling'],
-                ratingPrompt: `
-Task Context: We are looking for B2B clients in the ceiling materials industry.
-
-Please classify this company into Tier A, B, or C:
-
-### Tier A (Must meet ALL):
-1. **Product**: Sells ceiling panels, suspended ceilings, or acoustic ceiling systems.
-2. **Role**: Is a distributor, wholesaler, or contractor.
-3. **Origin**: Is NOT a Chinese company.
-
-### Tier B (Must meet ALL):
-1. **Industry Synergy**: Operates in construction materials, interior fit-out, or acoustic solutions.
-2. **Potential**: Could add ceiling products to their portfolio.
-3. **Origin**: Is NOT a Chinese company.
-
-### Tier C (Meets ANY):
-1. **Chinese Entity**: Is a Chinese manufacturer or trading company.
-2. **Irrelevant**: Main business unrelated to construction.
-3. **Invalid Source**: Not a corporate website.
-                `.trim()
-            }
         ]
     },
     '成品': {
+        subCategories: []
+    },
+    '原料': {
         subCategories: [
             {
-                name: '垃圾袋',
-                keywords: ['garbage bag', 'trash bag', 'bin liner', 'refuse sack'],
+                name: '垃圾袋制造商',
+                keywords: [],
                 ratingPrompt: `
 Task Context: We are identifying high-quality B2B leads in the plastic packaging and waste management industry, specifically focusing on Garbage Bags/Bin Liners.
 
@@ -141,140 +95,6 @@ Please classify this company into Tier A, B, or C based on the following strict 
 2. **Irrelevant**: Main business is unrelated to packaging or cleaning supplies (e.g., software, food ingredients, textiles).
 3. **End User Only**: Is merely a consumer of bags (like a single restaurant or a small office) rather than a reseller/distributor.
 4. **Invalid Source**: The link is a B2B directory (Indiamart, Justdial) or a social media profile, not an official corporate website.
-                `.trim()
-            },
-            {
-                name: '保鲜膜/缠绕膜',
-                keywords: ['stretch film', 'cling film', 'wrap film', 'pallet wrap'],
-                ratingPrompt: `
-Task Context: We are looking for B2B clients in the stretch film and packaging film industry.
-
-Please classify this company into Tier A, B, or C:
-
-### Tier A (Must meet ALL):
-1. **Product**: Sells stretch film, pallet wrap, or industrial cling film.
-2. **Role**: Is a distributor, wholesaler, or packaging solutions provider.
-3. **Market**: Serves logistics, warehousing, or manufacturing sectors.
-4. **Origin**: Is NOT a Chinese company.
-
-### Tier B (Must meet ALL):
-1. **Industry Synergy**: Operates in packaging materials, logistics supplies, or industrial consumables.
-2. **Potential**: Could expand into stretch film distribution.
-3. **Origin**: Is NOT a Chinese company.
-
-### Tier C (Meets ANY):
-1. **Chinese Entity**: Is a Chinese manufacturer or trading company.
-2. **Irrelevant**: Main business unrelated to packaging.
-3. **Invalid Source**: Not a corporate website.
-                `.trim()
-            }
-        ]
-    },
-    '原料': {
-        subCategories: [
-            {
-                name: 'PE原料',
-                keywords: ['pe resin', 'polyethylene', 'hdpe', 'ldpe', 'lldpe'],
-                ratingPrompt: `
-Task Context: We are identifying B2B leads for Polyethylene (PE) resin trading, including HDPE, LDPE, and LLDPE.
-
-Please classify this company into Tier A, B, or C:
-
-### Tier A (Must meet ALL):
-1. **Product**: Trades or distributes PE resins (HDPE, LDPE, LLDPE).
-2. **Role**: Functions as an importer, distributor, or trading company.
-3. **Scale**: Shows significant trading volume or has established supplier relationships.
-4. **Market**: Serves plastics manufacturers or packaging producers.
-5. **Origin**: Is NOT a Chinese company.
-
-### Tier B (Must meet ALL):
-1. **Industry Synergy**: Operates in related polymer or chemical distribution.
-2. **Potential**: Has infrastructure suitable for PE resin trading.
-3. **Origin**: Is NOT a Chinese company.
-
-### Tier C (Meets ANY):
-1. **Chinese Entity**: Is a Chinese manufacturer or trading company.
-2. **Irrelevant**: Main business unrelated to polymers or chemicals.
-3. **End User Only**: Uses PE only for own production, not resale.
-4. **Invalid Source**: Not a corporate website.
-                `.trim()
-            },
-            {
-                name: 'PP原料',
-                keywords: ['pp resin', 'polypropylene', 'pp compound'],
-                ratingPrompt: `
-Task Context: We are identifying B2B leads for Polypropylene (PP) resin trading.
-
-Please classify this company into Tier A, B, or C:
-
-### Tier A (Must meet ALL):
-1. **Product**: Trades or distributes PP resins or PP compounds.
-2. **Role**: Functions as an importer, distributor, or trading company.
-3. **Scale**: Shows significant trading volume.
-4. **Market**: Serves plastics manufacturers.
-5. **Origin**: Is NOT a Chinese company.
-
-### Tier B (Must meet ALL):
-1. **Industry Synergy**: Operates in related polymer distribution.
-2. **Potential**: Has infrastructure suitable for PP trading.
-3. **Origin**: Is NOT a Chinese company.
-
-### Tier C (Meets ANY):
-1. **Chinese Entity**: Is a Chinese manufacturer or trading company.
-2. **Irrelevant**: Main business unrelated to polymers.
-3. **Invalid Source**: Not a corporate website.
-                `.trim()
-            },
-            {
-                name: 'PVC原料',
-                keywords: ['pvc resin', 'polyvinyl chloride', 'pvc compound'],
-                ratingPrompt: `
-Task Context: We are identifying B2B leads for PVC resin trading.
-
-Please classify this company into Tier A, B, or C:
-
-### Tier A (Must meet ALL):
-1. **Product**: Trades or distributes PVC resins or PVC compounds.
-2. **Role**: Functions as an importer, distributor, or trading company.
-3. **Market**: Serves construction, pipe, or profile manufacturers.
-4. **Origin**: Is NOT a Chinese company.
-
-### Tier B (Must meet ALL):
-1. **Industry Synergy**: Operates in related polymer or construction material distribution.
-2. **Potential**: Has infrastructure suitable for PVC trading.
-3. **Origin**: Is NOT a Chinese company.
-
-### Tier C (Meets ANY):
-1. **Chinese Entity**: Is a Chinese manufacturer or trading company.
-2. **Irrelevant**: Main business unrelated to PVC or construction.
-3. **Invalid Source**: Not a corporate website.
-                `.trim()
-            },
-            {
-                name: '通用原料',
-                keywords: ['resin', 'polymer', 'plastic raw material', 'masterbatch', 'compound'],
-                ratingPrompt: `
-Task Context: We are identifying B2B leads in the plastic raw materials trading industry.
-
-Please classify this company into Tier A, B, or C:
-
-### Tier A (Must meet ALL):
-1. **Product**: Trades or distributes plastic resins, polymers, masterbatches, or compounds.
-2. **Role**: Functions as an importer, distributor, or trading company (not end manufacturer).
-3. **Scale**: Shows significant trading volume or warehouse capacity.
-4. **Market**: Serves industrial clients in plastics manufacturing.
-5. **Origin**: Is NOT a Chinese company.
-
-### Tier B (Must meet ALL):
-1. **Industry Synergy**: Operates in related chemical or plastics sectors.
-2. **Potential**: Has import/distribution infrastructure.
-3. **Origin**: Is NOT a Chinese company.
-
-### Tier C (Meets ANY):
-1. **Chinese Entity**: Is a Chinese manufacturer or trading company.
-2. **Irrelevant**: Main business unrelated to chemicals or plastics.
-3. **End User Only**: Uses raw materials only for own production.
-4. **Invalid Source**: Not a corporate website.
                 `.trim()
             }
         ]
