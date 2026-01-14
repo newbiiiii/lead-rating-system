@@ -156,7 +156,7 @@ router.get('/pipeline-funnel', async (req, res) => {
                     key: 'enriched',
                     count: enriched,
                     percentage: scraped > 0 ? Math.round((enriched / scraped) * 100) : 0,
-                    color: '#10b981',
+                    color: '#06b6d4',
                     description: 'Apollo 联系人补充'
                 },
                 {
@@ -164,7 +164,7 @@ router.get('/pipeline-funnel', async (req, res) => {
                     key: 'synced',
                     count: synced,
                     percentage: scraped > 0 ? Math.round((synced / scraped) * 100) : 0,
-                    color: '#3b82f6',
+                    color: '#10b981',
                     description: '销售易 CRM'
                 }
             ],
@@ -261,6 +261,19 @@ router.get('/queues-stats', async (req, res) => {
         `);
         const crmStats = crmResult.rows[0] as any;
 
+        // 从数据库查询Enrich队列状态 (只统计A/B级线索)
+        const enrichResult = await db.execute(sql`
+            SELECT 
+                COUNT(CASE WHEN l.enrich_status = 'pending' THEN 1 END) as waiting,
+                COUNT(CASE WHEN l.enrich_status = 'processing' THEN 1 END) as active,
+                COUNT(CASE WHEN l.enrich_status = 'enriched' THEN 1 END) as completed,
+                COUNT(CASE WHEN l.enrich_status = 'failed' THEN 1 END) as failed
+            FROM leads l
+            LEFT JOIN lead_ratings lr ON l.id = lr.lead_id
+            WHERE lr.overall_rating IN ('A', 'B')
+        `);
+        const enrichStats = enrichResult.rows[0] as any;
+
         res.json({
             scrape: {
                 waiting: parseInt(scrapeStats.waiting) || 0,
@@ -279,6 +292,12 @@ router.get('/queues-stats', async (req, res) => {
                 active: parseInt(crmStats.active) || 0,
                 completed: parseInt(crmStats.completed) || 0,
                 failed: parseInt(crmStats.failed) || 0
+            },
+            enrich: {
+                waiting: parseInt(enrichStats.waiting) || 0,
+                active: parseInt(enrichStats.active) || 0,
+                completed: parseInt(enrichStats.completed) || 0,
+                failed: parseInt(enrichStats.failed) || 0
             }
         });
     } catch (error: any) {

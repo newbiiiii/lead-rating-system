@@ -981,6 +981,11 @@
         --queue-color-end: #d97706;
     }
 
+    .queue-card.enrich {
+        --queue-color-start: #06b6d4;
+        --queue-color-end: #0891b2;
+    }
+
     .queue-card.crm {
         --queue-color-start: #10b981;
         --queue-color-end: #059669;
