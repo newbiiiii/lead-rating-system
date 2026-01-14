@@ -38,13 +38,40 @@ router.get('/grade-stats', async (req, res) => {
         `);
 
         const stats = gradeResult.rows[0] as any;
+
+        // 今日统计
+        const todayLeadsResult = await db.execute(sql`
+            SELECT 
+                COUNT(*) as total,
+                COUNT(DISTINCT COALESCE(NULLIF(domain, ''), company_name)) as unique_count
+            FROM leads 
+            WHERE created_at >= CURRENT_DATE
+        `);
+        const todayLeads = todayLeadsResult.rows[0] as any;
+
+        const todayQualityResult = await db.execute(sql`
+            SELECT 
+                COUNT(CASE WHEN lr.overall_rating = 'A' THEN 1 END) as "A",
+                COUNT(CASE WHEN lr.overall_rating = 'B' THEN 1 END) as "B"
+            FROM leads l
+            JOIN lead_ratings lr ON l.id = lr.lead_id
+            WHERE lr.rated_at >= CURRENT_DATE
+        `);
+        const todayQuality = todayQualityResult.rows[0] as any;
+
         res.json({
             total: totalCount,
             unique: uniqueCount, // 增加不重复数
             A: parseInt(stats.A) || 0,
             B: parseInt(stats.B) || 0,
             C: parseInt(stats.C) || 0,
-            D: parseInt(stats.D) || 0
+            D: parseInt(stats.D) || 0,
+            today: {
+                total: parseInt(todayLeads.total) || 0,
+                unique: parseInt(todayLeads.unique_count) || 0,
+                A: parseInt(todayQuality.A) || 0,
+                B: parseInt(todayQuality.B) || 0
+            }
         });
     } catch (error: any) {
         logger.error('获取评级分布统计失败:', error);
@@ -65,11 +92,25 @@ router.get('/rating-stats', async (req, res) => {
         `);
 
         const stats = result.rows[0] as any;
+
+        // 今日统计
+        const todayResult = await db.execute(sql`
+            SELECT 
+                COUNT(CASE WHEN rating_status IN ('completed', 'skipped') AND updated_at >= CURRENT_DATE THEN 1 END) as rated,
+                COUNT(CASE WHEN rating_status IN ('failed', 'pending_config') AND updated_at >= CURRENT_DATE THEN 1 END) as failed
+            FROM leads
+        `);
+        const todayStats = todayResult.rows[0] as any;
+
         res.json({
             total: parseInt(stats.total) || 0,
             rated: parseInt(stats.rated) || 0,
             pending: parseInt(stats.pending) || 0,
-            failed: parseInt(stats.failed) || 0
+            failed: parseInt(stats.failed) || 0,
+            today: {
+                rated: parseInt(todayStats.rated) || 0,
+                failed: parseInt(todayStats.failed) || 0
+            }
         });
     } catch (error: any) {
         logger.error('获取评级状态统计失败:', error);
@@ -93,11 +134,27 @@ router.get('/crm-stats', async (req, res) => {
         `);
 
         const stats = result.rows[0] as any;
+
+        // 今日统计
+        const todayResult = await db.execute(sql`
+            SELECT 
+                COUNT(CASE WHEN l.crm_sync_status = 'synced' AND l.crm_synced_at >= CURRENT_DATE THEN 1 END) as synced,
+                COUNT(CASE WHEN l.crm_sync_status = 'failed' AND l.updated_at >= CURRENT_DATE THEN 1 END) as failed
+            FROM leads l
+            LEFT JOIN lead_ratings lr ON l.id = lr.lead_id
+            WHERE lr.overall_rating IN ('A', 'B')
+        `);
+        const todayStats = todayResult.rows[0] as any;
+
         res.json({
             total: parseInt(stats.total) || 0,
             synced: parseInt(stats.synced) || 0,
             pending: parseInt(stats.pending) || 0,
-            failed: parseInt(stats.failed) || 0
+            failed: parseInt(stats.failed) || 0,
+            today: {
+                synced: parseInt(todayStats.synced) || 0,
+                failed: parseInt(todayStats.failed) || 0
+            }
         });
     } catch (error: any) {
         logger.error('获取CRM同步状态统计失败:', error);

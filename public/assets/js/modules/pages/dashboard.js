@@ -259,6 +259,11 @@ function renderQueueCards(stats) {
     container.innerHTML = html;
 }
 
+function formatChange(change, color = '#10b981', fontSize = '0.5em') {
+    if (!change || change <= 0) return '';
+    return `<span style="font-size: ${fontSize}; color: ${color}; margin-left: 2px; vertical-align: middle;">(+${change})</span>`;
+}
+
 function updateGradeStats(stats) {
     // 更新统计卡片
     const totalEl = document.getElementById('total-leads');
@@ -270,15 +275,24 @@ function updateGradeStats(stats) {
     const gradeB = stats.B || 0;
     const qualityTotal = gradeA + gradeB;
 
+    // 今日数据
+    const today = stats.today || {};
+    const todayA = today.A || 0;
+    const todayB = today.B || 0;
+    const todayQuality = todayA + todayB;
+
     if (totalEl) {
         totalEl.innerHTML = `
-            <div>${stats.total || 0}</div>
-            <div style="font-size: 12px; color: #64748b; margin-top: 4px; font-weight: normal;">去重后: ${stats.unique || 0}</div>
+            <div>${stats.total || 0}${formatChange(today.total)}</div>
+            <div style="font-size: 12px; color: #64748b; margin-top: 2px; font-weight: normal;">
+                去重后: ${stats.unique || 0}${formatChange(today.unique, undefined, '0.9em')}
+            </div>
         `;
     }
-    if (qualityTotalEl) qualityTotalEl.textContent = qualityTotal;
-    if (gradeAEl) gradeAEl.textContent = gradeA;
-    if (gradeBEl) gradeBEl.textContent = gradeB;
+
+    if (qualityTotalEl) qualityTotalEl.innerHTML = `${qualityTotal}${formatChange(todayQuality)}`;
+    if (gradeAEl) gradeAEl.innerHTML = `${gradeA}${formatChange(todayA)}`;
+    if (gradeBEl) gradeBEl.innerHTML = `${gradeB}${formatChange(todayB)}`;
 }
 
 function updateRatingStats(stats) {
@@ -286,9 +300,11 @@ function updateRatingStats(stats) {
     const pendingEl = document.getElementById('pending-rating-count');
     const failedEl = document.getElementById('rating-failed-count');
 
-    if (ratedEl) ratedEl.textContent = stats.rated || 0;
+    const today = stats.today || {};
+
+    if (ratedEl) ratedEl.innerHTML = `${stats.rated || 0}${formatChange(today.rated)}`;
     if (pendingEl) pendingEl.textContent = stats.pending || 0;
-    if (failedEl) failedEl.textContent = stats.failed || 0;
+    if (failedEl) failedEl.innerHTML = `${stats.failed || 0}${formatChange(today.failed, '#ef4444')}`;
 }
 
 function updateCrmStats(stats) {
@@ -296,9 +312,11 @@ function updateCrmStats(stats) {
     const pendingEl = document.getElementById('crm-pending-count');
     const failedEl = document.getElementById('crm-failed-count');
 
-    if (syncedEl) syncedEl.textContent = stats.synced || 0;
+    const today = stats.today || {};
+
+    if (syncedEl) syncedEl.innerHTML = `${stats.synced || 0}${formatChange(today.synced)}`;
     if (pendingEl) pendingEl.textContent = stats.pending || 0;
-    if (failedEl) failedEl.textContent = stats.failed || 0;
+    if (failedEl) failedEl.innerHTML = `${stats.failed || 0}${formatChange(today.failed, '#ef4444')}`;
 }
 
 function updateGradeChart(stats) {
