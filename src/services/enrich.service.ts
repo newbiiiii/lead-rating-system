@@ -51,7 +51,10 @@ export async function getLeadForEnrich(leadId: string) {
 /**
  * 调用外部 API 获取联系人数据
  * 
- * TODO: 用户需要实现此方法，对接 Apollo 或其他数据增强服务
+ * 流程：
+ * 1. 如果有域名，直接调用【根据公司域名补全联系人】
+ * 2. 如果没有域名，先调用【根据公司名称查询域名】，再调用【根据公司域名补全联系人】
+ * 3. 如果获取不到域名，返回失败
  * 
  * @param domain - 公司域名
  * @param companyName - 公司名称
@@ -61,49 +64,121 @@ export async function enrichLeadContacts(
     domain: string | null,
     companyName: string
 ): Promise<EnrichResult> {
-    // ============================================
-    // TODO: 用户自行实现 Apollo API 调用
-    // ============================================
-    // 
-    // 示例实现：
-    // 
-    // try {
-    //     const response = await fetch('YOUR_APOLLO_API_ENDPOINT', {
-    //         method: 'POST',
-    //         headers: { 'Content-Type': 'application/json' },
-    //         body: JSON.stringify({ domain, companyName })
-    //     });
-    //     
-    //     const data = await response.json();
-    //     
-    //     return {
-    //         success: true,
-    //         contacts: data.contacts.map((c: any) => ({
-    //             name: c.name,
-    //             title: c.title,
-    //             email: c.email,
-    //             phone: c.phone,
-    //             mobile: c.mobile,
-    //             linkedinUrl: c.linkedin_url,
-    //             isPrimary: c.is_primary
-    //         }))
-    //     };
-    // } catch (error: any) {
-    //     return {
-    //         success: false,
-    //         error: error.message
-    //     };
-    // }
-    // 
-    // ============================================
+    const API_BASE = 'http://wechatapp.intco.com.cn:8090/jeecgboot/dcs/apollo';
+    const API_KEY = 'QArbpOWRV0BmyVHRv9n';
 
-    logger.warn(`[Enrich] enrichLeadContacts 方法尚未实现，请补充 Apollo API 调用逻辑`);
-
-    // 暂时返回跳过状态，等待用户实现
-    return {
-        success: false,
-        error: 'enrichLeadContacts 方法尚未实现'
+    const headers = {
+        'x-api-key': API_KEY,
+        'Cookie': 'cookiesession1=678ADA7117856B8028B0CE2C17DC7F0C'
     };
+
+    try {
+        let domainToUse = domain;
+
+        // 如果没有域名，先通过公司名称查询域名
+        if (!domainToUse) {
+            logger.info(`[Enrich] 公司 "${companyName}" 无域名，尝试通过名称查询...`);
+
+            const searchUrl = `${API_BASE}/searchCompanyDomainByCompanyName?companyName=${encodeURIComponent(companyName)}`;
+            const searchResponse = await fetch(searchUrl, {
+                method: 'GET',
+                headers
+            });
+
+            if (!searchResponse.ok) {
+                return {
+                    success: false,
+                    error: `查询域名失败: HTTP ${searchResponse.status}`
+                };
+            }
+
+            const searchResult = await searchResponse.json() as any;
+
+            // 解析域名查询结果
+            // SearchCompanyRecord: res=0 成功, companyWebsite 是域名
+            if (searchResult && searchResult.res === 0 && searchResult.companyWebsite) {
+                domainToUse = searchResult.companyWebsite;
+                logger.info(`[Enrich] 通过公司名称查询到域名: ${domainToUse}`);
+            } else if (searchResult && searchResult.companyWebsite) {
+                // 兼容没有 res 字段的情况
+                domainToUse = searchResult.companyWebsite;
+                logger.info(`[Enrich] 通过公司名称查询到域名: ${domainToUse}`);
+            } else {
+                const errMsg = searchResult?.remark || `无法获取公司域名`;
+                logger.warn(`[Enrich] 无法通过公司名称 "${companyName}" 查询到域名: ${errMsg}`);
+                return {
+                    success: false,
+                    error: `无法获取公司域名: ${companyName} - ${errMsg}`
+                };
+            }
+        }
+
+        // 调用【根据公司域名补全联系人】接口
+        logger.info(`[Enrich] 开始通过域名 "${domainToUse}" 补充联系人...`);
+
+        const contactUrl = `${API_BASE}/completeAndGetContactByDomain?companyDomain=${encodeURIComponent(domainToUse!)}`;
+        const contactResponse = await fetch(contactUrl, {
+            method: 'GET',
+            headers
+        });
+
+        if (!contactResponse.ok) {
+            return {
+                success: false,
+                error: `补充联系人失败: HTTP ${contactResponse.status}`
+            };
+        }
+
+        const contactResult = await contactResponse.json() as any;
+
+        // 解析联系人结果
+        // 返回格式为 List<ApolloPeopleVO>，直接是数组
+        const rawContacts = Array.isArray(contactResult) ? contactResult :
+            (contactResult?.result && Array.isArray(contactResult.result) ? contactResult.result : []);
+
+        if (rawContacts.length > 0) {
+            const contactList: ContactData[] = [];
+
+            for (const c of rawContacts) {
+                // ApolloPeopleVO 字段: id, keywordDomain, name, linkedinUrl, email, country, title, phoneNumber
+                contactList.push({
+                    name: c.name || '',
+                    title: c.title || '',
+                    email: c.email || '',
+                    phone: c.phoneNumber || '',
+                    mobile: '',
+                    linkedinUrl: c.linkedinUrl || '',
+                    isPrimary: false
+                });
+            }
+
+            // 设置第一个为主要联系人
+            if (contactList.length > 0) {
+                contactList[0].isPrimary = true;
+            }
+
+            logger.info(`[Enrich] 成功获取 ${contactList.length} 个联系人`);
+
+            return {
+                success: true,
+                contacts: contactList
+            };
+        } else {
+            // 没有联系人也算成功，只是没找到
+            logger.info(`[Enrich] 域名 "${domainToUse}" 未找到联系人`);
+            return {
+                success: true,
+                contacts: []
+            };
+        }
+
+    } catch (error: any) {
+        logger.error(`[Enrich] API 调用异常:`, error.message);
+        return {
+            success: false,
+            error: `API 调用异常: ${error.message}`
+        };
+    }
 }
 
 /**
