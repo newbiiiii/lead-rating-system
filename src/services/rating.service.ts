@@ -4,6 +4,7 @@
  */
 import { logger as baseLogger } from '../utils/logger';
 const logger = baseLogger.child({ service: 'rating' });
+import axios from 'axios';
 import { RatingResult, TaskLead } from "../model/model";
 import { db } from "../db";
 import { sql } from "drizzle-orm";
@@ -208,29 +209,28 @@ export async function rateLeadWithAI(taskLead: TaskLead): Promise<RatingResult |
 
     let content: RatingResult = {} as RatingResult;
     try {
-        const response = await fetch(url, {
-            method: 'POST',
+        const response = await axios.post(url, requestData, {
             headers: {
                 'Content-Type': 'application/json',
                 'x-api-key': 'dasjfnreiugnreiun'
             },
-            body: JSON.stringify(requestData)
+            timeout: 600000 // 10分钟超时
         });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`请求失败: ${response.status} - ${errorText}`);
-        }
-
-        const result: any = await response.json();
+        const result = response.data;
         if (!result?.success) {
             const errorText = JSON.stringify(result?.result);
             throw new Error(`请求失败: ${result?.code} - ${errorText}`);
         }
         content = JSON.parse(result?.result?.messageInfo?.answerInfo?.answer?.replace(/^```json\s*/i, '')?.replace(/\s*```$/, ''));
         logger.info('[评分结果]', content)
-    } catch (error) {
-        logger.error('[评分失败]', error)
+    } catch (error: any) {
+        // Axios error handling
+        if (error.code === 'ECONNABORTED') {
+            logger.error(`[评分超时] 请求超过 10 分钟: ${error.message}`);
+        } else {
+            logger.error('[评分失败]', error.message || error);
+        }
         throw error;  // 重新抛出错误，让 worker 的重试机制处理
     }
 
