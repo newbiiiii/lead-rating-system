@@ -12,6 +12,7 @@
             <select name="source" id="source-select">
                 <option value="import" selected>import (默认)</option>
                 <option value="manus">manus</option>
+                <option value="antigravity">antigravity</option>
                 <option value="存量数据迁移">存量数据迁移</option>
             </select>
             <input type="text" name="customSource" id="custom-source-input" placeholder="输入自定义分类名称"
@@ -35,7 +36,10 @@
                     <button type="button" class="btn-text" id="clear-file-btn">清除</button>
                 </div>
             </div>
-            <small class="form-hint">Excel 表头应包含：公司名称（必填）、网站、联系人、邮箱、电话、地区 等</small>
+            <small class="form-hint">
+                <strong>必填字段：</strong>公司名称、域名（或网站）<br>
+                <strong>联系方式：</strong>邮箱和电话至少填写一个
+            </small>
         </div>
         <div class="form-actions">
             <button type="submit" class="btn-primary" id="submit-btn">开始导入</button>

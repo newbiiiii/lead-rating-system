@@ -639,6 +639,62 @@ router.post('/import/leads', upload.single('file'), async (req: any, res: any) =
             return res.status(400).json({ error: 'Excel 文件中没有有效数据，请确保包含"公司名称"列' });
         }
 
+        // 验证每行数据
+        const errors: string[] = [];
+        const validData: ImportLeadData[] = [];
+
+        data.forEach((row, index) => {
+            const rowNum = index + 2; // Excel 行号（第一行是表头）
+            const rowErrors: string[] = [];
+
+            // 1. 公司名称必填
+            if (!row.companyName || row.companyName.trim() === '') {
+                rowErrors.push('公司名称为空');
+            }
+
+            // 2. 域名必填（如果没有 domain，尝试从 website 提取）
+            if (!row.domain || row.domain.trim() === '') {
+                if (row.website && row.website.trim() !== '') {
+                    // 尝试从 website 提取 domain
+                    try {
+                        const url = new URL(row.website.startsWith('http') ? row.website : `https://${row.website}`);
+                        row.domain = url.hostname.replace(/^www\./, '');
+                    } catch {
+                        rowErrors.push('域名为空且无法从网站提取');
+                    }
+                } else {
+                    rowErrors.push('域名为空');
+                }
+            }
+
+            // 3. 邮箱或电话至少填一个
+            const hasEmail = row.contactEmail && row.contactEmail.trim() !== '';
+            const hasPhone = row.contactPhone && row.contactPhone.trim() !== '';
+            if (!hasEmail && !hasPhone) {
+                rowErrors.push('邮箱和电话至少填一个');
+            }
+
+            if (rowErrors.length > 0) {
+                errors.push(`第 ${rowNum} 行: ${rowErrors.join(', ')}`);
+            } else {
+                validData.push(row);
+            }
+        });
+
+        // 如果有错误，返回详细信息
+        if (errors.length > 0) {
+            const maxErrors = 10; // 最多显示10条错误
+            const errorMessage = errors.length > maxErrors
+                ? `发现 ${errors.length} 条数据不符合要求，前 ${maxErrors} 条错误：\n${errors.slice(0, maxErrors).join('\n')}\n...还有 ${errors.length - maxErrors} 条`
+                : `发现 ${errors.length} 条数据不符合要求：\n${errors.join('\n')}`;
+
+            return res.status(400).json({
+                error: errorMessage,
+                validCount: validData.length,
+                invalidCount: errors.length
+            });
+        }
+
         const { randomUUID } = await import('crypto');
         const now = new Date();
         const taskId = randomUUID();

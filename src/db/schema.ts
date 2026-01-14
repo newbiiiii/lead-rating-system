@@ -172,10 +172,10 @@ export const contacts = pgTable('contacts', {
 
     // 联系人信息
     name: varchar('name', { length: 255 }),
-    title: varchar('title', { length: 100 }),
+    title: varchar('title', { length: 255 }),
     email: varchar('email', { length: 255 }),
-    phone: varchar('phone', { length: 50 }),
-    mobile: varchar('mobile', { length: 50 }),
+    phone: varchar('phone', { length: 100 }),
+    mobile: varchar('mobile', { length: 100 }),
 
     // 社交媒体
     linkedinUrl: text('linkedin_url'),
