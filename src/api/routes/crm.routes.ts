@@ -204,4 +204,142 @@ router.post('/leads/retry', async (req: any, res: any) => {
     }
 });
 
+// =============== 待配置规则（pending_config）管理 ===============
+
+// 获取待配置规则的线索统计
+router.get('/pending-config/summary', async (req: any, res: any) => {
+    try {
+        const result = await db.execute(sql`
+            SELECT COUNT(*) as count
+            FROM leads l
+            JOIN lead_ratings lr ON l.id = lr.lead_id
+            WHERE l.crm_sync_status = 'pending_config'
+            AND lr.overall_rating IN ('A', 'B')
+        `);
+        const count = parseInt(result.rows[0].count as string) || 0;
+
+        res.json({ count });
+    } catch (error: any) {
+        logger.error('获取待配置规则统计失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 查询待配置规则的线索列表
+router.get('/pending-config/leads', async (req: any, res: any) => {
+    try {
+        const page = parseInt(req.query.page as string) || 1;
+        const pageSize = parseInt(req.query.pageSize as string) || 20;
+        const offset = (page - 1) * pageSize;
+
+        // 获取待配置规则的线索
+        const leadsResult = await db.execute(sql`
+            SELECT 
+                l.id,
+                l.company_name as "companyName",
+                l.domain,
+                l.website,
+                l.crm_sync_status as "crmSyncStatus",
+                l.crm_sync_error as "crmSyncError",
+                l.updated_at as "updatedAt",
+                t.id as "taskId",
+                t.name as "taskName",
+                lr.overall_rating as "overallRating"
+            FROM leads l
+            JOIN tasks t ON l.task_id = t.id
+            JOIN lead_ratings lr ON l.id = lr.lead_id
+            WHERE l.crm_sync_status = 'pending_config'
+            AND lr.overall_rating IN ('A', 'B')
+            ORDER BY l.updated_at DESC
+            LIMIT ${pageSize} OFFSET ${offset}
+        `);
+
+        // 获取总数
+        const countResult = await db.execute(sql`
+            SELECT COUNT(*) as count
+            FROM leads l
+            JOIN lead_ratings lr ON l.id = lr.lead_id
+            WHERE l.crm_sync_status = 'pending_config'
+            AND lr.overall_rating IN ('A', 'B')
+        `);
+        const total = parseInt(countResult.rows[0].count as string);
+
+        res.json({
+            leads: leadsResult.rows,
+            pagination: {
+                page,
+                pageSize,
+                total,
+                totalPages: Math.ceil(total / pageSize)
+            }
+        });
+    } catch (error: any) {
+        logger.error('查询待配置规则线索失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 批量重试待配置规则的线索（在配置好规则后）
+router.post('/pending-config/retry', async (req: any, res: any) => {
+    try {
+        const { leadIds, all } = req.body;
+
+        let leadsToRetry: any[] = [];
+
+        if (all) {
+            // 重试所有待配置规则的线索
+            const result = await db.execute(sql`
+                SELECT l.id FROM leads l
+                JOIN lead_ratings lr ON l.id = lr.lead_id
+                WHERE l.crm_sync_status = 'pending_config'
+                AND lr.overall_rating IN ('A', 'B')
+            `);
+            leadsToRetry = result.rows as any[];
+        } else if (leadIds && Array.isArray(leadIds) && leadIds.length > 0) {
+            // 重试指定的线索
+            const placeholders = leadIds.map(id => `'${id}'`).join(',');
+            const result = await db.execute(sql.raw(`
+                SELECT l.id FROM leads l
+                JOIN lead_ratings lr ON l.id = lr.lead_id
+                WHERE l.id IN (${placeholders})
+                AND l.crm_sync_status = 'pending_config'
+                AND lr.overall_rating IN ('A', 'B')
+            `));
+            leadsToRetry = result.rows as any[];
+        } else {
+            return res.status(400).json({ error: '请提供 leadIds 数组或设置 all=true' });
+        }
+
+        if (leadsToRetry.length === 0) {
+            return res.json({ success: true, message: '没有找到需要重试的线索', count: 0 });
+        }
+
+        // 更新状态并加入队列
+        for (const lead of leadsToRetry) {
+            await db.update(leads)
+                .set({
+                    crmSyncStatus: 'pending',
+                    crmSyncError: null
+                })
+                .where(eq(leads.id, lead.id));
+
+            await crmQueue.add('saveToCrm', {
+                type: 'saveToCrm',
+                leadId: lead.id
+            });
+        }
+
+        logger.info(`待配置规则重试: 成功将 ${leadsToRetry.length} 条线索重新加入CRM同步队列`);
+
+        res.json({
+            success: true,
+            message: `成功将 ${leadsToRetry.length} 条线索重新加入CRM同步队列`,
+            count: leadsToRetry.length
+        });
+    } catch (error: any) {
+        logger.error('重试待配置规则线索失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 export default router;

@@ -10,13 +10,15 @@ let currentTaskId = null;
 const STATUS_HINTS = {
     'pending': '以下是等待同步到CRM的线索。系统会自动处理同步队列。',
     'synced': '以下是已成功同步到CRM的线索。',
-    'failed': '以下是同步失败的线索。您可以点击"重新同步"进行重试。'
+    'failed': '以下是同步失败的线索。您可以点击"重新同步"进行重试。',
+    'pending_config': '以下线索无法识别业务线，请先在 business.service.ts 中配置规则，然后点击"批量重试"。'
 };
 
 const STATUS_NAMES = {
     'pending': '待同步',
     'synced': '已同步',
-    'failed': '同步失败'
+    'failed': '同步失败',
+    'pending_config': '待配置规则'
 };
 
 // HTML转义函数防止XSS
@@ -83,7 +85,8 @@ function updateHintBox() {
 function updateRetryButton() {
     const retryBtn = document.getElementById('retry-all-btn');
     if (retryBtn) {
-        retryBtn.style.display = currentStatus === 'failed' ? 'block' : 'none';
+        // failed 和 pending_config 状态都显示批量重试按钮
+        retryBtn.style.display = (currentStatus === 'failed' || currentStatus === 'pending_config') ? 'block' : 'none';
     }
 }
 
@@ -97,6 +100,11 @@ async function loadCrmLeads(page = 1) {
     let url = `/api/crm/leads?status=${currentStatus}&page=${page}&pageSize=${pageSize}`;
     if (currentTaskId) {
         url += `&taskId=${currentTaskId}`;
+    }
+
+    // pending_config 使用专用 API
+    if (currentStatus === 'pending_config') {
+        url = `/api/crm/pending-config/leads?page=${page}&pageSize=${pageSize}`;
     }
 
     const data = await fetchAPI(url);
@@ -177,7 +185,15 @@ function switchCrmStatus(status) {
 async function retryAllCrm() {
     if (!confirm(`确定要重新同步所有${STATUS_NAMES[currentStatus]}的线索吗？`)) return;
 
-    const result = await postAPI('/api/crm/leads/retry', { status: currentStatus });
+    // pending_config 使用专用 API
+    const url = currentStatus === 'pending_config'
+        ? '/api/crm/pending-config/retry'
+        : '/api/crm/leads/retry';
+    const body = currentStatus === 'pending_config'
+        ? { all: true }
+        : { status: currentStatus };
+
+    const result = await postAPI(url, body);
 
     if (result && result.success) {
         showNotification(`已将 ${result.count} 条线索加入同步队列`, 'success');
@@ -188,7 +204,15 @@ async function retryAllCrm() {
 }
 
 async function retrySingleCrm(leadId) {
-    const result = await postAPI('/api/crm/leads/retry', { leadIds: [leadId], status: currentStatus });
+    // pending_config 使用专用 API
+    const url = currentStatus === 'pending_config'
+        ? '/api/crm/pending-config/retry'
+        : '/api/crm/leads/retry';
+    const body = currentStatus === 'pending_config'
+        ? { leadIds: [leadId] }
+        : { leadIds: [leadId], status: currentStatus };
+
+    const result = await postAPI(url, body);
 
     if (result && result.success) {
         showNotification('已加入同步队列', 'success');

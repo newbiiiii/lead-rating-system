@@ -9,6 +9,7 @@ import { eq, sql } from 'drizzle-orm';
 import { logger as baseLogger } from '../utils/logger';
 const logger = baseLogger.child({ service: 'crm' });
 import { randomUUID } from 'crypto';
+import { getBusinessContext } from './business.service';
 
 /**
  * Lead 数据类型（从数据库查询后的结构）
@@ -127,8 +128,9 @@ export async function getLeadForCrm(leadId: string): Promise<CrmLead | null> {
 
 /**
  * 调用 CRM API
+ * @param productLine 业务线名称（建材/成品/原料）
  */
-export async function callCrmApi(lead: CrmLead): Promise<{ success: boolean; message: string; crmLeadId?: string }> {
+export async function callCrmApi(lead: CrmLead, productLine: number): Promise<{ success: boolean; message: string; crmLeadId?: string }> {
     // 1.1. 获取token
     const accessToken = await getAccessToken();
     logger.info(`[CRM同步] 获取token: ${accessToken}`);
@@ -170,6 +172,7 @@ export async function callCrmApi(lead: CrmLead): Promise<{ success: boolean; mes
             "customItem211__c": ratingValue,                                        // 线索等级
             "phone": lead.phone?.replace(/\s+/g, ""),                               // 联系人电话
             "comment": lead.allContacts,                                            // 备注
+            "Product_Line__c": productLine,                                           // 业务线
         }
     }
     logger.info(`[CRM同步] 封装推送数据: ${JSON.stringify(createLeadBody)}`);
@@ -283,8 +286,29 @@ export async function syncLeadToCrm(leadId: string): Promise<CrmSyncResult> {
             return { success: false, leadId, message: 'Lead not enriched yet', error: 'Lead not enriched' };
         }
 
+        // 检查业务线配置
+        const businessContext = getBusinessContext(lead.taskName);
+        if (!businessContext) {
+            logger.warn(`[CRM同步] 待配置规则: 无法识别任务 "${lead.taskName}" 的业务线`);
+            // 标记为待配置规则状态
+            await db.update(leads)
+                .set({
+                    crmSyncStatus: 'pending_config',
+                    crmSyncError: `无法识别任务 "${lead.taskName}" 的业务线，请配置规则`,
+                    updatedAt: new Date()
+                })
+                .where(eq(leads.id, leadId));
+            return {
+                success: false,
+                leadId,
+                message: `无法识别任务 "${lead.taskName}" 的业务线`,
+                error: 'pending_config'
+            };
+        }
+        logger.info(`[CRM同步] 识别业务线: ${businessContext.business}, 子类: ${businessContext.subCategory}`);
+
         // 2. 调用 CRM API
-        const apiResult = await callCrmApi(lead);
+        const apiResult = await callCrmApi(lead, businessContext.apiKey);
 
         // 如果API调用失败，标记为同步失败
         if (!apiResult.success) {

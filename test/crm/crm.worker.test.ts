@@ -12,6 +12,7 @@ import {
 import { db } from '../../src/db';
 import { eq } from 'drizzle-orm';
 import { leads } from '../../src/db/schema';
+import {getBusinessContext} from "../../src/services/business.service";
 
 // ============ 测试数据工厂 ============
 const getTestLeadId = async (): Promise<string | null> => {
@@ -58,7 +59,7 @@ const testGetLeadForCrm = async () => {
 console.log('\n测试2: 模拟 CRM API 调用');
 const testCallCrmApi = async () => {
     // const leadId = await getTestLeadId();
-    const leadId = 'd31e9003-c5eb-45b3-9f20-42b38e398c39';
+    const leadId = 'a9477611-be97-4374-ad34-691b926051bb';
     if (!leadId) return;
     const crmLead: CrmLead | null = await getLeadForCrm(leadId);
     if (!crmLead) {
@@ -66,7 +67,7 @@ const testCallCrmApi = async () => {
         return;
     }
     console.log('Crm Lead测试数据', crmLead)
-    const result = await callCrmApi(crmLead);
+    const result = await callCrmApi(crmLead, getBusinessContext(crmLead.taskName)?.apiKey);
     if (result.success) {
         console.log('✓ 通过 - CRM API 模拟调用成功');
         console.log('  消息:', result.message);

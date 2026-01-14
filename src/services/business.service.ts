@@ -21,6 +21,7 @@ export interface BusinessContext {
     ratingPrompt: string;
     business: BusinessType;
     subCategory: string;  // 具体的材质/子类名称
+    apiKey: number;
 }
 
 // 材质配置
@@ -32,6 +33,7 @@ interface SubCategoryConfig {
 
 // 业务线配置
 interface BusinessConfig {
+    apiKey: number,
     subCategories: SubCategoryConfig[];
 }
 
@@ -43,6 +45,7 @@ const BUSINESS_CONFIG: Record<BusinessType, BusinessConfig> = {
     // 建材业务线（目标：非制造商 - 经销商、批发商、零售商）
     // ============================================================
     '建材': {
+        apiKey: 1,
         subCategories: [
             {
                 name: '墙板',
@@ -176,6 +179,7 @@ Task Context: We are looking for acoustic panel distributors. Target: distributo
     // 成品业务线（目标：非制造商 - 经销商、批发商、零售商）
     // ============================================================
     '成品': {
+        apiKey: 2,
         subCategories: [
             {
                 name: '相框',
@@ -344,6 +348,7 @@ Task Context: We are looking for frame moulding distributors. Target: distributo
     // 原料业务线（目标：制造商）
     // ============================================================
     '原料': {
+        apiKey: 3,
         subCategories: [
             {
                 name: 'PS保温板厂',
@@ -571,7 +576,8 @@ export function getBusinessContext(taskName: string): BusinessContext | null {
                     return {
                         ratingPrompt: subCategory.ratingPrompt,
                         business: businessType as BusinessType,
-                        subCategory: subCategory.name
+                        subCategory: subCategory.name,
+                        apiKey: config.apiKey,
                     };
                 }
             }
