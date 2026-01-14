@@ -40,6 +40,19 @@ export const crmQueue = new Queue('crm', {
     connection: redisConnection
 });
 
+export const enrichQueue = new Queue('enrich', {
+    connection: redisConnection,
+    defaultJobOptions: {
+        attempts: 3,
+        backoff: {
+            type: 'exponential',
+            delay: 2000
+        },
+        removeOnComplete: { count: 100 },
+        removeOnFail: { count: 500 }
+    }
+});
+
 export const importQueue = new Queue('import', {
     connection: redisConnection
 });

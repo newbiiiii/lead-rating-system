@@ -147,6 +147,11 @@ export const leads = pgTable('leads', {
     crmSyncedAt: timestamp('crm_synced_at'),
     crmSyncError: text('crm_sync_error'), // 同步失败原因
 
+    // Enrich（数据增强）状态
+    enrichStatus: varchar('enrich_status', { length: 20 }).default('pending'), // pending, enriched, failed, skipped
+    enrichedAt: timestamp('enriched_at'),
+    enrichError: text('enrich_error'), // 增强失败原因
+
     // 时间戳
     scrapedAt: timestamp('scraped_at').notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -155,6 +160,7 @@ export const leads = pgTable('leads', {
     taskIdx: index('leads_task_idx').on(table.taskId),
     domainIdx: index('leads_domain_idx').on(table.domain),
     ratingStatusIdx: index('leads_rating_status_idx').on(table.ratingStatus),
+    enrichStatusIdx: index('leads_enrich_status_idx').on(table.enrichStatus),
 }));
 
 /**

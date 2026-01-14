@@ -110,15 +110,14 @@ class RatingWorker {
 
                 logger.info(`[评分完成-复制] ${lead.companyName}: ${duplicateRating}`);
 
-                // 同样触发CRM同步（如果是A或B）
+                // 同样触发Enrich增强（如果是A或B）
                 const originalRating = existingRating.overallRating.replace('(duplicate)', '').trim();
                 if (['A', 'B'].includes(originalRating)) {
-                    const { crmQueue } = await import('../queue');
-                    await crmQueue.add('saveToCrm', {
-                        type: 'saveToCrm',
+                    const { enrichQueue } = await import('../queue');
+                    await enrichQueue.add('enrichLead', {
                         leadId: lead.leadId
                     });
-                    logger.info(`[自动流程] 已触发 CRM 同步: ${lead.companyName}`);
+                    logger.info(`[自动流程] 已触发 Enrich: ${lead.companyName}`);
                 }
 
                 return { overallRating: duplicateRating, suggestion: existingRating.suggestion, think: existingRating.think };
@@ -154,14 +153,13 @@ class RatingWorker {
 
                 logger.info(`[评分完成] ${lead.companyName}: ${result.overallRating}分`);
 
-                // 4. 如果评分是 A 或 B，触发 CRM 同步
+                // 4. 如果评分是 A 或 B，触发 Enrich 增强
                 if (['A', 'B'].includes(result.overallRating)) {
-                    const { crmQueue } = await import('../queue');
-                    await crmQueue.add('saveToCrm', {
-                        type: 'saveToCrm',
+                    const { enrichQueue } = await import('../queue');
+                    await enrichQueue.add('enrichLead', {
                         leadId: lead.leadId
                     });
-                    logger.info(`[自动流程] 已触发 CRM 同步: ${lead.companyName}`);
+                    logger.info(`[自动流程] 已触发 Enrich: ${lead.companyName}`);
                 }
             }
 

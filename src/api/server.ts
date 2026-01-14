@@ -18,6 +18,7 @@ import dashboardRoutes from './routes/dashboard.routes';
 import tasksRoutes from './routes/tasks.routes';
 import ratingRoutes from './routes/rating.routes';
 import crmRoutes from './routes/crm.routes';
+import enrichRoutes from './routes/enrich.routes';
 import monitoringRoutes from './routes/monitoring.routes';
 
 const app = express();
@@ -159,6 +160,9 @@ app.use('/api/leads/retry-rating-by-status', (req, res, next) => {
 
 // CRM 管理
 app.use('/api/crm', crmRoutes);
+
+// Enrich 管理
+app.use('/api/enrich', enrichRoutes);
 
 // 监控中心
 app.use('/api/monitoring', monitoringRoutes);

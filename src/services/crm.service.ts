@@ -38,6 +38,7 @@ export interface CrmLead {
     crmSyncStatus: string | null;
     crmLeadId: string | null;
     crmSyncedAt: Date | null;
+    enrichStatus: string | null;
 }
 
 /**
@@ -89,7 +90,8 @@ export async function getLeadForCrm(leadId: string): Promise<CrmLead | null> {
                c.email,
                c.phone,
                c.mobile,
-               c.linkedin_url AS "linkedinUrl"
+               c.linkedin_url AS "linkedinUrl",
+               l.enrich_status AS "enrichStatus"
         FROM leads l
             LEFT JOIN tasks t ON l.task_id = t.id
             LEFT JOIN lead_ratings lr ON l.id = lr.lead_id
@@ -255,6 +257,12 @@ export async function syncLeadToCrm(leadId: string): Promise<CrmSyncResult> {
         if (lead.crmLeadId) {
             logger.info(`[CRM同步] 跳过: 已同步, ID: ${lead.crmLeadId}`);
             return { success: true, leadId, message: 'Already synced' };
+        }
+
+        // 检查是否已完成数据增强（仅同步已 enrich 的线索）
+        if (lead.enrichStatus !== 'enriched') {
+            logger.info(`[CRM同步] 跳过: 尚未完成数据增强, enrichStatus: ${lead.enrichStatus}`);
+            return { success: false, leadId, message: 'Lead not enriched yet', error: 'Lead not enriched' };
         }
 
         // 2. 调用 CRM API
