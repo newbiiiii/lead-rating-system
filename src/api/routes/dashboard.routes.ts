@@ -155,7 +155,7 @@ router.get('/pipeline-funnel', async (req, res) => {
                     name: '数据增强',
                     key: 'enriched',
                     count: enriched,
-                    percentage: rated > 0 ? Math.round((enriched / rated) * 100) : 0,
+                    percentage: scraped > 0 ? Math.round((enriched / scraped) * 100) : 0,
                     color: '#10b981',
                     description: 'Apollo 联系人补充'
                 },
@@ -163,7 +163,7 @@ router.get('/pipeline-funnel', async (req, res) => {
                     name: 'CRM同步',
                     key: 'synced',
                     count: synced,
-                    percentage: enriched > 0 ? Math.round((synced / enriched) * 100) : 0,
+                    percentage: scraped > 0 ? Math.round((synced / scraped) * 100) : 0,
                     color: '#3b82f6',
                     description: '销售易 CRM'
                 }
