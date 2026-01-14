@@ -58,10 +58,20 @@
                         <span class="nav-group-arrow">▶</span>
                     </div>
                     <div class="nav-group-children">
-                        <a href="#tasks" class="nav-item" data-page="tasks"><span>谷歌地图搜索</span></a>
+                        <!-- 谷歌地图搜索 - 二级子菜单 -->
+                        <div class="nav-subgroup expanded" id="google-maps-search-group">
+                            <div class="nav-subgroup-header" onclick="toggleNavGroup('google-maps-search-group')">
+                                <span>谷歌地图搜索</span>
+                                <span class="nav-group-arrow">▶</span>
+                            </div>
+                            <div class="nav-subgroup-children">
+                                <a href="#tasks" class="nav-item" data-page="tasks"><span>单个搜索任务</span></a>
+                                <a href="#aggregate-tasks" class="nav-item"
+                                    data-page="aggregate-tasks"><span>批量搜索任务</span></a>
+                            </div>
+                        </div>
                         <a href="#search" class="nav-item" data-page="search"><span>搜索引擎搜索</span></a>
-                        <a href="#aggregate-tasks" class="nav-item" data-page="aggregate-tasks"><span>批量搜索任务</span></a>
-                        <a href="#import" class="nav-item" data-page="import"><span>数据导入</span></a>
+                        <a href="#import" class="nav-item" data-page="import"><span>其他获客途径导入</span></a>
                         <a href="#management" class="nav-item" data-page="management"><span>任务列表</span></a>
                     </div>
                 </div>

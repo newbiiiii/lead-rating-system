@@ -4,7 +4,7 @@
 @theme {
     --color-brand-purple: #667eea;
     --color-brand-violet: #764ba2;
-    
+
     /* 主题色 */
     --color-primary: #667eea;
     --color-primary-dark: #5a67d8;
@@ -13,17 +13,17 @@
     --color-warning: #f59e0b;
     --color-danger: #ef4444;
     --color-info: #3b82f6;
-    
+
     /* 背景色 */
     --color-bg-primary: #f8fafc;
     --color-bg-secondary: #ffffff;
     --color-bg-tertiary: #f1f5f9;
-    
+
     /* 文字色 */
     --color-text-primary: #1e293b;
     --color-text-secondary: #475569;
     --color-text-muted: #94a3b8;
-    
+
     /* 边框 */
     --color-border: #e2e8f0;
 }
@@ -129,6 +129,46 @@
         left: 20px;
     }
 
+    /* Nav Subgroup (二级子菜单) */
+    .nav-subgroup {
+        @apply flex flex-col;
+    }
+
+    .nav-subgroup-header {
+        @apply flex items-center justify-between pl-[52px] pr-5 py-2.5 cursor-pointer select-none transition-all duration-200 text-[13px];
+        color: var(--color-text-secondary);
+    }
+
+    .nav-subgroup-header:hover {
+        @apply bg-slate-100;
+        color: var(--color-text-primary);
+    }
+
+    .nav-subgroup-header .nav-group-arrow {
+        @apply text-xs transition-transform duration-200;
+    }
+
+    .nav-subgroup.expanded .nav-group-arrow {
+        @apply rotate-90;
+    }
+
+    .nav-subgroup-children {
+        @apply max-h-0 overflow-hidden transition-all duration-300;
+        background: rgba(0, 0, 0, 0.02);
+    }
+
+    .nav-subgroup.expanded .nav-subgroup-children {
+        max-height: 200px;
+    }
+
+    .nav-subgroup-children .nav-item {
+        @apply pl-[72px] text-[12px];
+    }
+
+    .nav-subgroup-children .nav-item::before {
+        left: 40px;
+    }
+
     /* ===== Main Content Area ===== */
     .main-content {
         @apply flex-1 ml-[260px] flex flex-col;
@@ -162,8 +202,15 @@
     }
 
     @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.5; }
+
+        0%,
+        100% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.5;
+        }
     }
 
     .btn-icon {
@@ -195,6 +242,7 @@
             opacity: 0;
             transform: translateY(10px);
         }
+
         to {
             opacity: 1;
             transform: translateY(0);
