@@ -60,7 +60,8 @@ function updatePageTitle(pageName) {
         'rating-tasks': '评分任务',
         management: '任务管理',
         'pending-config': '待配置规则',
-        'leads-by-status': '线索管理'
+        'leads-by-status': '线索管理',
+        'enrich-leads': '数据增强'
     };
 
     const titleElement = document.querySelector('#page-title');

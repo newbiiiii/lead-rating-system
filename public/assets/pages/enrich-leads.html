@@ -1,0 +1,93 @@
+<div class="section-card">
+    <div class="section-header">
+        <h3 id="enrich-status-page-title">数据增强 - 线索列表</h3>
+        <div class="header-actions">
+            <button class="btn-success" onclick="retryAllEnrich()" id="retry-all-btn" style="display: none;">
+                批量重新增强
+            </button>
+            <button class="btn-secondary btn-sm" onclick="refreshEnrichLeads()">刷新</button>
+        </div>
+    </div>
+
+    <div id="enrich-status-hint-box" class="hint-box info">
+        <p>
+            <strong>说明：</strong><span id="enrich-status-hint-text">加载中...</span>
+        </p>
+    </div>
+
+    <!-- 状态统计卡片 -->
+    <div class="stats-grid" id="enrich-stats" style="margin-bottom: 1.5rem;">
+        <div class="stat-card" style="cursor: pointer;" onclick="switchEnrichStatus('pending')">
+            <div class="stat-icon orange">
+                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value" id="stat-pending">-</div>
+                <div class="stat-label">待增强</div>
+            </div>
+        </div>
+        <div class="stat-card" style="cursor: pointer;" onclick="switchEnrichStatus('enriched')">
+            <div class="stat-icon green">
+                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value" id="stat-enriched">-</div>
+                <div class="stat-label">已增强</div>
+            </div>
+        </div>
+        <div class="stat-card" style="cursor: pointer;" onclick="switchEnrichStatus('failed')">
+            <div class="stat-icon" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+                <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <div class="stat-content">
+                <div class="stat-value" id="stat-failed">-</div>
+                <div class="stat-label">增强失败</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 状态切换标签 -->
+    <div class="status-tabs">
+        <button class="status-tab active" data-status="pending" onclick="switchEnrichStatus('pending')">
+            待增强
+        </button>
+        <button class="status-tab" data-status="enriched" onclick="switchEnrichStatus('enriched')">
+            已增强
+        </button>
+        <button class="status-tab" data-status="failed" onclick="switchEnrichStatus('failed')">
+            增强失败
+        </button>
+    </div>
+
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="text-align: left;">公司名称</th>
+                    <th style="text-align: left;">网站</th>
+                    <th style="text-align: left;">评级</th>
+                    <th style="text-align: left;">联系人数</th>
+                    <th style="text-align: left;">所属任务</th>
+                    <th style="text-align: left;">增强状态</th>
+                    <th style="text-align: left;">创建时间</th>
+                    <th style="text-align: left;">操作</th>
+                </tr>
+            </thead>
+            <tbody id="enrich-leads-body">
+                <tr>
+                    <td colspan="8" class="empty-state">加载中...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div id="enrich-leads-pagination"></div>
+</div>
