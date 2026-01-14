@@ -1,9 +1,9 @@
 <div class="section-card">
     <div class="section-header">
-        <h3 id="enrich-status-page-title">数据增强 - 线索列表</h3>
+        <h3 id="enrich-status-page-title">补充联系人 - 线索列表</h3>
         <div class="header-actions">
             <button class="btn-success" onclick="retryAllEnrich()" id="retry-all-btn" style="display: none;">
-                批量重新增强
+                批量重新补充
             </button>
             <button class="btn-secondary btn-sm" onclick="refreshEnrichLeads()">刷新</button>
         </div>
@@ -26,7 +26,7 @@
             </div>
             <div class="stat-content">
                 <div class="stat-value" id="stat-pending">-</div>
-                <div class="stat-label">待增强</div>
+                <div class="stat-label">待补充</div>
             </div>
         </div>
         <div class="stat-card" style="cursor: pointer;" onclick="switchEnrichStatus('enriched')">
@@ -38,7 +38,7 @@
             </div>
             <div class="stat-content">
                 <div class="stat-value" id="stat-enriched">-</div>
-                <div class="stat-label">已增强</div>
+                <div class="stat-label">已补充</div>
             </div>
         </div>
         <div class="stat-card" style="cursor: pointer;" onclick="switchEnrichStatus('failed')">
@@ -50,7 +50,7 @@
             </div>
             <div class="stat-content">
                 <div class="stat-value" id="stat-failed">-</div>
-                <div class="stat-label">增强失败</div>
+                <div class="stat-label">补充失败</div>
             </div>
         </div>
     </div>
@@ -58,13 +58,13 @@
     <!-- 状态切换标签 -->
     <div class="status-tabs">
         <button class="status-tab active" data-status="pending" onclick="switchEnrichStatus('pending')">
-            待增强
+            待补充
         </button>
         <button class="status-tab" data-status="enriched" onclick="switchEnrichStatus('enriched')">
-            已增强
+            已补充
         </button>
         <button class="status-tab" data-status="failed" onclick="switchEnrichStatus('failed')">
-            增强失败
+            补充失败
         </button>
     </div>
 
@@ -77,7 +77,7 @@
                     <th style="text-align: left;">评级</th>
                     <th style="text-align: left;">联系人数</th>
                     <th style="text-align: left;">所属任务</th>
-                    <th style="text-align: left;">增强状态</th>
+                    <th style="text-align: left;">补充状态</th>
                     <th style="text-align: left;">创建时间</th>
                     <th style="text-align: left;">操作</th>
                 </tr>

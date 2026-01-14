@@ -8,15 +8,15 @@ let currentStatus = 'pending';
 let currentTaskId = null;
 
 const STATUS_HINTS = {
-    'pending': '以下是等待进行数据增强的线索（仅显示 A/B 级）。系统会自动调用 Apollo 接口补充联系人信息。',
-    'enriched': '以下是已完成数据增强的线索，已获取联系人信息。',
-    'failed': '以下是数据增强失败的线索。您可以点击"重新增强"进行重试。'
+    'pending': '以下是等待进行补充联系人的线索（仅显示 A/B 级）。系统会自动调用 Apollo 接口补充联系人信息。',
+    'enriched': '以下是已完成补充联系人的线索，已获取联系人信息。',
+    'failed': '以下是补充联系人失败的线索。您可以点击"重新补充"进行重试。'
 };
 
 const STATUS_NAMES = {
-    'pending': '待增强',
-    'enriched': '已增强',
-    'failed': '增强失败',
+    'pending': '待补充',
+    'enriched': '已补充',
+    'failed': '补充失败',
     'skipped': '已跳过'
 };
 
@@ -74,7 +74,7 @@ function updateHintBox() {
     const title = document.getElementById('enrich-status-page-title');
 
     if (hintText) hintText.textContent = STATUS_HINTS[currentStatus] || '';
-    if (title) title.textContent = `数据增强 - ${STATUS_NAMES[currentStatus]}`;
+    if (title) title.textContent = `补充联系人 - ${STATUS_NAMES[currentStatus]}`;
 
     // 根据状态设置提示框颜色
     if (hintBox) {
@@ -145,7 +145,7 @@ async function loadEnrichLeads(page = 1) {
             <td style="text-align: left;">${formatDate(lead.createdAt)}</td>
             <td style="text-align: left;">
                 <button class="btn-secondary btn-sm" onclick="retrySingleEnrich('${lead.id}')">
-                    ${lead.enrichStatus === 'enriched' ? '重新增强' : '立即增强'}
+                    ${lead.enrichStatus === 'enriched' ? '重新补充' : '立即补充'}
                 </button>
             </td>
         </tr>
@@ -204,12 +204,12 @@ function switchEnrichStatus(status) {
 }
 
 async function retryAllEnrich() {
-    if (!confirm(`确定要重新增强所有${STATUS_NAMES[currentStatus]}的线索吗？`)) return;
+    if (!confirm(`确定要重新补充所有${STATUS_NAMES[currentStatus]}的线索吗？`)) return;
 
     const result = await postAPI('/api/enrich/leads/retry', { status: currentStatus });
 
     if (result && result.success) {
-        showNotification(`已将 ${result.count} 条线索加入增强队列`, 'success');
+        showNotification(`已将 ${result.count} 条线索加入补充队列`, 'success');
         await Promise.all([loadEnrichStats(), loadEnrichLeads()]);
     } else {
         showNotification(result?.error || '操作失败', 'error');
@@ -220,7 +220,7 @@ async function retrySingleEnrich(leadId) {
     const result = await postAPI(`/api/enrich/leads/${leadId}/enrich`);
 
     if (result && result.success) {
-        showNotification('已加入增强队列', 'success');
+        showNotification('已加入补充队列', 'success');
         await Promise.all([loadEnrichStats(), loadEnrichLeads(currentPage)]);
     } else {
         showNotification(result?.error || '操作失败', 'error');
