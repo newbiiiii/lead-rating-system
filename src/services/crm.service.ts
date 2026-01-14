@@ -39,6 +39,7 @@ export interface CrmLead {
     crmLeadId: string | null;
     crmSyncedAt: Date | null;
     enrichStatus: string | null;
+    allContacts: string | null;
 }
 
 /**
@@ -68,34 +69,50 @@ export interface XiaoshouyiAuthResponse {
  */
 export async function getLeadForCrm(leadId: string): Promise<CrmLead | null> {
     const leadsData = await db.execute(sql`
-        SELECT t.id AS "taskId",
-               t.name AS "taskName",
+        WITH contact_summary AS (SELECT lead_id,
+                                        string_agg(
+                                                'name:' || COALESCE(name, '') ||
+                                                ', email:' || COALESCE(email, '') ||
+                                                ', phone:' || COALESCE(phone, ''),
+                                                E'\n' ORDER BY name
+                                        )       AS all_contacts,
+                                        MIN(id) as primary_contact_id
+                                 FROM contacts
+                                 GROUP BY lead_id),
+             primary_contact AS (SELECT *
+                                 FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY lead_id ORDER BY name) as rn
+                                       FROM contacts) tmp
+                                 WHERE rn = 1)
+        SELECT t.id                                     AS "taskId",
+               t.name                                   AS "taskName",
                t.source,
                t.config #>> '{"geolocation","country"}' AS country,
-               t.config #>> '{"geolocation","city"}'AS city,
-               l.id AS "leadId",
-               l.company_name AS "companyName",
+               t.config #>> '{"geolocation","city"}'    AS city,
+               l.id                                     AS "leadId",
+               l.company_name                           AS "companyName",
                l.domain,
                l.website,
                l.industry,
-               l.scraped_at AS "scrapedAt",
+               l.scraped_at                             AS "scrapedAt",
                l.rating,
-               l.crm_lead_id AS "crmLeadId",
-               l.crm_synced_at AS "crmSyncedAt",
-               lr.overall_rating AS "overallRating",
+               l.crm_lead_id                            AS "crmLeadId",
+               l.crm_synced_at                          AS "crmSyncedAt",
+               lr.overall_rating                        AS "overallRating",
                lr.suggestion,
                lr.think,
-               c.name,
-               c.title,
-               c.email,
-               c.phone,
-               c.mobile,
-               c.linkedin_url AS "linkedinUrl",
-               l.enrich_status AS "enrichStatus"
+               pc.name,
+               pc.title,
+               pc.email,
+               pc.phone,
+               pc.mobile,
+               pc.linkedin_url                          AS "linkedinUrl",
+               l.enrich_status                          AS "enrichStatus",
+               cs.all_contacts                          AS "allContacts"
         FROM leads l
-            LEFT JOIN tasks t ON l.task_id = t.id
-            LEFT JOIN lead_ratings lr ON l.id = lr.lead_id
-            LEFT JOIN contacts c ON l.id = c.lead_id
+                 LEFT JOIN tasks t ON l.task_id = t.id
+                 LEFT JOIN lead_ratings lr ON l.id = lr.lead_id
+                 LEFT JOIN contact_summary cs ON l.id = cs.lead_id
+                 LEFT JOIN primary_contact pc ON l.id = pc.lead_id
         WHERE l.id = ${leadId}
         ORDER BY l.created_at DESC
             `);
@@ -152,6 +169,7 @@ export async function callCrmApi(lead: CrmLead): Promise<{ success: boolean; mes
             "dbcSelect2": leadCountryValue,                                         // 国家/地区
             "customItem211__c": ratingValue,                                        // 线索等级
             "phone": lead.phone?.replace(/\s+/g, ""),                               // 联系人电话
+            "comment": lead.allContacts,                                            // 备注
         }
     }
     logger.info(`[CRM同步] 封装推送数据: ${JSON.stringify(createLeadBody)}`);
