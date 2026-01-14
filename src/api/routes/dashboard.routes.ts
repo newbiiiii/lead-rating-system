@@ -19,6 +19,12 @@ router.get('/grade-stats', async (req, res) => {
         `);
         const totalCount = parseInt((totalResult.rows[0] as any).total) || 0;
 
+        // 统计不重复线索数
+        const uniqueResult = await db.execute(sql`
+            SELECT COUNT(DISTINCT COALESCE(NULLIF(domain, ''), company_name)) as count FROM leads
+        `);
+        const uniqueCount = parseInt((uniqueResult.rows[0] as any).count) || 0;
+
         // 统计各评级分布（只统计已完成评级的）
         const gradeResult = await db.execute(sql`
             SELECT 
@@ -34,6 +40,7 @@ router.get('/grade-stats', async (req, res) => {
         const stats = gradeResult.rows[0] as any;
         res.json({
             total: totalCount,
+            unique: uniqueCount, // 增加不重复数
             A: parseInt(stats.A) || 0,
             B: parseInt(stats.B) || 0,
             C: parseInt(stats.C) || 0,
@@ -98,37 +105,40 @@ router.get('/crm-stats', async (req, res) => {
     }
 });
 
-// 获取数据漏斗统计 (Scrape → Rating → Enrich → CRM)
+// 获取数据漏斗统计 (Scrape → Unique → Rating → Enrich → CRM)
 router.get('/pipeline-funnel', async (req, res) => {
     try {
         // 并行查询各阶段数据
-        const [totalResult, ratedResult, enrichedResult, syncedResult] = await Promise.all([
+        const [totalResult, uniqueResult, ratedResult, enrichedResult, syncedResult] = await Promise.all([
             // 1. 总爬取量
             db.execute(sql`SELECT COUNT(*) as count FROM leads`),
-            // 2. 已评级数量（A/B级）
+            // 2. 不重复线索数 (按域名或公司名去重)
+            db.execute(sql`SELECT COUNT(DISTINCT COALESCE(NULLIF(domain, ''), company_name)) as count FROM leads`),
+            // 3. 已评级数量（A/B级）
             db.execute(sql`
-                SELECT COUNT(*) as count 
-                FROM leads l
-                JOIN lead_ratings lr ON l.id = lr.lead_id
-                WHERE lr.overall_rating IN ('A', 'B')
-            `),
-            // 3. 已增强数量（A/B级且已enrich）
+                    SELECT COUNT(*) as count 
+                    FROM leads l
+                    JOIN lead_ratings lr ON l.id = lr.lead_id
+                    WHERE lr.overall_rating IN ('A', 'B')
+                `),
+            // 4. 已增强数量（A/B级且已enrich）
             db.execute(sql`
-                SELECT COUNT(*) as count 
-                FROM leads l
-                JOIN lead_ratings lr ON l.id = lr.lead_id
-                WHERE lr.overall_rating IN ('A', 'B') AND l.enrich_status = 'enriched'
-            `),
-            // 4. 已同步CRM数量
+                    SELECT COUNT(*) as count 
+                    FROM leads l
+                    JOIN lead_ratings lr ON l.id = lr.lead_id
+                    WHERE lr.overall_rating IN ('A', 'B') AND l.enrich_status = 'enriched'
+                `),
+            // 5. 已同步CRM数量
             db.execute(sql`
-                SELECT COUNT(*) as count 
-                FROM leads l
-                JOIN lead_ratings lr ON l.id = lr.lead_id
-                WHERE lr.overall_rating IN ('A', 'B') AND l.crm_sync_status = 'synced'
-            `)
+                    SELECT COUNT(*) as count 
+                    FROM leads l
+                    JOIN lead_ratings lr ON l.id = lr.lead_id
+                    WHERE lr.overall_rating IN ('A', 'B') AND l.crm_sync_status = 'synced'
+                `)
         ]);
 
         const scraped = parseInt((totalResult.rows[0] as any).count) || 0;
+        const unique = parseInt((uniqueResult.rows[0] as any).count) || 0;
         const rated = parseInt((ratedResult.rows[0] as any).count) || 0;
         const enriched = parseInt((enrichedResult.rows[0] as any).count) || 0;
         const synced = parseInt((syncedResult.rows[0] as any).count) || 0;
@@ -144,10 +154,18 @@ router.get('/pipeline-funnel', async (req, res) => {
                     description: '爬虫/搜索/导入'
                 },
                 {
+                    name: '去重清洗',
+                    key: 'unique',
+                    count: unique,
+                    percentage: scraped > 0 ? Math.round((unique / scraped) * 100) : 0,
+                    color: '#8b5cf6', // 紫色
+                    description: '按域名去重'
+                },
+                {
                     name: 'AI评级',
                     key: 'rated',
                     count: rated,
-                    percentage: scraped > 0 ? Math.round((rated / scraped) * 100) : 0,
+                    percentage: unique > 0 ? Math.round((rated / unique) * 100) : 0, // 评级占比改为相对于去重后
                     color: '#f59e0b',
                     description: '筛选 A/B 级线索'
                 },
@@ -155,7 +173,7 @@ router.get('/pipeline-funnel', async (req, res) => {
                     name: '数据增强',
                     key: 'enriched',
                     count: enriched,
-                    percentage: scraped > 0 ? Math.round((enriched / scraped) * 100) : 0,
+                    percentage: rated > 0 ? Math.round((enriched / rated) * 100) : 0, // 改为相对于评级后
                     color: '#06b6d4',
                     description: 'Apollo 联系人补充'
                 },
@@ -163,17 +181,18 @@ router.get('/pipeline-funnel', async (req, res) => {
                     name: 'CRM同步',
                     key: 'synced',
                     count: synced,
-                    percentage: scraped > 0 ? Math.round((synced / scraped) * 100) : 0,
+                    percentage: rated > 0 ? Math.round((synced / rated) * 100) : 0, // 改为相对于评级后
                     color: '#10b981',
                     description: '销售易 CRM'
                 }
             ],
             summary: {
                 totalLeads: scraped,
+                uniqueLeads: unique,
                 qualityLeads: rated,
                 enrichedLeads: enriched,
                 syncedLeads: synced,
-                overallConversion: scraped > 0 ? ((synced / scraped) * 100).toFixed(1) : '0'
+                overallConversion: unique > 0 ? ((synced / unique) * 100).toFixed(1) : '0'
             }
         });
     } catch (error: any) {

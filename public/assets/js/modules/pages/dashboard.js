@@ -270,7 +270,12 @@ function updateGradeStats(stats) {
     const gradeB = stats.B || 0;
     const qualityTotal = gradeA + gradeB;
 
-    if (totalEl) totalEl.textContent = stats.total || 0;
+    if (totalEl) {
+        totalEl.innerHTML = `
+            <div>${stats.total || 0}</div>
+            <div style="font-size: 12px; color: #64748b; margin-top: 4px; font-weight: normal;">去重后: ${stats.unique || 0}</div>
+        `;
+    }
     if (qualityTotalEl) qualityTotalEl.textContent = qualityTotal;
     if (gradeAEl) gradeAEl.textContent = gradeA;
     if (gradeBEl) gradeBEl.textContent = gradeB;
@@ -415,13 +420,18 @@ function renderPipelineFunnel(data) {
             </div>
             <div class="summary-arrow">→</div>
             <div class="summary-item">
+                <span class="summary-label">去重后</span>
+                <span class="summary-value" style="color: #8b5cf6;">${summary.uniqueLeads.toLocaleString()}</span>
+            </div>
+            <div class="summary-arrow">→</div>
+            <div class="summary-item">
                 <span class="summary-label">优质线索</span>
                 <span class="summary-value" style="color: #f59e0b;">${summary.qualityLeads.toLocaleString()}</span>
             </div>
             <div class="summary-arrow">→</div>
             <div class="summary-item">
                 <span class="summary-label">已增强</span>
-                <span class="summary-value" style="color: #10b981;">${summary.enrichedLeads.toLocaleString()}</span>
+                <span class="summary-value" style="color: #06b6d4;">${summary.enrichedLeads.toLocaleString()}</span>
             </div>
             <div class="summary-arrow">→</div>
             <div class="summary-item">

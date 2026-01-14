@@ -81,18 +81,6 @@
     </div>
 </div>
 
-<!-- 队列状态区域 -->
-<div class="section-card">
-    <div class="section-header">
-        <h3>队列状态</h3>
-        <button class="btn-secondary btn-sm" onclick="refreshDashboard()">刷新</button>
-    </div>
-    <div class="queue-grid" id="queue-grid">
-        <!-- 队列卡片会通过 JS 动态渲染 -->
-        <div class="loading">加载中...</div>
-    </div>
-</div>
-
 <!-- 数据漏斗/流程图 -->
 <div class="section-card">
     <div class="section-header">
@@ -104,6 +92,18 @@
     </div>
     <div class="pipeline-funnel" id="pipeline-funnel">
         <!-- 漏斗会通过 JS 动态渲染 -->
+        <div class="loading">加载中...</div>
+    </div>
+</div>
+
+<!-- 队列状态区域 -->
+<div class="section-card">
+    <div class="section-header">
+        <h3>队列状态</h3>
+        <button class="btn-secondary btn-sm" onclick="refreshDashboard()">刷新</button>
+    </div>
+    <div class="queue-grid" id="queue-grid">
+        <!-- 队列卡片会通过 JS 动态渲染 -->
         <div class="loading">加载中...</div>
     </div>
 </div>
