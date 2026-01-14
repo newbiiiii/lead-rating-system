@@ -35,7 +35,20 @@ scraper:
           #   west: 115.9
           # zoom: 15
           # step: 0.01
+          #   west: 115.9
+          # zoom: 15
+          # step: 0.01
         
+    - name: google_search
+      enabled: true
+      adapter: GoogleSearchAdapter
+      rate_limit: 600/hour
+      priority: 5
+      config:
+        headless: false
+        timeout: 30000
+        maxPages: 5
+
     - name: linkedin
       enabled: false
       adapter: LinkedInAdapter
@@ -52,12 +65,12 @@ scraper:
       priority: 6
       config:
         api_key: ${QICHACHA_API_KEY}
-        
+
   # 反爬策略
   anti_scraping:
     # 代理池
     proxy:
-      enabled: true
+      enabled: false  # 默认禁用，需要配置有效的代理凭据后再启用
       provider: bright_data  # bright_data | oxylabs | custom
       config:
         username: ${PROXY_USERNAME}
