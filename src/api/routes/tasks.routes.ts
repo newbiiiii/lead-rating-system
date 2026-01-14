@@ -6,7 +6,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import * as XLSX from 'xlsx';
 import { db } from '../../db';
-import { tasks, leads, contacts, searchPoints, aggregateTasks } from '../../db/schema';
+import { tasks, leads, contacts, searchPoints, aggregateTasks, leadRatings } from '../../db/schema';
 import { sql, eq, and, desc } from 'drizzle-orm';
 import { logger } from '../../utils/logger';
 import { TaskScheduler, scrapeQueue, crmQueue } from '../../queue';
@@ -730,8 +730,8 @@ router.post('/import/leads', upload.single('file'), async (req: any, res: any) =
                 industry: item.industry || null,
                 region: item.region || null,
                 address: item.address || null,
-                source: 'import',
-                ratingStatus: 'skipped',
+                source: source,  // 使用用户选择的来源分类
+                ratingStatus: 'completed',  // 标记为已完成评级
                 crmSyncStatus: 'pending',
                 scrapedAt: now,
                 createdAt: now,
@@ -752,6 +752,17 @@ router.post('/import/leads', upload.single('file'), async (req: any, res: any) =
                     updatedAt: now
                 });
             }
+
+            // 创建 A 级评分记录，使线索能够在 CRM 同步模块中显示
+            await db.insert(leadRatings).values({
+                id: randomUUID(),
+                leadId: leadId,
+                overallRating: 'A',
+                suggestion: '导入线索，自动标记为A级',
+                think: null,
+                ratedAt: now,
+                createdAt: now
+            });
 
             insertedLeads.push(leadId);
 
