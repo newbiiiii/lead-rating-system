@@ -98,6 +98,90 @@ router.get('/crm-stats', async (req, res) => {
     }
 });
 
+// 获取数据漏斗统计 (Scrape → Rating → Enrich → CRM)
+router.get('/pipeline-funnel', async (req, res) => {
+    try {
+        // 并行查询各阶段数据
+        const [totalResult, ratedResult, enrichedResult, syncedResult] = await Promise.all([
+            // 1. 总爬取量
+            db.execute(sql`SELECT COUNT(*) as count FROM leads`),
+            // 2. 已评级数量（A/B级）
+            db.execute(sql`
+                SELECT COUNT(*) as count 
+                FROM leads l
+                JOIN lead_ratings lr ON l.id = lr.lead_id
+                WHERE lr.overall_rating IN ('A', 'B')
+            `),
+            // 3. 已增强数量（A/B级且已enrich）
+            db.execute(sql`
+                SELECT COUNT(*) as count 
+                FROM leads l
+                JOIN lead_ratings lr ON l.id = lr.lead_id
+                WHERE lr.overall_rating IN ('A', 'B') AND l.enrich_status = 'enriched'
+            `),
+            // 4. 已同步CRM数量
+            db.execute(sql`
+                SELECT COUNT(*) as count 
+                FROM leads l
+                JOIN lead_ratings lr ON l.id = lr.lead_id
+                WHERE lr.overall_rating IN ('A', 'B') AND l.crm_sync_status = 'synced'
+            `)
+        ]);
+
+        const scraped = parseInt((totalResult.rows[0] as any).count) || 0;
+        const rated = parseInt((ratedResult.rows[0] as any).count) || 0;
+        const enriched = parseInt((enrichedResult.rows[0] as any).count) || 0;
+        const synced = parseInt((syncedResult.rows[0] as any).count) || 0;
+
+        res.json({
+            stages: [
+                {
+                    name: '数据采集',
+                    key: 'scraped',
+                    count: scraped,
+                    percentage: 100,
+                    color: '#667eea',
+                    description: '爬虫/搜索/导入'
+                },
+                {
+                    name: 'AI评级',
+                    key: 'rated',
+                    count: rated,
+                    percentage: scraped > 0 ? Math.round((rated / scraped) * 100) : 0,
+                    color: '#f59e0b',
+                    description: '筛选 A/B 级线索'
+                },
+                {
+                    name: '数据增强',
+                    key: 'enriched',
+                    count: enriched,
+                    percentage: rated > 0 ? Math.round((enriched / rated) * 100) : 0,
+                    color: '#10b981',
+                    description: 'Apollo 联系人补充'
+                },
+                {
+                    name: 'CRM同步',
+                    key: 'synced',
+                    count: synced,
+                    percentage: enriched > 0 ? Math.round((synced / enriched) * 100) : 0,
+                    color: '#3b82f6',
+                    description: '销售易 CRM'
+                }
+            ],
+            summary: {
+                totalLeads: scraped,
+                qualityLeads: rated,
+                enrichedLeads: enriched,
+                syncedLeads: synced,
+                overallConversion: scraped > 0 ? ((synced / scraped) * 100).toFixed(1) : '0'
+            }
+        });
+    } catch (error: any) {
+        logger.error('获取漏斗统计失败:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // 获取最新优质客户 (支持按评级筛选)
 router.get('/recent-leads', async (req, res) => {
     try {

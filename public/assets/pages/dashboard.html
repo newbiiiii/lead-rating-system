@@ -42,7 +42,7 @@
         <div class="stat-icon green">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polygon
-                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
                 </polygon>
             </svg>
         </div>
@@ -89,6 +89,21 @@
     </div>
     <div class="queue-grid" id="queue-grid">
         <!-- 队列卡片会通过 JS 动态渲染 -->
+        <div class="loading">加载中...</div>
+    </div>
+</div>
+
+<!-- 数据漏斗/流程图 -->
+<div class="section-card">
+    <div class="section-header">
+        <h3>数据处理流程</h3>
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span class="conversion-badge" id="overall-conversion">总转化率: --%</span>
+            <button class="btn-secondary btn-sm" onclick="refreshFunnel()">刷新</button>
+        </div>
+    </div>
+    <div class="pipeline-funnel" id="pipeline-funnel">
+        <!-- 漏斗会通过 JS 动态渲染 -->
         <div class="loading">加载中...</div>
     </div>
 </div>

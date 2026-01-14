@@ -44,7 +44,7 @@
                 </a>
 
                 <!-- 任务管理 - 带子菜单 -->
-                <div class="nav-group expanded" id="task-management-group">
+                <div class="nav-group" id="task-management-group">
                     <div class="nav-group-header" onclick="toggleNavGroup('task-management-group')">
                         <div class="nav-group-left">
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
@@ -59,7 +59,7 @@
                     </div>
                     <div class="nav-group-children">
                         <!-- 谷歌地图搜索 - 二级子菜单 -->
-                        <div class="nav-subgroup expanded" id="google-maps-search-group">
+                        <div class="nav-subgroup" id="google-maps-search-group">
                             <div class="nav-subgroup-header" onclick="toggleNavGroup('google-maps-search-group')">
                                 <span>谷歌地图搜索</span>
                                 <span class="nav-group-arrow">▶</span>
@@ -77,7 +77,7 @@
                 </div>
 
                 <!-- 评分管理 - 带子菜单 -->
-                <div class="nav-group expanded" id="leads-status-group">
+                <div class="nav-group" id="leads-status-group">
                     <div class="nav-group-header" onclick="toggleNavGroup('leads-status-group')">
                         <div class="nav-group-left">
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
@@ -101,6 +101,29 @@
                     </div>
                 </div>
 
+                <!-- 数据增强 - 带子菜单 -->
+                <div class="nav-group" id="enrich-group">
+                    <div class="nav-group-header" onclick="toggleNavGroup('enrich-group')">
+                        <div class="nav-group-left">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd"
+                                      d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                      clip-rule="evenodd" />
+                            </svg>
+                            <span>补充联系人</span>
+                        </div>
+                        <span class="nav-group-arrow">▶</span>
+                    </div>
+                    <div class="nav-group-children">
+                        <a href="#enrich-leads?status=pending" class="nav-item"
+                           data-page="enrich-leads"><span>待补充</span></a>
+                        <a href="#enrich-leads?status=enriched" class="nav-item"
+                           data-page="enrich-leads"><span>已补充</span></a>
+                        <a href="#enrich-leads?status=failed" class="nav-item"
+                           data-page="enrich-leads"><span>补充失败</span></a>
+                    </div>
+                </div>
+
                 <!-- CRM 同步管理 - 带子菜单 -->
                 <div class="nav-group" id="crm-sync-group">
                     <div class="nav-group-header" onclick="toggleNavGroup('crm-sync-group')">
@@ -119,29 +142,6 @@
                         <a href="#crm-leads?status=pending" class="nav-item" data-page="crm-leads"><span>待同步</span></a>
                         <a href="#crm-leads?status=synced" class="nav-item" data-page="crm-leads"><span>已同步</span></a>
                         <a href="#crm-leads?status=failed" class="nav-item" data-page="crm-leads"><span>同步失败</span></a>
-                    </div>
-                </div>
-
-                <!-- 数据增强 - 带子菜单 -->
-                <div class="nav-group" id="enrich-group">
-                    <div class="nav-group-header" onclick="toggleNavGroup('enrich-group')">
-                        <div class="nav-group-left">
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd"
-                                    d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                            <span>数据增强</span>
-                        </div>
-                        <span class="nav-group-arrow">▶</span>
-                    </div>
-                    <div class="nav-group-children">
-                        <a href="#enrich-leads?status=pending" class="nav-item"
-                            data-page="enrich-leads"><span>待增强</span></a>
-                        <a href="#enrich-leads?status=enriched" class="nav-item"
-                            data-page="enrich-leads"><span>已增强</span></a>
-                        <a href="#enrich-leads?status=failed" class="nav-item"
-                            data-page="enrich-leads"><span>增强失败</span></a>
                     </div>
                 </div>
 

@@ -166,11 +166,12 @@ function initCharts() {
 async function loadDashboardData() {
     try {
         // 并行加载所有数据
-        const [queueStats, gradeStats, ratingStats, crmStats, recentLeads] = await Promise.all([
+        const [queueStats, gradeStats, ratingStats, crmStats, funnelStats, recentLeads] = await Promise.all([
             fetchAPI('/api/queues/stats'),
             fetchAPI('/api/dashboard/grade-stats'),
             fetchAPI('/api/dashboard/rating-stats'),
             fetchAPI('/api/dashboard/crm-stats'),
+            fetchAPI('/api/dashboard/pipeline-funnel'),
             fetchAPI('/api/dashboard/recent-leads?grades=A,B&limit=10')
         ]);
 
@@ -194,6 +195,11 @@ async function loadDashboardData() {
         // 更新CRM同步统计
         if (crmStats) {
             updateCrmStats(crmStats);
+        }
+
+        // 更新漏斗图
+        if (funnelStats) {
+            renderPipelineFunnel(funnelStats);
         }
 
         // 更新最新优质客户
@@ -345,5 +351,79 @@ window.loadRecentLeads = async function () {
     const recentLeads = await fetchAPI('/api/dashboard/recent-leads?grades=A,B&limit=10');
     if (recentLeads) {
         updateRecentLeads(recentLeads.data || recentLeads);
+    }
+};
+
+// 渲染数据漏斗图
+function renderPipelineFunnel(data) {
+    const container = document.getElementById('pipeline-funnel');
+    const conversionBadge = document.getElementById('overall-conversion');
+
+    if (!container) return;
+
+    const { stages, summary } = data;
+
+    // 更新总转化率
+    if (conversionBadge) {
+        conversionBadge.textContent = `总转化率: ${summary.overallConversion}%`;
+    }
+
+    // 生成漏斗HTML
+    const html = `
+        <div class="funnel-stages">
+            ${stages.map((stage, index) => `
+                <div class="funnel-stage">
+                    <div class="funnel-bar-container">
+                        <div class="funnel-bar" style="width: ${Math.max(stage.percentage, 10)}%; background: ${stage.color};">
+                            <span class="funnel-count">${stage.count.toLocaleString()}</span>
+                        </div>
+                    </div>
+                    <div class="funnel-info">
+                        <div class="funnel-name">${stage.name}</div>
+                        <div class="funnel-desc">${stage.description}</div>
+                    </div>
+                    ${index < stages.length - 1 ? `
+                        <div class="funnel-arrow">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
+                            <span class="funnel-conversion">${stages[index + 1].percentage}%</span>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('')}
+        </div>
+        <div class="funnel-summary">
+            <div class="summary-item">
+                <span class="summary-label">总采集</span>
+                <span class="summary-value">${summary.totalLeads.toLocaleString()}</span>
+            </div>
+            <div class="summary-arrow">→</div>
+            <div class="summary-item">
+                <span class="summary-label">优质线索</span>
+                <span class="summary-value" style="color: #f59e0b;">${summary.qualityLeads.toLocaleString()}</span>
+            </div>
+            <div class="summary-arrow">→</div>
+            <div class="summary-item">
+                <span class="summary-label">已增强</span>
+                <span class="summary-value" style="color: #10b981;">${summary.enrichedLeads.toLocaleString()}</span>
+            </div>
+            <div class="summary-arrow">→</div>
+            <div class="summary-item">
+                <span class="summary-label">已入CRM</span>
+                <span class="summary-value" style="color: #3b82f6;">${summary.syncedLeads.toLocaleString()}</span>
+            </div>
+        </div>
+    `;
+
+    container.innerHTML = html;
+}
+
+// 刷新漏斗数据
+window.refreshFunnel = async function () {
+    const funnelStats = await fetchAPI('/api/dashboard/pipeline-funnel');
+    if (funnelStats) {
+        renderPipelineFunnel(funnelStats);
+        showNotification('漏斗数据已刷新', 'success');
     }
 };
