@@ -14,14 +14,14 @@
 import { logger } from '../utils/logger';
 
 // 业务线类型
-export type BusinessType = '建材' | '成品' | '原料';
+export type BusinessType = '建材' | '成品' | '原料' | '机械';
 
 // 业务线上下文返回结构
 export interface BusinessContext {
     ratingPrompt: string;
     business: BusinessType;
     subCategory: string;  // 具体的材质/子类名称
-    apiKey: number;
+    apiKey: number | null;
 }
 
 // 材质配置
@@ -33,7 +33,7 @@ interface SubCategoryConfig {
 
 // 业务线配置
 interface BusinessConfig {
-    apiKey: number,
+    apiKey: number | null,
     subCategories: SubCategoryConfig[];
 }
 
@@ -557,7 +557,54 @@ Task Context: We SELL PE raw materials. Target: Garbage bag/plastic bag MANUFACT
                 `.trim()
             }
         ]
-    }
+    },
+    '机械': {
+        apiKey: null,
+        subCategories: [
+            {
+                name: 'EPE/PE泡沫制造及转换商',
+                keywords: ['epe foam', 'pe foam', 'polyethylene foam', 'foam converter', 'foam fabricator', 'plastazote', 'evazote', 'ethafoam', 'stratocell'],
+                ratingPrompt: `
+Task Context: We sell foam compactors/densifiers to EPE/PE foam manufacturers and converters in North America. Target: companies that produce or process significant volumes of EPE/PE foam.
+
+### Tier A (Must meet ALL):
+1. **Core Business**: Manufactures OR converts/fabricates EPE/PE/polyolefin foam (not just PU or EPS)
+   - Keywords: "EPE foam", "polyethylene foam", "Plastazote", "Evazote", "Ethafoam", "Stratocell"
+   - OR: "foam converter", "foam fabrication", "CNC cutting", "die cutting", "custom foam inserts"
+2. **Manufacturing Capability**: 
+   - Manufacturer: has extrusion/foaming equipment
+   - Converter: has cutting/shaping/laminating facility
+   - NOT just a trading company or small retail shop
+3. **Target Industries**: Serves packaging, protective inserts, industrial/aerospace/automotive applications
+4. **Scale**: Mentions "high volume", "large facility", multiple plants, or national distribution
+5. **Location**: Based in United States or Canada (NOT China, NOT Mexico)
+
+### Tier B (Must meet ALL):
+1. **Foam Processing**: Confirmed EPE/PE foam converter or manufacturer (medium scale)
+2. **Capability**: Has own manufacturing or conversion facility
+3. **Applications**: Industrial packaging or protective solutions
+4. **Location**: US or Canada
+5. **Signal**: At least mentions EPE/PE materials, but limited info on volume/scale
+
+### Tier C (ANY = Tier C):
+1. **Wrong Material**: Only PU foam, EPS/XPS, no EPE/PE mentioned
+2. **Wrong Location**: China-based, Mexico-based, or non-North America
+3. **No Manufacturing**: Pure distributor/retailer with no cutting/converting capability
+4. **Consumer Only**: Only makes consumer products (mattresses, cushions) without B2B packaging
+5. **Invalid Source**: B2B platform, directory site, or not a corporate website
+
+# Decision Logic
+- Chinese/Mexican company → C
+- Only PU/EPS, no EPE/PE → C
+- No manufacturing/converting facility → C
+- If passes above checks:
+  - Large-scale EPE/PE manufacturer/converter with clear packaging focus → A
+  - Medium-scale with confirmed EPE/PE activity → B
+  - Unclear volume/relevance → C
+`.trim()
+            }
+        ]
+    },
 };
 
 /**
