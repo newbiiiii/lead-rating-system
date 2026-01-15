@@ -355,8 +355,8 @@ export async function getAccessToken() {
     params.append('grant_type', 'password');
     params.append('client_id', '9b01d1b3df5784a361f08dc4bc5202fb');
     params.append('client_secret', '32bcb52f2d38bd6306e04b9df7e8aea1');
-    params.append('username', 'lishiqi@intco.com.cn');
-    params.append('password', 'intco2813e19a5X99');
+    params.append('username', 'biyicai@intco.com.cn');
+    params.append('password', '09571311111111');
 
     try {
         const response = await fetch(url, {
