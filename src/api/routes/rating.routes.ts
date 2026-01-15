@@ -189,8 +189,8 @@ router.post('/retry-rating-by-status', async (req, res) => {
         const { leadIds, status } = req.body;
         const targetStatus = status || 'pending_config';
 
-        // 验证状态参数
-        const validStatuses = ['pending_config', 'failed', 'pending'];
+        // 验证状态参数 - 现在也支持 completed 状态，允许重新评分已完成的线索
+        const validStatuses = ['pending_config', 'failed', 'pending', 'completed'];
         if (!validStatuses.includes(targetStatus)) {
             return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
         }

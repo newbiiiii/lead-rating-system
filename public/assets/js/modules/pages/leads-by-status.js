@@ -46,7 +46,7 @@ const STATUS_CONFIG = {
     },
     'completed': {
         title: '评分成功',
-        hint: '这些线索已成功完成评分。',
+        hint: '这些线索已成功完成评分。您可以点击"重新评分"按钮让AI重新分析某个线索。',
         hintBg: '#dcfce7',
         hintBorder: '#86efac',
         hintColor: '#166534',
@@ -54,8 +54,7 @@ const STATUS_CONFIG = {
         badgeColor: '#16a34a',
         badgeBorder: '#86efac',
         badgeText: '成功',
-        indexColor: '#22c55e',
-        hideRetryButton: true
+        indexColor: '#22c55e'
     },
 };
 
@@ -120,7 +119,8 @@ function updatePageUI() {
             <th>所属任务</th>
             ${showRatingDetails ? '<th>评级</th><th>AI建议</th><th>AI分析</th><th>评级时间</th>' : '<th>状态</th>'}
             ${showError ? '<th>失败原因</th>' : ''}
-            ${!showRatingDetails ? '<th>创建时间</th><th>操作</th>' : ''}
+            ${!showRatingDetails ? '<th>创建时间</th>' : ''}
+            <th>操作</th>
         `;
     }
 
@@ -218,16 +218,16 @@ export async function loadLeadsByStatus(page = 1, size = 20) {
             </td>
         `;
 
-        // 操作列（completed状态不显示）
-        const actionColumns = !showRatingDetails ? `
-            <td style="color: #6b7280; font-size: 13px;">${formatDate(lead.createdAt)}</td>
+        // 操作列（所有状态都显示，包括 completed）
+        const actionColumns = `
+            ${!showRatingDetails ? `<td style="color: #6b7280; font-size: 13px;">${formatDate(lead.createdAt)}</td>` : ''}
             <td>
                 <button onclick="retrySingleLead('${lead.id}')" 
                     style="padding: 6px 12px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">
                     重新评分
                 </button>
             </td>
-        ` : '';
+        `;
 
         return `<tr style="background: white; transition: all 0.2s; border-bottom: 1px solid #f3f4f6;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='white'">
             <td>
