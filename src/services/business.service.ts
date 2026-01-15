@@ -565,42 +565,46 @@ Task Context: We SELL PE raw materials. Target: Garbage bag/plastic bag MANUFACT
                 name: 'EPE/PE泡沫制造及转换商',
                 keywords: ['epe foam', 'pe foam', 'polyethylene foam', 'foam converter', 'foam fabricator', 'plastazote', 'evazote', 'ethafoam', 'stratocell'],
                 ratingPrompt: `
-Task Context: We sell foam compactors/densifiers to EPE/PE foam manufacturers and converters in North America. Target: companies that produce or process significant volumes of EPE/PE foam.
+Task Context: We sell foam compactors/densifiers to EPE/PE foam manufacturers and converters globally. Target: companies that produce or process significant volumes of EPE/PE foam.
 
 ### Tier A (Must meet ALL):
 1. **Core Business**: Manufactures OR converts/fabricates EPE/PE/polyolefin foam (not just PU or EPS)
-   - Keywords: "EPE foam", "polyethylene foam", "Plastazote", "Evazote", "Ethafoam", "Stratocell"
-   - OR: "foam converter", "foam fabrication", "CNC cutting", "die cutting", "custom foam inserts"
+   - Material keywords: "EPE foam", "polyethylene foam", "PE foam", "Plastazote", "Evazote", "Ethafoam", "Stratocell"
+   - Process keywords: "foam converter", "foam fabrication", "CNC cutting", "die cutting", "custom foam inserts"
 2. **Manufacturing Capability**: 
-   - Manufacturer: has extrusion/foaming equipment
-   - Converter: has cutting/shaping/laminating facility
-   - NOT just a trading company or small retail shop
-3. **Target Industries**: Serves packaging, protective inserts, industrial/aerospace/automotive applications
-4. **Scale**: Mentions "high volume", "large facility", multiple plants, or national distribution
-5. **Location**: Based in United States or Canada (NOT China, NOT Mexico)
+   - Manufacturer: owns extrusion/foaming production lines
+   - Converter: operates cutting/shaping/laminating facility
+   - NOT a pure trading/distribution company
+3. **Target Industries**: Serves packaging, protective inserts, industrial/automotive/aerospace/electronics applications
+4. **Scale**: Indicates high volume production or large facility
+5. **Origin**: Is NOT a Chinese company
 
 ### Tier B (Must meet ALL):
-1. **Foam Processing**: Confirmed EPE/PE foam converter or manufacturer (medium scale)
-2. **Capability**: Has own manufacturing or conversion facility
+1. **Foam Processing**: Confirmed EPE/PE foam manufacturing or conversion activity
+2. **Capability**: Has own production or conversion facility
 3. **Applications**: Industrial packaging or protective solutions
-4. **Location**: US or Canada
-5. **Signal**: At least mentions EPE/PE materials, but limited info on volume/scale
+4. **Origin**: Is NOT a Chinese company
+5. **Signal**: Mentions EPE/PE materials, but limited info on scale
 
 ### Tier C (ANY = Tier C):
-1. **Wrong Material**: Only PU foam, EPS/XPS, no EPE/PE mentioned
-2. **Wrong Location**: China-based, Mexico-based, or non-North America
-3. **No Manufacturing**: Pure distributor/retailer with no cutting/converting capability
-4. **Consumer Only**: Only makes consumer products (mattresses, cushions) without B2B packaging
-5. **Invalid Source**: B2B platform, directory site, or not a corporate website
+1. **Chinese Company**: 
+   - Address in China mainland
+   - Domain: .cn or .com.cn
+   - Phone: +86
+   - Company name in Chinese characters
+2. **Wrong Material**: Only works with PU foam, EPS/XPS - no EPE/PE mentioned
+3. **No Manufacturing**: Pure distributor with no manufacturing/converting capability
+4. **Consumer Only**: Only consumer products (mattresses, cushions) without B2B industrial packaging
+5. **Invalid Source**: B2B platform (Alibaba, Made-in-China), directory site
 
 # Decision Logic
-- Chinese/Mexican company → C
-- Only PU/EPS, no EPE/PE → C
+- Chinese company (address/domain/phone) → C
+- Only PU/EPS foam, no EPE/PE → C
 - No manufacturing/converting facility → C
-- If passes above checks:
-  - Large-scale EPE/PE manufacturer/converter with clear packaging focus → A
-  - Medium-scale with confirmed EPE/PE activity → B
-  - Unclear volume/relevance → C
+- If passes above:
+  - Large EPE/PE manufacturer/converter, clear packaging/industrial focus → A
+  - Medium scale with confirmed EPE/PE activity → B
+  - Unclear or limited information → C
 `.trim()
             }
         ]
