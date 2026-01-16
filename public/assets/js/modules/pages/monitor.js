@@ -122,6 +122,13 @@ function setupLogStream(socket) {
 
     console.log('[Monitor] Setting up log stream, socket connected:', socket.connected);
 
+    // 先移除旧的监听器，避免重复注册导致日志显示多次
+    socket.off('log:scraper');
+    socket.off('log:rating');
+    socket.off('log:crm');
+    socket.off('log:enrich');
+    socket.off('log');
+
     // 订阅所有频道
     socket.on('log:scraper', (log) => {
         console.log('[Monitor] Received scraper log:', log.message);
