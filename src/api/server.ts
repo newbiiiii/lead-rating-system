@@ -49,12 +49,13 @@ redisSub.on('message', (channel, message) => {
     if (channel === 'logs') {
         try {
             const logEntry = JSON.parse(message);
-            // 推送到通用频道
-            io.emit('log', logEntry);
-
-            // 推送到特定服务频道 (例如 log:scraper, log:rating)
+            // 推送到特定服务频道或通用频道 (避免重复推送)
             if (logEntry.service) {
+                // 有 service 属性时，只推送到特定服务频道
                 io.emit(`log:${logEntry.service}`, logEntry);
+            } else {
+                // 没有 service 属性时，推送到通用频道
+                io.emit('log', logEntry);
             }
         } catch (e) {
             // 忽略解析错误
@@ -89,8 +90,7 @@ app.get('/api/test-log', (req, res) => {
         timestamp: new Date().toISOString(),
         service: service
     };
-    // 直接通过 Socket.IO 推送
-    io.emit('log', testLog);
+    // 只推送到特定服务频道 (避免重复)
     io.emit(`log:${service}`, testLog);
     res.json({ success: true, log: testLog });
 });
