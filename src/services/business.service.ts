@@ -606,6 +606,56 @@ Task Context: We sell foam compactors/densifiers to EPE/PE foam manufacturers an
   - Medium scale with confirmed EPE/PE activity → B
   - Unclear or limited information → C
 `.trim()
+            },
+            {
+                name: '饮料/瓶装水生产商',
+                keywords: ['bottling plant', 'beverage bottling', 'bottled water', 'soft drinks', 'juice bottling', 'co-packer', 'contract bottler', 'beverage manufacturing', 'water bottling', 'brewery and canning facility', 'juice processing plant'],
+                ratingPrompt: `
+Task Context: We sell dewatering and volume reduction equipment for packaged beverage waste (expired/damaged bottles with liquid). Target: bottling plants and co-packers globally that handle significant liquid packaging waste.
+
+### Tier A (Must meet ALL):
+1. **Core Business**: Operates bottling/filling plant for beverages
+   - Products: bottled water, soft drinks, juice, tea, energy drinks, beer
+   - Packaging: PET bottles, aluminum cans, tetra pak
+2. **Waste Signal**: Clear indication of liquid packaging waste
+   - Keywords: "product destruction", "depackaging", "beverage waste", "line rejects", "returns processing"
+   - OR: "dewatering", "liquid separation", "waste reduction", "compactor", "baler"
+3. **Scale**: High-volume production
+   - "High-speed lines", "multiple production lines", "multi-shift operation"
+   - OR: Serves multiple brands (co-packer/contract bottler)
+4. **Sustainability Focus** (bonus): Mentions recycling, zero waste, ESG goals
+5. **Origin**: Is NOT a Chinese company
+
+### Tier B (Must meet ALL):
+1. **Related Operations**: Beverage distribution center OR packaging facility
+   - Handles returns, damaged goods, or recalls
+   - Keywords: "DC", "warehouse", "returns processing", "liquidation"
+2. **Waste Handling**: Some evidence of packaging waste management
+3. **Scale**: Medium to large facility
+4. **Origin**: Is NOT a Chinese company
+
+### Tier C (ANY = Tier C):
+1. **Chinese Company**: Address/domain/phone indicates China-based
+2. **No Production**: Only brand marketing, trading, or small retail stores
+3. **Wrong Business**: Only supplies empty bottles/packaging materials (unless explicitly handles beverage waste)
+4. **No Waste Flow**: No indication of handling damaged/expired/returned beverages
+5. **Invalid Source**: B2B platform or directory
+
+# Key Waste Scenarios (High Priority if mentioned):
+- "Expired product destruction" / "obsolete beverages"
+- "Depackaging" / "liquid-solid separation"
+- "Line rejects" / "off-spec product" / "recalls"
+- "Wet goods destruction" / "full goods destruction"
+- "Certificate of destruction" / "certified destruction"
+- "Reduce hauling costs" / "volume reduction"
+
+# Decision Logic
+- Chinese company → C
+- No bottling/beverage production → C
+- Clear bottling plant + waste signals → A
+- Distribution/co-packing with some waste handling → B
+- Unclear or insufficient info → C
+`.trim()
             }
         ]
     },
