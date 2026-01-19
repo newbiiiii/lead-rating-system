@@ -1,56 +1,717 @@
 /**
- * 业务线服务
- * 根据任务名称识别业务线和材质，返回对应的评级标准
+ * 业务线服务 - 客户画像管理
+ * 
+ * 支持从数据库读取配置，同时保留硬编码配置作为回退
  * 
  * 结构说明：
- * - Business (大类): 建材 / 成品 / 原料
- * - SubCategory (材质/小类): 每个业务线下有多种材质，各有不同的评级标准
+ * - BusinessLine (业务线): 建材 / 成品 / 原料 / 机械
+ * - CustomerProfile (客户画像): 每个业务线下有多种客户画像，各有不同的评级标准
  * 
  * 业务线特点：
  * - 建材、成品：目标客户为非制造商（经销商、批发商、零售商）
  * - 原料：目标客户为制造商
  */
 
+import { db } from '../db';
+import { businessLines, customerProfiles } from '../db/schema';
+import { eq, and, like, sql } from 'drizzle-orm';
 import { logger } from '../utils/logger';
+import { v4 as uuidv4 } from 'uuid';
 
-// 业务线类型
-export type BusinessType = '建材' | '成品' | '原料' | '机械';
+// ============================================================
+// 类型定义
+// ============================================================
 
-// 业务线上下文返回结构
+// 业务线类型（保持兼容）
+export type BusinessType = '建材' | '成品' | '原料' | '机械' | string;
+
+// 业务上下文返回结构（保持兼容）
 export interface BusinessContext {
-    ratingPrompt: string;
-    business: BusinessType;
-    subCategory: string;  // 具体的材质/子类名称
-    apiKey: number | null;
+   ratingPrompt: string;
+   business: BusinessType;
+   subCategory: string;  // 具体的材质/子类名称
+   apiKey: number | null;
 }
+
+// 业务线实体
+export interface BusinessLineEntity {
+   id: string;
+   name: string;
+   displayName: string;
+   description: string | null;
+   apiKey: number | null;
+   sortOrder: number;
+   isActive: boolean;
+   createdAt: Date;
+   updatedAt: Date;
+}
+
+// 客户画像实体
+export interface CustomerProfileEntity {
+   id: string;
+   businessLineId: string;
+   name: string;
+   displayName: string | null;
+   description: string | null;
+   keywords: string[];
+   ratingPrompt: string;
+   isActive: boolean;
+   sortOrder: number;
+   createdAt: Date;
+   updatedAt: Date;
+   // 关联数据
+   businessLine?: BusinessLineEntity;
+}
+
+// 创建/更新业务线DTO
+export interface CreateBusinessLineDto {
+   name: string;
+   displayName: string;
+   description?: string;
+   apiKey?: number | null;
+   sortOrder?: number;
+   isActive?: boolean;
+}
+
+// 创建/更新客户画像DTO
+export interface CreateCustomerProfileDto {
+   businessLineId: string;
+   name: string;
+   displayName?: string;
+   description?: string;
+   keywords: string[];
+   ratingPrompt: string;
+   isActive?: boolean;
+   sortOrder?: number;
+}
+
+// 缓存配置
+interface CacheEntry {
+   data: CustomerProfileEntity[];
+   timestamp: number;
+}
+
+// ============================================================
+// 缓存机制
+// ============================================================
+
+let profilesCache: CacheEntry | null = null;
+const CACHE_TTL = 5 * 60 * 1000; // 5分钟缓存
+
+function isCacheValid(): boolean {
+   if (!profilesCache) return false;
+   return Date.now() - profilesCache.timestamp < CACHE_TTL;
+}
+
+function clearCache(): void {
+   profilesCache = null;
+   logger.debug('[BusinessService] 缓存已清除');
+}
+
+async function getCachedProfiles(): Promise<CustomerProfileEntity[]> {
+   if (isCacheValid() && profilesCache) {
+      return profilesCache.data;
+   }
+
+   try {
+      const profiles = await db.query.customerProfiles.findMany({
+         where: eq(customerProfiles.isActive, true),
+         with: {
+            businessLine: true,
+         },
+         orderBy: (profile, { asc }) => [asc(profile.sortOrder)],
+      });
+
+      const mappedProfiles: CustomerProfileEntity[] = profiles.map(p => ({
+         id: p.id,
+         businessLineId: p.businessLineId,
+         name: p.name,
+         displayName: p.displayName,
+         description: p.description,
+         keywords: p.keywords as string[],
+         ratingPrompt: p.ratingPrompt,
+         isActive: p.isActive ?? true,
+         sortOrder: p.sortOrder ?? 0,
+         createdAt: p.createdAt,
+         updatedAt: p.updatedAt,
+         businessLine: p.businessLine ? {
+            id: p.businessLine.id,
+            name: p.businessLine.name,
+            displayName: p.businessLine.displayName,
+            description: p.businessLine.description,
+            apiKey: p.businessLine.apiKey,
+            sortOrder: p.businessLine.sortOrder ?? 0,
+            isActive: p.businessLine.isActive ?? true,
+            createdAt: p.businessLine.createdAt,
+            updatedAt: p.businessLine.updatedAt,
+         } : undefined,
+      }));
+
+      profilesCache = {
+         data: mappedProfiles,
+         timestamp: Date.now(),
+      };
+
+      logger.debug(`[BusinessService] 从数据库加载了 ${mappedProfiles.length} 个客户画像配置`);
+      return mappedProfiles;
+   } catch (error) {
+      logger.warn('[BusinessService] 从数据库加载配置失败，将使用硬编码配置', error);
+      return [];
+   }
+}
+
+// ============================================================
+// 核心业务方法（保持兼容）
+// ============================================================
+
+/**
+ * 根据任务名称获取业务上下文
+ * 优先从数据库读取，失败时回退到硬编码配置
+ * @param taskName 任务名称
+ * @returns 业务上下文，包含评级标准、业务线和材质；如果没有匹配返回 null
+ */
+export async function getBusinessContext(taskName: string): Promise<BusinessContext | null> {
+   const name = taskName.toLowerCase();
+
+   // 尝试从数据库获取
+   const profiles = await getCachedProfiles();
+
+   if (profiles.length > 0) {
+      for (const profile of profiles) {
+         for (const keyword of profile.keywords) {
+            if (name.includes(keyword.toLowerCase())) {
+               logger.debug(`[BusinessService] 任务 "${taskName}" 匹配画像: ${profile.businessLine?.displayName} - ${profile.name}`);
+               return {
+                  ratingPrompt: profile.ratingPrompt,
+                  business: (profile.businessLine?.name || '') as BusinessType,
+                  subCategory: profile.name,
+                  apiKey: profile.businessLine?.apiKey || null,
+               };
+            }
+         }
+      }
+   }
+
+   // 回退到硬编码配置
+   return getBusinessContextFromHardcoded(taskName);
+}
+
+/**
+ * 同步版本的 getBusinessContext（保持向后兼容）
+ * 如果缓存有效则使用缓存，否则使用硬编码配置
+ */
+export function getBusinessContextSync(taskName: string): BusinessContext | null {
+   const name = taskName.toLowerCase();
+
+   // 如果缓存有效，使用缓存
+   if (isCacheValid() && profilesCache) {
+      for (const profile of profilesCache.data) {
+         for (const keyword of profile.keywords) {
+            if (name.includes(keyword.toLowerCase())) {
+               return {
+                  ratingPrompt: profile.ratingPrompt,
+                  business: (profile.businessLine?.name || '') as BusinessType,
+                  subCategory: profile.name,
+                  apiKey: profile.businessLine?.apiKey || null,
+               };
+            }
+         }
+      }
+   }
+
+   // 回退到硬编码配置
+   return getBusinessContextFromHardcoded(taskName);
+}
+
+// ============================================================
+// 业务线 CRUD
+// ============================================================
+
+/**
+ * 获取所有业务线
+ */
+export async function getAllBusinessLines(includeInactive = false): Promise<BusinessLineEntity[]> {
+   const conditions = includeInactive ? undefined : eq(businessLines.isActive, true);
+
+   const lines = await db.query.businessLines.findMany({
+      where: conditions,
+      orderBy: (line, { asc }) => [asc(line.sortOrder)],
+   });
+
+   return lines.map(l => ({
+      id: l.id,
+      name: l.name,
+      displayName: l.displayName,
+      description: l.description,
+      apiKey: l.apiKey,
+      sortOrder: l.sortOrder ?? 0,
+      isActive: l.isActive ?? true,
+      createdAt: l.createdAt,
+      updatedAt: l.updatedAt,
+   }));
+}
+
+/**
+ * 获取业务线详情
+ */
+export async function getBusinessLineById(id: string): Promise<BusinessLineEntity | null> {
+   const line = await db.query.businessLines.findFirst({
+      where: eq(businessLines.id, id),
+   });
+
+   if (!line) return null;
+
+   return {
+      id: line.id,
+      name: line.name,
+      displayName: line.displayName,
+      description: line.description,
+      apiKey: line.apiKey,
+      sortOrder: line.sortOrder ?? 0,
+      isActive: line.isActive ?? true,
+      createdAt: line.createdAt,
+      updatedAt: line.updatedAt,
+   };
+}
+
+/**
+ * 创建业务线
+ */
+export async function createBusinessLine(dto: CreateBusinessLineDto): Promise<BusinessLineEntity> {
+   const id = uuidv4();
+   const now = new Date();
+
+   await db.insert(businessLines).values({
+      id,
+      name: dto.name,
+      displayName: dto.displayName,
+      description: dto.description || null,
+      apiKey: dto.apiKey ?? null,
+      sortOrder: dto.sortOrder ?? 0,
+      isActive: dto.isActive ?? true,
+      createdAt: now,
+      updatedAt: now,
+   });
+
+   clearCache();
+
+   return {
+      id,
+      name: dto.name,
+      displayName: dto.displayName,
+      description: dto.description || null,
+      apiKey: dto.apiKey ?? null,
+      sortOrder: dto.sortOrder ?? 0,
+      isActive: dto.isActive ?? true,
+      createdAt: now,
+      updatedAt: now,
+   };
+}
+
+/**
+ * 更新业务线
+ */
+export async function updateBusinessLine(id: string, dto: Partial<CreateBusinessLineDto>): Promise<BusinessLineEntity | null> {
+   const existing = await getBusinessLineById(id);
+   if (!existing) return null;
+
+   const now = new Date();
+
+   await db.update(businessLines)
+      .set({
+         ...(dto.name !== undefined && { name: dto.name }),
+         ...(dto.displayName !== undefined && { displayName: dto.displayName }),
+         ...(dto.description !== undefined && { description: dto.description }),
+         ...(dto.apiKey !== undefined && { apiKey: dto.apiKey }),
+         ...(dto.sortOrder !== undefined && { sortOrder: dto.sortOrder }),
+         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+         updatedAt: now,
+      })
+      .where(eq(businessLines.id, id));
+
+   clearCache();
+
+   return getBusinessLineById(id);
+}
+
+/**
+ * 删除业务线（软删除）
+ */
+export async function deleteBusinessLine(id: string): Promise<boolean> {
+   const result = await db.update(businessLines)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(businessLines.id, id));
+
+   clearCache();
+   return true;
+}
+
+// ============================================================
+// 客户画像 CRUD
+// ============================================================
+
+/**
+ * 获取客户画像列表
+ */
+export async function getCustomerProfiles(options: {
+   businessLineId?: string;
+   includeInactive?: boolean;
+   search?: string;
+   page?: number;
+   pageSize?: number;
+} = {}): Promise<{ profiles: CustomerProfileEntity[]; total: number }> {
+   const { businessLineId, includeInactive = false, search, page = 1, pageSize = 50 } = options;
+
+   // 构建条件
+   const conditions: any[] = [];
+   if (!includeInactive) {
+      conditions.push(eq(customerProfiles.isActive, true));
+   }
+   if (businessLineId) {
+      conditions.push(eq(customerProfiles.businessLineId, businessLineId));
+   }
+
+   // 获取总数
+   const countResult = await db.select({ count: sql<number>`count(*)` })
+      .from(customerProfiles)
+      .where(conditions.length > 0 ? and(...conditions) : undefined);
+   const total = Number(countResult[0]?.count || 0);
+
+   // 获取列表
+   const profiles = await db.query.customerProfiles.findMany({
+      where: conditions.length > 0 ? and(...conditions) : undefined,
+      with: {
+         businessLine: true,
+      },
+      orderBy: (profile, { asc }) => [asc(profile.sortOrder)],
+      limit: pageSize,
+      offset: (page - 1) * pageSize,
+   });
+
+   const mappedProfiles: CustomerProfileEntity[] = profiles.map(p => ({
+      id: p.id,
+      businessLineId: p.businessLineId,
+      name: p.name,
+      displayName: p.displayName,
+      description: p.description,
+      keywords: p.keywords as string[],
+      ratingPrompt: p.ratingPrompt,
+      isActive: p.isActive ?? true,
+      sortOrder: p.sortOrder ?? 0,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+      businessLine: p.businessLine ? {
+         id: p.businessLine.id,
+         name: p.businessLine.name,
+         displayName: p.businessLine.displayName,
+         description: p.businessLine.description,
+         apiKey: p.businessLine.apiKey,
+         sortOrder: p.businessLine.sortOrder ?? 0,
+         isActive: p.businessLine.isActive ?? true,
+         createdAt: p.businessLine.createdAt,
+         updatedAt: p.businessLine.updatedAt,
+      } : undefined,
+   }));
+
+   return { profiles: mappedProfiles, total };
+}
+
+/**
+ * 获取客户画像详情
+ */
+export async function getCustomerProfileById(id: string): Promise<CustomerProfileEntity | null> {
+   const profile = await db.query.customerProfiles.findFirst({
+      where: eq(customerProfiles.id, id),
+      with: {
+         businessLine: true,
+      },
+   });
+
+   if (!profile) return null;
+
+   return {
+      id: profile.id,
+      businessLineId: profile.businessLineId,
+      name: profile.name,
+      displayName: profile.displayName,
+      description: profile.description,
+      keywords: profile.keywords as string[],
+      ratingPrompt: profile.ratingPrompt,
+      isActive: profile.isActive ?? true,
+      sortOrder: profile.sortOrder ?? 0,
+      createdAt: profile.createdAt,
+      updatedAt: profile.updatedAt,
+      businessLine: profile.businessLine ? {
+         id: profile.businessLine.id,
+         name: profile.businessLine.name,
+         displayName: profile.businessLine.displayName,
+         description: profile.businessLine.description,
+         apiKey: profile.businessLine.apiKey,
+         sortOrder: profile.businessLine.sortOrder ?? 0,
+         isActive: profile.businessLine.isActive ?? true,
+         createdAt: profile.businessLine.createdAt,
+         updatedAt: profile.businessLine.updatedAt,
+      } : undefined,
+   };
+}
+
+/**
+ * 创建客户画像
+ */
+export async function createCustomerProfile(dto: CreateCustomerProfileDto): Promise<CustomerProfileEntity> {
+   const id = uuidv4();
+   const now = new Date();
+
+   await db.insert(customerProfiles).values({
+      id,
+      businessLineId: dto.businessLineId,
+      name: dto.name,
+      displayName: dto.displayName || null,
+      description: dto.description || null,
+      keywords: dto.keywords,
+      ratingPrompt: dto.ratingPrompt,
+      isActive: dto.isActive ?? true,
+      sortOrder: dto.sortOrder ?? 0,
+      createdAt: now,
+      updatedAt: now,
+   });
+
+   clearCache();
+
+   const created = await getCustomerProfileById(id);
+   return created!;
+}
+
+/**
+ * 更新客户画像
+ */
+export async function updateCustomerProfile(id: string, dto: Partial<CreateCustomerProfileDto>): Promise<CustomerProfileEntity | null> {
+   const existing = await getCustomerProfileById(id);
+   if (!existing) return null;
+
+   const now = new Date();
+
+   await db.update(customerProfiles)
+      .set({
+         ...(dto.businessLineId !== undefined && { businessLineId: dto.businessLineId }),
+         ...(dto.name !== undefined && { name: dto.name }),
+         ...(dto.displayName !== undefined && { displayName: dto.displayName }),
+         ...(dto.description !== undefined && { description: dto.description }),
+         ...(dto.keywords !== undefined && { keywords: dto.keywords }),
+         ...(dto.ratingPrompt !== undefined && { ratingPrompt: dto.ratingPrompt }),
+         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+         ...(dto.sortOrder !== undefined && { sortOrder: dto.sortOrder }),
+         updatedAt: now,
+      })
+      .where(eq(customerProfiles.id, id));
+
+   clearCache();
+
+   return getCustomerProfileById(id);
+}
+
+/**
+ * 删除客户画像（软删除）
+ */
+export async function deleteCustomerProfile(id: string): Promise<boolean> {
+   await db.update(customerProfiles)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(customerProfiles.id, id));
+
+   clearCache();
+   return true;
+}
+
+// ============================================================
+// 数据迁移方法
+// ============================================================
+
+/**
+ * 从硬编码配置迁移数据到数据库
+ */
+export async function migrateFromHardcodedConfig(): Promise<{ businessLines: number; profiles: number }> {
+   let businessLineCount = 0;
+   let profileCount = 0;
+
+   for (const [businessName, config] of Object.entries(BUSINESS_CONFIG)) {
+      // 检查业务线是否已存在
+      const existingLine = await db.query.businessLines.findFirst({
+         where: eq(businessLines.name, businessName),
+      });
+
+      let businessLineId: string;
+
+      if (existingLine) {
+         businessLineId = existingLine.id;
+         logger.info(`[Migration] 业务线 "${businessName}" 已存在，跳过创建`);
+      } else {
+         businessLineId = uuidv4();
+         await db.insert(businessLines).values({
+            id: businessLineId,
+            name: businessName,
+            displayName: businessName,
+            description: getBusinessDescription(businessName),
+            apiKey: config.apiKey,
+            sortOrder: getBusinessSortOrder(businessName),
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+         });
+         businessLineCount++;
+         logger.info(`[Migration] 创建业务线: ${businessName}`);
+      }
+
+      // 创建客户画像
+      for (const subCategory of config.subCategories) {
+         // 检查画像是否已存在
+         const existingProfile = await db.query.customerProfiles.findFirst({
+            where: and(
+               eq(customerProfiles.businessLineId, businessLineId),
+               eq(customerProfiles.name, subCategory.name)
+            ),
+         });
+
+         if (existingProfile) {
+            logger.info(`[Migration] 画像 "${subCategory.name}" 已存在，跳过创建`);
+            continue;
+         }
+
+         await db.insert(customerProfiles).values({
+            id: uuidv4(),
+            businessLineId,
+            name: subCategory.name,
+            displayName: `${subCategory.name}客户画像`,
+            description: null,
+            keywords: subCategory.keywords,
+            ratingPrompt: subCategory.ratingPrompt,
+            isActive: true,
+            sortOrder: 0,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+         });
+         profileCount++;
+         logger.info(`[Migration] 创建画像: ${businessName} - ${subCategory.name}`);
+      }
+   }
+
+   clearCache();
+
+   return { businessLines: businessLineCount, profiles: profileCount };
+}
+
+function getBusinessDescription(name: string): string {
+   const descriptions: Record<string, string> = {
+      '建材': '建材业务线，目标客户为建材经销商、批发商、零售商',
+      '成品': '成品业务线，目标客户为成品经销商、批发商、零售商',
+      '原料': '原料业务线，目标客户为制造商',
+      '机械': '机械业务线，目标客户为设备使用企业',
+   };
+   return descriptions[name] || '';
+}
+
+function getBusinessSortOrder(name: string): number {
+   const orders: Record<string, number> = {
+      '建材': 1,
+      '成品': 2,
+      '原料': 3,
+      '机械': 4,
+   };
+   return orders[name] || 99;
+}
+
+// ============================================================
+// 兼容性方法
+// ============================================================
+
+/**
+ * 获取所有支持的业务线（兼容旧接口）
+ */
+export function getSupportedBusinessTypes(): BusinessType[] {
+   return Object.keys(BUSINESS_CONFIG) as BusinessType[];
+}
+
+/**
+ * 获取指定业务线下的所有材质/子类（兼容旧接口）
+ */
+export function getSubCategoriesByBusiness(businessType: BusinessType): string[] {
+   const config = BUSINESS_CONFIG[businessType as keyof typeof BUSINESS_CONFIG];
+   return config ? config.subCategories.map(sc => sc.name) : [];
+}
+
+/**
+ * 根据业务线和材质获取评级标准（兼容旧接口）
+ */
+export function getRatingPromptBySubCategory(businessType: BusinessType, subCategoryName: string): string | null {
+   const config = BUSINESS_CONFIG[businessType as keyof typeof BUSINESS_CONFIG];
+   if (!config) return null;
+
+   const subCategory = config.subCategories.find(sc => sc.name === subCategoryName);
+   return subCategory ? subCategory.ratingPrompt : null;
+}
+
+/**
+ * 兼容旧接口：仅返回评级标准字符串
+ * @param taskName 任务名称
+ */
+export function getDynamicRatingContext(taskName: string): string | null {
+   const context = getBusinessContextFromHardcoded(taskName);
+   return context ? context.ratingPrompt : null;
+}
+
+/**
+ * 从硬编码配置获取业务上下文（内部方法）
+ */
+function getBusinessContextFromHardcoded(taskName: string): BusinessContext | null {
+   const name = taskName.toLowerCase();
+
+   for (const [businessType, config] of Object.entries(BUSINESS_CONFIG)) {
+      for (const subCategory of config.subCategories) {
+         for (const keyword of subCategory.keywords) {
+            if (name.includes(keyword)) {
+               logger.debug(`[BusinessService] 任务 "${taskName}" 匹配业务线(硬编码): ${businessType}, 材质: ${subCategory.name}`);
+               return {
+                  ratingPrompt: subCategory.ratingPrompt,
+                  business: businessType as BusinessType,
+                  subCategory: subCategory.name,
+                  apiKey: config.apiKey,
+               };
+            }
+         }
+      }
+   }
+
+   logger.debug(`[BusinessService] 任务 "${taskName}" 未匹配任何业务线`);
+   return null;
+}
+
+// ============================================================
+// 硬编码配置（作为回退）
+// ============================================================
 
 // 材质配置
 interface SubCategoryConfig {
-    name: string;           // 材质/子类名称
-    keywords: string[];     // 匹配关键词
-    ratingPrompt: string;   // 评级标准
+   name: string;           // 材质/子类名称
+   keywords: string[];     // 匹配关键词
+   ratingPrompt: string;   // 评级标准
 }
 
 // 业务线配置
 interface BusinessConfig {
-    apiKey: number | null,
-    subCategories: SubCategoryConfig[];
+   apiKey: number | null,
+   subCategories: SubCategoryConfig[];
 }
 
-// ============================================================
-// 业务线映射配置
-// ============================================================
-const BUSINESS_CONFIG: Record<BusinessType, BusinessConfig> = {
-    // ============================================================
-    // 建材业务线（目标：非制造商 - 经销商、批发商、零售商）
-    // ============================================================
-    '建材': {
-        apiKey: 1,
-        subCategories: [
-            {
-                name: '墙板',
-                keywords: ['wall panel', 'acoustic panel', 'decoration panel', 'wpc panel', 'pvc panel'],
-                ratingPrompt: `
+const BUSINESS_CONFIG: Record<string, BusinessConfig> = {
+   // ============================================================
+   // 建材业务线（目标：非制造商 - 经销商、批发商、零售商）
+   // ============================================================
+   '建材': {
+      apiKey: 1,
+      subCategories: [
+         {
+            name: '墙板',
+            keywords: ['wall panel', 'acoustic panel', 'decoration panel', 'wpc panel', 'pvc panel'],
+            ratingPrompt: `
 Task Context: We are looking for potential B2B clients in wall panels. Target: distributors, NOT manufacturers.
 
 ### Tier A (Must meet ALL):
@@ -89,11 +750,11 @@ Task Context: We are looking for potential B2B clients in wall panels. Target: d
 - If company meets ALL Tier B criteria → Rating: B
 - If uncertain or mixed signals → Rating: C (be conservative)
                 `.trim()
-            },
-            {
-                name: '地板',
-                keywords: ['flooring', 'floor', 'spc floor', 'laminate floor', 'vinyl floor', 'wpc floor'],
-                ratingPrompt: `
+         },
+         {
+            name: '地板',
+            keywords: ['flooring', 'floor', 'spc floor', 'laminate floor', 'vinyl floor', 'wpc floor'],
+            ratingPrompt: `
 Task Context: We are looking for flooring distributors (SPC, WPC, Laminate, Vinyl). Target: distributors, NOT manufacturers.
 
 ### Tier A (Must meet ALL):
@@ -130,11 +791,11 @@ Task Context: We are looking for flooring distributors (SPC, WPC, Laminate, Viny
 - ALL Tier B criteria → Rating: B
 - Uncertain → Rating: C
                 `.trim()
-            },
-            {
-                name: '吸音板',
-                keywords: ['acoustic', 'sound absorbing', 'soundproof', 'acoustic panel', 'acoustic board'],
-                ratingPrompt: `
+         },
+         {
+            name: '吸音板',
+            keywords: ['acoustic', 'sound absorbing', 'soundproof', 'acoustic panel', 'acoustic board'],
+            ratingPrompt: `
 Task Context: We are looking for acoustic panel distributors. Target: distributors/installers, NOT manufacturers.
 
 ### Tier A (Must meet ALL):
@@ -171,20 +832,20 @@ Task Context: We are looking for acoustic panel distributors. Target: distributo
 - ALL Tier B criteria → Rating: B
 - Uncertain → Rating: C
                 `.trim()
-            }
-        ]
-    },
+         }
+      ]
+   },
 
-    // ============================================================
-    // 成品业务线（目标：非制造商 - 经销商、批发商、零售商）
-    // ============================================================
-    '成品': {
-        apiKey: 2,
-        subCategories: [
-            {
-                name: '相框',
-                keywords: ['photo frame', 'picture frame', 'photo holder'],
-                ratingPrompt: `
+   // ============================================================
+   // 成品业务线（目标：非制造商 - 经销商、批发商、零售商）
+   // ============================================================
+   '成品': {
+      apiKey: 2,
+      subCategories: [
+         {
+            name: '相框',
+            keywords: ['photo frame', 'picture frame', 'photo holder'],
+            ratingPrompt: `
 Task Context: We are looking for photo frame distributors/retailers. Target: distributors, NOT manufacturers.
 
 ### Tier A (Must meet ALL):
@@ -220,11 +881,11 @@ Task Context: We are looking for photo frame distributors/retailers. Target: dis
 - ALL Tier B criteria → Rating: B
 - Uncertain → Rating: C
                 `.trim()
-            },
-            {
-                name: '镜框',
-                keywords: ['mirror frame', 'decorative mirror', 'wall mirror frame'],
-                ratingPrompt: `
+         },
+         {
+            name: '镜框',
+            keywords: ['mirror frame', 'decorative mirror', 'wall mirror frame'],
+            ratingPrompt: `
 Task Context: We are looking for mirror frame distributors/retailers. Target: distributors, NOT manufacturers.
 
 ### Tier A (Must meet ALL):
@@ -260,11 +921,11 @@ Task Context: We are looking for mirror frame distributors/retailers. Target: di
 - ALL Tier B criteria → Rating: B
 - Uncertain → Rating: C
                 `.trim()
-            },
-            {
-                name: '画框',
-                keywords: ['art frame', 'canvas frame', 'painting frame', 'gallery frame'],
-                ratingPrompt: `
+         },
+         {
+            name: '画框',
+            keywords: ['art frame', 'canvas frame', 'painting frame', 'gallery frame'],
+            ratingPrompt: `
 Task Context: We are looking for art/painting frame distributors. Target: distributors/retailers, NOT manufacturers.
 
 ### Tier A (Must meet ALL):
@@ -300,11 +961,11 @@ Task Context: We are looking for art/painting frame distributors. Target: distri
 - ALL Tier B criteria → Rating: B
 - Uncertain → Rating: C
                 `.trim()
-            },
-            {
-                name: '框条',
-                keywords: ['moulding', 'frame moulding', 'ps moulding', 'picture moulding', 'decorative moulding'],
-                ratingPrompt: `
+         },
+         {
+            name: '框条',
+            keywords: ['moulding', 'frame moulding', 'ps moulding', 'picture moulding', 'decorative moulding'],
+            ratingPrompt: `
 Task Context: We are looking for frame moulding distributors. Target: distributors, NOT manufacturers.
 
 ### Tier A (Must meet ALL):
@@ -340,20 +1001,20 @@ Task Context: We are looking for frame moulding distributors. Target: distributo
 - ALL Tier B criteria → Rating: B
 - Uncertain → Rating: C
                 `.trim()
-            }
-        ]
-    },
+         }
+      ]
+   },
 
-    // ============================================================
-    // 原料业务线（目标：制造商）
-    // ============================================================
-    '原料': {
-        apiKey: 3,
-        subCategories: [
-            {
-                name: 'PS保温板厂',
-                keywords: ['eps insulation', 'xps insulation', 'ps foam', 'polystyrene insulation', 'insulation board'],
-                ratingPrompt: `
+   // ============================================================
+   // 原料业务线（目标：制造商）
+   // ============================================================
+   '原料': {
+      apiKey: 3,
+      subCategories: [
+         {
+            name: 'PS保温板厂',
+            keywords: ['eps insulation', 'xps insulation', 'ps foam', 'polystyrene insulation', 'insulation board'],
+            ratingPrompt: `
 Task Context: We SELL PS raw materials. Target: EPS/XPS insulation board MANUFACTURERS.
 
 ### Tier A (Must meet ALL):
@@ -391,11 +1052,11 @@ Task Context: We SELL PS raw materials. Target: EPS/XPS insulation board MANUFAC
 - ALL Tier B criteria → Rating: B (potential: related manufacturer)
 - Otherwise → Rating: C
                 `.trim()
-            },
-            {
-                name: 'PS框条制造商',
-                keywords: ['ps moulding manufacturer', 'polystyrene moulding', 'ps frame manufacturer', 'foam moulding'],
-                ratingPrompt: `
+         },
+         {
+            name: 'PS框条制造商',
+            keywords: ['ps moulding manufacturer', 'polystyrene moulding', 'ps frame manufacturer', 'foam moulding'],
+            ratingPrompt: `
 Task Context: We SELL PS raw materials. Target: PS moulding MANUFACTURERS.
 
 ### Tier A (Must meet ALL):
@@ -432,11 +1093,11 @@ Task Context: We SELL PS raw materials. Target: PS moulding MANUFACTURERS.
 - ALL Tier B criteria → Rating: B (potential: plastics extrusion manufacturer)
 - Otherwise → Rating: C
                 `.trim()
-            },
-            {
-                name: 'PE管道制造商',
-                keywords: ['pe pipe', 'hdpe pipe', 'polyethylene pipe', 'plastic pipe manufacturer', 'water pipe'],
-                ratingPrompt: `
+         },
+         {
+            name: 'PE管道制造商',
+            keywords: ['pe pipe', 'hdpe pipe', 'polyethylene pipe', 'plastic pipe manufacturer', 'water pipe'],
+            ratingPrompt: `
 Task Context: We SELL PE raw materials. Target: PE pipe MANUFACTURERS.
 
 ### Tier A (Must meet ALL):
@@ -473,11 +1134,11 @@ Task Context: We SELL PE raw materials. Target: PE pipe MANUFACTURERS.
 - ALL Tier B criteria → Rating: B (potential: plastics manufacturer)
 - Otherwise → Rating: C
                 `.trim()
-            },
-            {
-                name: 'PE土工膜制造商',
-                keywords: ['geomembrane', 'hdpe liner', 'pe liner', 'geosynthetic', 'pond liner'],
-                ratingPrompt: `
+         },
+         {
+            name: 'PE土工膜制造商',
+            keywords: ['geomembrane', 'hdpe liner', 'pe liner', 'geosynthetic', 'pond liner'],
+            ratingPrompt: `
 Task Context: We SELL PE raw materials. Target: Geomembrane/liner MANUFACTURERS.
 
 ### Tier A (Must meet ALL):
@@ -514,11 +1175,11 @@ Task Context: We SELL PE raw materials. Target: Geomembrane/liner MANUFACTURERS.
 - ALL Tier B criteria → Rating: B (potential: film manufacturer)
 - Otherwise → Rating: C
                 `.trim()
-            },
-            {
-                name: 'PE垃圾袋制造商',
-                keywords: ['garbage bag manufacturer', 'trash bag manufacturer', 'bin liner manufacturer', 'plastic bag factory'],
-                ratingPrompt: `
+         },
+         {
+            name: 'PE垃圾袋制造商',
+            keywords: ['garbage bag manufacturer', 'trash bag manufacturer', 'bin liner manufacturer', 'plastic bag factory'],
+            ratingPrompt: `
 Task Context: We SELL PE raw materials. Target: Garbage bag/plastic bag MANUFACTURERS.
 
 ### Tier A (Must meet ALL):
@@ -555,16 +1216,16 @@ Task Context: We SELL PE raw materials. Target: Garbage bag/plastic bag MANUFACT
 - ALL Tier B criteria → Rating: B (potential: packaging manufacturer)
 - Otherwise → Rating: C
                 `.trim()
-            }
-        ]
-    },
-    '机械': {
-        apiKey: null,
-        subCategories: [
-            {
-                name: 'EPE/PE泡沫制造及转换商',
-                keywords: ['epe foam', 'pe foam', 'polyethylene foam', 'foam converter', 'foam fabricator', 'plastazote', 'evazote', 'ethafoam', 'stratocell'],
-                ratingPrompt: `
+         }
+      ]
+   },
+   '机械': {
+      apiKey: null,
+      subCategories: [
+         {
+            name: 'EPE/PE泡沫制造及转换商',
+            keywords: ['epe foam', 'pe foam', 'polyethylene foam', 'foam converter', 'foam fabricator', 'plastazote', 'evazote', 'ethafoam', 'stratocell'],
+            ratingPrompt: `
 Task Context: We sell foam compactors/densifiers to EPE/PE foam manufacturers and converters globally. Target: companies that produce or process significant volumes of EPE/PE foam.
 
 ### Tier A (Must meet ALL):
@@ -606,11 +1267,11 @@ Task Context: We sell foam compactors/densifiers to EPE/PE foam manufacturers an
   - Medium scale with confirmed EPE/PE activity → B
   - Unclear or limited information → C
 `.trim()
-            },
-            {
-                name: '饮料/瓶装水生产商',
-                keywords: ['bottling plant', 'beverage bottling', 'bottled water', 'soft drinks', 'juice bottling', 'co-packer', 'contract bottler', 'beverage manufacturing', 'water bottling', 'brewery and canning facility', 'juice processing plant'],
-                ratingPrompt: `
+         },
+         {
+            name: '饮料/瓶装水生产商',
+            keywords: ['bottling plant', 'beverage bottling', 'bottled water', 'soft drinks', 'juice bottling', 'co-packer', 'contract bottler', 'beverage manufacturing', 'water bottling', 'brewery and canning facility', 'juice processing plant'],
+            ratingPrompt: `
 Task Context: We sell dewatering and volume reduction equipment for packaged beverage waste (expired/damaged bottles with liquid). Target: bottling plants and co-packers globally that handle significant liquid packaging waste.
 
 ### Tier A (Must meet ALL):
@@ -656,70 +1317,7 @@ Task Context: We sell dewatering and volume reduction equipment for packaged bev
 - Distribution/co-packing with some waste handling → B
 - Unclear or insufficient info → C
 `.trim()
-            }
-        ]
-    },
+         }
+      ]
+   },
 };
-
-/**
- * 根据任务名称获取业务上下文
- * @param taskName 任务名称
- * @returns 业务上下文，包含评级标准、业务线和材质；如果没有匹配返回 null
- */
-export function getBusinessContext(taskName: string): BusinessContext | null {
-    const name = taskName.toLowerCase();
-
-    for (const [businessType, config] of Object.entries(BUSINESS_CONFIG)) {
-        for (const subCategory of config.subCategories) {
-            for (const keyword of subCategory.keywords) {
-                if (name.includes(keyword)) {
-                    logger.debug(`[BusinessService] 任务 "${taskName}" 匹配业务线: ${businessType}, 材质: ${subCategory.name}`);
-                    return {
-                        ratingPrompt: subCategory.ratingPrompt,
-                        business: businessType as BusinessType,
-                        subCategory: subCategory.name,
-                        apiKey: config.apiKey,
-                    };
-                }
-            }
-        }
-    }
-
-    logger.debug(`[BusinessService] 任务 "${taskName}" 未匹配任何业务线`);
-    return null;
-}
-
-/**
- * 获取所有支持的业务线
- */
-export function getSupportedBusinessTypes(): BusinessType[] {
-    return Object.keys(BUSINESS_CONFIG) as BusinessType[];
-}
-
-/**
- * 获取指定业务线下的所有材质/子类
- */
-export function getSubCategoriesByBusiness(businessType: BusinessType): string[] {
-    const config = BUSINESS_CONFIG[businessType];
-    return config ? config.subCategories.map(sc => sc.name) : [];
-}
-
-/**
- * 根据业务线和材质获取评级标准
- */
-export function getRatingPromptBySubCategory(businessType: BusinessType, subCategoryName: string): string | null {
-    const config = BUSINESS_CONFIG[businessType];
-    if (!config) return null;
-
-    const subCategory = config.subCategories.find(sc => sc.name === subCategoryName);
-    return subCategory ? subCategory.ratingPrompt : null;
-}
-
-/**
- * 兼容旧接口：仅返回评级标准字符串
- * @param taskName 任务名称
- */
-export function getDynamicRatingContext(taskName: string): string | null {
-    const context = getBusinessContext(taskName);
-    return context ? context.ratingPrompt : null;
-}

@@ -27,14 +27,22 @@ class PageRouter {
             // 3. 动态加载页面专属逻辑模块
             if (!this.loadedModules[actualPageName]) {
                 try {
+                    console.log(`[Router] Importing module for ${actualPageName}...`);
                     const pageModule = await import(`/assets/js/modules/pages/${actualPageName}.js`);
+                    console.log(`[Router] Module loaded for ${actualPageName}`);
+
                     this.loadedModules[actualPageName] = pageModule;
 
                     // 初始化页面
                     if (pageModule.init) {
+                        console.log(`[Router] Initializing ${actualPageName}...`);
                         await pageModule.init();
+                        console.log(`[Router] ${actualPageName} initialized`);
+                    } else {
+                        console.warn(`[Router] No init function found in module ${actualPageName}`);
                     }
                 } catch (error) {
+                    console.error(`[Router] Failed to load module for ${actualPageName}:`, error);
                     console.warn(`No module found for ${actualPageName}, using inline handlers`);
                 }
             } else {

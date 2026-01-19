@@ -36,6 +36,41 @@ export async function postAPI(endpoint, data) {
     }
 }
 
+export async function putAPI(endpoint, data) {
+    try {
+        const response = await fetch(`${API_BASE}${endpoint}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) throw new Error('API 请求失败');
+        return await response.json();
+    } catch (error) {
+        console.error('API Error:', error);
+        showNotification('操作失败,请稍后重试', 'error');
+        return null;
+    }
+}
+
+export async function deleteAPI(endpoint) {
+    try {
+        const response = await fetch(`${API_BASE}${endpoint}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        if (!response.ok) throw new Error('API 请求失败');
+        return await response.json();
+    } catch (error) {
+        console.error('API Error:', error);
+        showNotification('操作失败,请稍后重试', 'error');
+        return null;
+    }
+}
+
 function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;

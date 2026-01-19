@@ -61,7 +61,8 @@ function updatePageTitle(pageName) {
         management: '任务管理',
         'pending-config': '待配置规则',
         'leads-by-status': '线索管理',
-        'enrich-leads': '数据增强'
+        'enrich-leads': '数据增强',
+        'customer-profiles': '客户画像管理'
     };
 
     const titleElement = document.querySelector('#page-title');

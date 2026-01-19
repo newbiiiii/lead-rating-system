@@ -20,6 +20,7 @@ import ratingRoutes from './routes/rating.routes';
 import crmRoutes from './routes/crm.routes';
 import enrichRoutes from './routes/enrich.routes';
 import monitoringRoutes from './routes/monitoring.routes';
+import profileRoutes from './routes/profile.routes';
 
 const app = express();
 const httpServer = createServer(app);
@@ -166,6 +167,9 @@ app.use('/api/enrich', enrichRoutes);
 
 // 监控中心
 app.use('/api/monitoring', monitoringRoutes);
+
+// 客户画像管理
+app.use('/api/profiles', profileRoutes);
 
 // ============ 启动服务 ============
 const PORT = process.env.PORT || 3000;

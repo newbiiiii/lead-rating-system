@@ -1,0 +1,523 @@
+<div class="section-card">
+    <div class="section-header">
+        <h3>客户画像管理</h3>
+        <div class="header-actions">
+            <button class="btn-secondary btn-sm" onclick="migrateFromConfig()">导入默认配置</button>
+            <button class="btn-primary btn-sm" onclick="openProfileModal()">新建画像</button>
+        </div>
+    </div>
+
+    <!-- 业务线标签页 -->
+    <div class="profile-tabs">
+        <div class="tab-list" id="business-line-tabs">
+            <button class="tab-item active" data-business-line="" onclick="switchBusinessLine(null)">
+                全部
+            </button>
+            <!-- 动态生成业务线标签 -->
+        </div>
+        <button class="btn-icon btn-sm" onclick="openBusinessLineModal()" title="管理业务线">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd"
+                    d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
+                    clip-rule="evenodd" />
+            </svg>
+        </button>
+    </div>
+
+    <!-- 画像列表 -->
+    <div class="profile-grid" id="profile-grid">
+        <div class="loading-state">加载中...</div>
+    </div>
+
+    <!-- 分页 -->
+    <div id="profile-pagination"></div>
+</div>
+
+<!-- 客户画像编辑弹窗 -->
+<div id="profile-modal" class="modal-dark-overlay" style="display: none;">
+    <div class="modal-dark-container" style="max-width: 900px;">
+        <div class="modal-dark-header">
+            <h2 id="profile-modal-title">新建客户画像</h2>
+            <button onclick="closeProfileModal()" class="btn-dark">关闭</button>
+        </div>
+        <form id="profile-form" onsubmit="saveProfile(event)">
+            <input type="hidden" id="profile-id" value="">
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="profile-business-line">所属业务线 *</label>
+                    <select id="profile-business-line" required class="filter-select">
+                        <option value="">请选择业务线</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="profile-name">画像名称 *</label>
+                    <input type="text" id="profile-name" required class="filter-input" placeholder="如：墙板、地板">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="profile-display-name">显示名称</label>
+                <input type="text" id="profile-display-name" class="filter-input" placeholder="如：墙板经销商画像">
+            </div>
+
+            <div class="form-group">
+                <label for="profile-description">描述</label>
+                <textarea id="profile-description" class="filter-input" rows="2" placeholder="画像的详细说明..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>匹配关键词 * <span class="label-hint">（用于从任务名称识别客户画像）</span></label>
+                <div class="keyword-input-container">
+                    <div id="keywords-list" class="keywords-list"></div>
+                    <input type="text" id="keyword-input" class="filter-input" placeholder="输入关键词后按 Enter 添加">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="profile-rating-prompt">评级提示词 * <span class="label-hint">（用于 AI 评分的提示词）</span></label>
+                <textarea id="profile-rating-prompt" required class="filter-input code-textarea" rows="15"
+                    placeholder="输入评级规则..."></textarea>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="profile-sort-order">排序权重</label>
+                    <input type="number" id="profile-sort-order" class="filter-input" value="0" min="0">
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="profile-is-active" checked>
+                        <span>启用</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" onclick="closeProfileModal()" class="btn-secondary">取消</button>
+                <button type="submit" class="btn-primary">保存</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 业务线管理弹窗 -->
+<div id="business-line-modal" class="modal-dark-overlay" style="display: none;">
+    <div class="modal-dark-container" style="max-width: 700px;">
+        <div class="modal-dark-header">
+            <h2>业务线管理</h2>
+            <button onclick="closeBusinessLineModal()" class="btn-dark">关闭</button>
+        </div>
+
+        <!-- 业务线列表 -->
+        <div class="business-line-list" id="business-line-list">
+            <div class="loading-state">加载中...</div>
+        </div>
+
+        <!-- 新建/编辑表单 -->
+        <div class="business-line-form-section">
+            <h4 id="business-line-form-title">新建业务线</h4>
+            <form id="business-line-form" onsubmit="saveBusinessLine(event)">
+                <input type="hidden" id="business-line-id" value="">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="business-line-name">名称标识 *</label>
+                        <input type="text" id="business-line-name" required class="filter-input" placeholder="如：建材">
+                    </div>
+                    <div class="form-group">
+                        <label for="business-line-display-name">显示名称 *</label>
+                        <input type="text" id="business-line-display-name" required class="filter-input"
+                            placeholder="如：建材">
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="business-line-api-key">API 密钥 ID</label>
+                        <input type="number" id="business-line-api-key" class="filter-input" placeholder="可选">
+                    </div>
+                    <div class="form-group">
+                        <label for="business-line-sort-order">排序权重</label>
+                        <input type="number" id="business-line-sort-order" class="filter-input" value="0" min="0">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="business-line-description">描述</label>
+                    <input type="text" id="business-line-description" class="filter-input" placeholder="业务线描述">
+                </div>
+                <div class="form-actions">
+                    <button type="button" onclick="resetBusinessLineForm()" class="btn-secondary">重置</button>
+                    <button type="submit" class="btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* 标签页样式 */
+    .modal-dark-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.75);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        backdrop-filter: blur(4px);
+    }
+
+    .modal-dark-container {
+        background-color: #1e293b;
+        /* Ensure opaque dark background */
+        border: 1px solid #334155;
+        border-radius: 16px;
+        padding: 24px;
+        width: 100%;
+        margin: 20px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        color: #f1f5f9;
+    }
+
+    .modal-dark-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #334155;
+    }
+
+    .modal-dark-header h2 {
+        font-size: 20px;
+        font-weight: 600;
+        color: #f1f5f9;
+        margin: 0;
+    }
+
+    /* Ensure inputs in modal have solid background */
+    .modal-dark-container .filter-input,
+    .modal-dark-container .filter-select,
+    .modal-dark-container textarea {
+        background-color: #0f172a !important;
+        border: 1px solid #334155 !important;
+        color: #f1f5f9 !important;
+    }
+
+    .modal-dark-container label {
+        color: #cbd5e1 !important;
+    }
+
+    .btn-dark {
+        background: var(--bg-secondary);
+        color: var(--text-secondary);
+        border: 1px solid var(--border);
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-dark:hover {
+        background: var(--border);
+        color: var(--text-primary);
+    }
+
+    .profile-tabs {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .tab-list {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        flex: 1;
+    }
+
+    .tab-item {
+        padding: 8px 16px;
+        border-radius: 20px;
+        border: 1px solid var(--border);
+        background: var(--card-bg);
+        color: var(--text-secondary);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .tab-item:hover {
+        background: var(--bg-secondary);
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+
+    .tab-item.active {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border-color: transparent;
+        color: white;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    }
+
+    /* 画像网格 */
+    .profile-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 20px;
+    }
+
+    /* 画像卡片 */
+    .profile-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+        transition: all 0.2s;
+    }
+
+    .profile-card:hover {
+        border-color: var(--primary);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .profile-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+    }
+
+    .profile-card-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    .profile-card-business-line {
+        font-size: 12px;
+        padding: 4px 10px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #667eea20, #764ba220);
+        color: var(--primary);
+        font-weight: 500;
+    }
+
+    .profile-card-keywords {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin: 12px 0;
+    }
+
+    .keyword-tag {
+        font-size: 12px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        background: var(--bg-secondary);
+        color: var(--text-secondary);
+    }
+
+    .profile-card-status {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+
+    .status-badge {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+
+    .status-badge.active {
+        background: #10b981;
+    }
+
+    .status-badge.inactive {
+        background: #ef4444;
+    }
+
+    .profile-card-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border);
+    }
+
+    /* 关键词输入 */
+    .keyword-input-container {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px;
+        background: var(--card-bg);
+    }
+
+    .keywords-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 8px;
+        min-height: 32px;
+    }
+
+    .keyword-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        font-size: 13px;
+    }
+
+    .keyword-item button {
+        background: transparent;
+        border: none;
+        color: white;
+        cursor: pointer;
+        padding: 0;
+        font-size: 16px;
+        line-height: 1;
+        opacity: 0.7;
+    }
+
+    .keyword-item button:hover {
+        opacity: 1;
+    }
+
+    .keyword-input-container input {
+        border: none;
+        padding: 8px;
+        width: 100%;
+        background: transparent;
+    }
+
+    /* 表单样式 */
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
+    .label-hint {
+        font-weight: 400;
+        color: var(--text-secondary);
+        font-size: 12px;
+    }
+
+    .code-textarea {
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        height: 100%;
+    }
+
+    .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 24px;
+        padding-top: 24px;
+        border-top: 1px solid var(--border);
+    }
+
+    /* 业务线列表 */
+    .business-line-list {
+        max-height: 300px;
+        overflow-y: auto;
+        margin-bottom: 24px;
+    }
+
+    .business-line-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        background: var(--bg-secondary);
+        border-radius: 8px;
+        margin-bottom: 8px;
+    }
+
+    .business-line-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .business-line-info strong {
+        font-size: 14px;
+        color: var(--text-primary);
+    }
+
+    .business-line-info span {
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+
+    .business-line-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .business-line-form-section {
+        padding-top: 20px;
+        border-top: 1px solid var(--border);
+    }
+
+    .business-line-form-section h4 {
+        margin: 0 0 16px 0;
+        color: var(--text-primary);
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .loading-state {
+        text-align: center;
+        padding: 40px;
+        color: var(--text-secondary);
+    }
+
+    .empty-state-card {
+        text-align: center;
+        padding: 60px 40px;
+        color: var(--text-secondary);
+        grid-column: 1 / -1;
+    }
+</style>

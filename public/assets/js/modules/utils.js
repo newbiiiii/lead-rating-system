@@ -37,6 +37,8 @@ export function showNotification(message, type = 'info') {
     }, 3000);
 }
 
+export const showToast = showNotification;
+
 export function getSourceName(source) {
     const names = {
         'google_maps': 'Google地图',
@@ -68,7 +70,7 @@ export function getStatusBadge(status) {
         pending_config: { label: '待配置', class: 'badge-warning' },
         skipped: { label: '已跳过', class: 'badge-secondary' }
     };
-    
+
     const config = statusConfig[status] || { label: status, class: 'badge-secondary' };
     return `<span class="status-badge ${config.class}">${config.label}</span>`;
 }

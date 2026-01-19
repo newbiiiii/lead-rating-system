@@ -390,3 +390,70 @@ export const ratingsRelations = relations(ratings, ({ one }) => ({
         references: [companies.id],
     }),
 }));
+
+// ============================================================
+// 客户画像管理表
+// ============================================================
+
+/**
+ * 业务线表 - 存储业务线分类（建材、成品、原料、机械等）
+ */
+export const businessLines = pgTable('business_lines', {
+    id: varchar('id', { length: 255 }).primaryKey(),
+    name: varchar('name', { length: 100 }).notNull().unique(), // 业务线标识名称
+    displayName: varchar('display_name', { length: 100 }).notNull(), // 显示名称
+    description: text('description'),
+    apiKey: integer('api_key'), // 对应的API密钥ID
+    sortOrder: integer('sort_order').default(0),
+    isActive: boolean('is_active').default(true),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+    nameIdx: index('business_lines_name_idx').on(table.name),
+    activeIdx: index('business_lines_active_idx').on(table.isActive),
+}));
+
+/**
+ * 客户画像表 - 存储每个业务线下的客户画像配置
+ * 包含匹配关键词和评级提示词
+ */
+export const customerProfiles = pgTable('customer_profiles', {
+    id: varchar('id', { length: 255 }).primaryKey(),
+    businessLineId: varchar('business_line_id', { length: 255 }).references(() => businessLines.id).notNull(),
+
+    // 画像基本信息
+    name: varchar('name', { length: 100 }).notNull(), // 画像名称，如"墙板"、"地板"
+    displayName: varchar('display_name', { length: 200 }), // 显示名称，如"墙板经销商"
+    description: text('description'),
+
+    // 匹配规则 - 用于从任务名称识别客户画像
+    keywords: jsonb('keywords').notNull(), // string[] 匹配关键词数组
+
+    // 评级提示词 - 用于AI评分
+    ratingPrompt: text('rating_prompt').notNull(),
+
+    // 状态控制
+    isActive: boolean('is_active').default(true),
+    sortOrder: integer('sort_order').default(0),
+
+    // 时间戳
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+    businessLineIdx: index('customer_profiles_business_line_idx').on(table.businessLineId),
+    nameIdx: index('customer_profiles_name_idx').on(table.name),
+    activeIdx: index('customer_profiles_active_idx').on(table.isActive),
+}));
+
+// 业务线关系
+export const businessLinesRelations = relations(businessLines, ({ many }) => ({
+    profiles: many(customerProfiles),
+}));
+
+// 客户画像关系
+export const customerProfilesRelations = relations(customerProfiles, ({ one }) => ({
+    businessLine: one(businessLines, {
+        fields: [customerProfiles.businessLineId],
+        references: [businessLines.id],
+    }),
+}));
