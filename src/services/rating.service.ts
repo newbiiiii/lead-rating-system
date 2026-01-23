@@ -8,7 +8,7 @@ import axios from 'axios';
 import { RatingResult, TaskLead } from "../model/model";
 import { db } from "../db";
 import { sql } from "drizzle-orm";
-import { getDynamicRatingContext } from "./business.service";
+import { getBusinessContext } from "./business.service";
 
 /**
  * 查找同域名的已有评级结果
@@ -151,12 +151,16 @@ export const getTaskLead = async (leadId: string): Promise<TaskLead> => {
 
 /**
  * 构建评分 prompt
+ * 改为异步函数以支持从数据库读取客户画像配置
  */
-export function constructPrompt(taskLead: TaskLead): string | null {
+export async function constructPrompt(taskLead: TaskLead): Promise<string | null> {
     const rawData = taskLead.rawData as any;
     const description = rawData?.description || rawData?.about || '';
     const categories = rawData?.categories || [];
-    const ratingContext = getDynamicRatingContext(taskLead.taskName);
+
+    // 使用异步版本，正确从数据库读取客户画像配置
+    const businessContext = await getBusinessContext(taskLead.taskName);
+    const ratingContext = businessContext?.ratingPrompt || null;
 
     // 如果没有配置评分规则，抛出503错误（可重试）
     if (ratingContext === null) {
@@ -188,7 +192,7 @@ export function constructPrompt(taskLead: TaskLead): string | null {
  * 调用 HiAgent 进行评分
  */
 export async function rateLeadWithAI(taskLead: TaskLead): Promise<RatingResult | null> {
-    const prompt = constructPrompt(taskLead);
+    const prompt = await constructPrompt(taskLead);
     logger.info('[prompt]', { 'prompt': prompt });
     if (prompt === null) {
         // 未配置评分规则，标记为pending_config

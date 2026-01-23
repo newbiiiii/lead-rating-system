@@ -176,11 +176,14 @@ export async function getBusinessContext(taskName: string): Promise<BusinessCont
    // 尝试从数据库获取
    const profiles = await getCachedProfiles();
 
+   logger.info(`[BusinessService] 匹配任务 "${taskName}", 已加载 ${profiles.length} 个画像配置`);
+
    if (profiles.length > 0) {
       for (const profile of profiles) {
          for (const keyword of profile.keywords) {
-            if (name.includes(keyword.toLowerCase())) {
-               logger.debug(`[BusinessService] 任务 "${taskName}" 匹配画像: ${profile.businessLine?.displayName} - ${profile.name}`);
+            const keywordLower = keyword.toLowerCase();
+            if (name.includes(keywordLower)) {
+               logger.info(`[BusinessService] ✓ 匹配成功: "${taskName}" 包含关键词 "${keyword}" -> 画像: ${profile.businessLine?.displayName} - ${profile.name}`);
                return {
                   ratingPrompt: profile.ratingPrompt,
                   business: (profile.businessLine?.name || '') as BusinessType,
@@ -190,6 +193,10 @@ export async function getBusinessContext(taskName: string): Promise<BusinessCont
             }
          }
       }
+      // 如果遍历完所有画像都没匹配，记录日志
+      logger.info(`[BusinessService] ✗ 数据库画像未匹配: "${taskName}", 尝试硬编码配置...`);
+   } else {
+      logger.warn(`[BusinessService] ⚠ 数据库无画像配置，回退到硬编码配置`);
    }
 
    // 回退到硬编码配置
