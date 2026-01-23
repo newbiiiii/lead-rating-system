@@ -1,118 +1,170 @@
-<div
-    class="bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 rounded-2xl border border-slate-200/60 shadow-xl shadow-slate-200/50">
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background-color: #F5F5F7;
+        color: #1D1D1F;
+    }
+
+    .apple-card {
+        background: white;
+        border-radius: 24px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    .apple-card:hover {
+        transform: scale(1.005);
+        box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.01);
+    }
+
+    .apple-btn-primary {
+        background-color: #1D1D1F;
+        color: white;
+        border-radius: 9999px;
+        transition: all 0.2s;
+    }
+
+    .apple-btn-primary:hover {
+        background-color: #333336;
+        transform: scale(1.02);
+    }
+
+    .apple-btn-secondary {
+        background-color: white;
+        color: #1D1D1F;
+        border-radius: 9999px;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        transition: all 0.2s;
+    }
+
+    .apple-btn-secondary:hover {
+        background-color: #F5F5F7;
+        transform: scale(1.02);
+    }
+
+    .apple-input {
+        background-color: rgba(118, 118, 128, 0.12);
+        border: none;
+        border-radius: 12px;
+        transition: all 0.2s;
+    }
+
+    .apple-input:focus {
+        background-color: rgba(118, 118, 128, 0.08);
+        box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.3);
+        outline: none;
+    }
+
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Hide scrollbar for IE, Edge and Firefox */
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        /* IE and Edge */
+        scrollbar-width: none;
+        /* Firefox */
+    }
+</style>
+
+<div class="min-h-screen p-8 max-w-[1600px] mx-auto">
+
     <!-- Header -->
-    <div class="px-8 py-6 border-b border-slate-100 flex justify-between items-center">
+    <div class="flex justify-between items-end mb-10 px-2">
         <div>
-            <h3 class="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
-                客户画像管理</h3>
-            <p class="text-sm text-slate-500 mt-1">Configure customer profiles for AI lead scoring</p>
+            <h1 class="text-[40px] font-bold tracking-tight text-[#1D1D1F] leading-tight">客户画像</h1>
+            <p class="text-[17px] text-[#86868b] font-medium mt-1">Manage AI scoring profiles and rules.</p>
         </div>
-        <div class="flex gap-3">
+        <div class="flex gap-4">
             <button onclick="migrateFromConfig()"
-                class="px-4 py-2.5 text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-all duration-200 hover:shadow-md hover:border-slate-300 active:scale-[0.98]">
-                <span class="flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                    </svg>
-                    导入配置
-                </span>
+                class="apple-btn-secondary px-6 py-3 text-[15px] font-semibold flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                <span>导入默认</span>
             </button>
             <button onclick="openProfileModal()"
-                class="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 rounded-xl transition-all duration-200 shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30 active:scale-[0.98]">
-                <span class="flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                    新建画像
-                </span>
+                class="apple-btn-primary px-6 py-3 text-[15px] font-semibold flex items-center gap-2 shadow-lg shadow-black/20">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>新建画像</span>
             </button>
         </div>
     </div>
 
-    <div class="p-8">
+    <!-- Match Tester & Stats (Bento Top Row) -->
+    <div class="grid grid-cols-12 gap-6 mb-8">
         <!-- Match Tester -->
         <div
-            class="mb-10 p-6 rounded-2xl bg-gradient-to-r from-violet-50 via-indigo-50 to-purple-50 border border-indigo-100/50 relative overflow-hidden">
-            <div
-                class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-200/30 to-violet-200/30 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2">
-            </div>
-            <div class="relative">
-                <div class="flex items-center gap-3 mb-4">
-                    <div class="p-2 bg-white rounded-xl shadow-sm border border-indigo-100">
-                        <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <span class="font-semibold text-slate-700">画像匹配测试</span>
-                        <p class="text-xs text-slate-500">输入线索名称，实时预览匹配结果</p>
-                    </div>
+            class="col-span-12 lg:col-span-8 apple-card p-8 flex flex-col justify-center relative overflow-hidden group">
+            <div class="relative z-10 w-full max-w-2xl mx-auto">
+                <div class="text-center mb-6">
+                    <h3 class="text-2xl font-semibold mb-2">匹配测试</h3>
+                    <p class="text-[#86868b]">Input a lead name to preview matching profile instantly.</p>
                 </div>
-                <div class="relative">
+                <div class="relative group/input">
                     <input type="text" id="match-tester-input"
-                        class="w-full pl-12 pr-5 py-4 bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl text-slate-700 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all shadow-sm"
-                        placeholder="在此输入线索名称（如：Searching for PVC Wall Panel distributor...）"
+                        class="w-full pl-12 pr-5 py-4 apple-input text-[17px] text-[#1D1D1F] placeholder-[#86868b]"
+                        placeholder="Type a lead name (e.g., 'Searching for PVC Wall Panel distributor...')"
                         oninput="handleMatchTest(this.value)">
-                    <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" fill="none"
-                        viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#86868b] group-focus-within/input:text-[#007AFF] transition-colors"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
                             d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                 </div>
             </div>
+            <!-- Subtle decoration -->
+            <div
+                class="absolute -right-20 -bottom-20 w-64 h-64 bg-slate-50 rounded-full blur-3xl opacity-50 pointer-events-none">
+            </div>
         </div>
 
         <!-- Business Line Tabs -->
-        <div class="flex items-center gap-4 mb-8 pb-6 border-b border-slate-100">
-            <div class="flex gap-2 flex-1 overflow-x-auto pb-1" id="business-line-tabs">
-                <button
-                    class="px-5 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/25"
-                    data-business-line="" onclick="switchBusinessLine(null)">
-                    全部
-                </button>
+        <div class="col-span-12 lg:col-span-4 apple-card p-6 flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">业务线</h3>
+                <button onclick="openBusinessLineModal()"
+                    class="text-[#007AFF] text-sm font-medium hover:underline">管理</button>
             </div>
-            <button onclick="openBusinessLineModal()" title="管理业务线"
-                class="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all duration-200 border border-transparent hover:border-indigo-100">
-                <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd"
-                        d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
-                        clip-rule="evenodd" />
-                </svg>
-            </button>
-        </div>
-
-        <!-- Profile Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="profile-grid">
-            <div class="col-span-full py-16 text-center text-slate-400">
-                <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-100 mb-4">
-                    <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                </div>
-                <p class="text-sm">加载中...</p>
+            <div class="flex-1 overflow-y-auto pr-1 space-y-2 no-scrollbar" id="business-line-tabs">
+                <!-- Rendered by JS -->
             </div>
         </div>
-
-        <!-- Pagination -->
-        <div id="profile-pagination" class="mt-10 flex justify-center"></div>
     </div>
+
+    <!-- Profile Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6" id="profile-grid">
+        <!-- Rendered by JS -->
+        <div class="col-span-full py-20 text-center text-[#86868b]">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mb-4"></div>
+            <p>Loading...</p>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    <div id="profile-pagination" class="mt-12 flex justify-center"></div>
 </div>
 
 <!-- Profile Modal -->
-<div id="profile-modal"
-    class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm hidden" role="dialog"
-    aria-modal="true">
-    <div
-        class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl m-4 max-h-[90vh] overflow-y-auto border border-slate-200/50">
+<div id="profile-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm hidden"
+    role="dialog" aria-modal="true">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-4xl m-4 max-h-[90vh] overflow-y-auto">
         <div
-            class="sticky top-0 bg-white/95 backdrop-blur-sm flex justify-between items-center px-8 py-5 border-b border-slate-100 z-10">
-            <h2 id="profile-modal-title" class="text-xl font-bold text-slate-800">新建客户画像</h2>
+            class="sticky top-0 bg-white/95 backdrop-blur-sm flex justify-between items-center px-8 py-5 border-b border-gray-100 z-10">
+            <h2 id="profile-modal-title" class="text-xl font-bold text-[#1D1D1F]">新建客户画像</h2>
             <button onclick="closeProfileModal()"
-                class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                class="p-2 text-[#86868b] hover:text-[#1D1D1F] hover:bg-gray-100 rounded-full transition-all">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
@@ -123,82 +175,82 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="space-y-2">
-                    <label for="profile-business-line" class="block text-sm font-medium text-slate-700">所属业务线 <span
+                    <label for="profile-business-line" class="block text-sm font-semibold text-[#1D1D1F]">所属业务线 <span
                             class="text-rose-500">*</span></label>
                     <select id="profile-business-line" required
-                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 focus:bg-white transition-all">
+                        class="w-full px-4 py-3 bg-[#F5F5F7] border border-transparent rounded-xl text-[#1D1D1F] focus:bg-white focus:border-[#007AFF] focus:ring-4 focus:ring-[#007AFF]/10 transition-all outline-none">
                         <option value="">请选择业务线</option>
                     </select>
                 </div>
                 <div class="space-y-2">
-                    <label for="profile-name" class="block text-sm font-medium text-slate-700">画像名称 <span
+                    <label for="profile-name" class="block text-sm font-semibold text-[#1D1D1F]">画像名称 <span
                             class="text-rose-500">*</span></label>
                     <input type="text" id="profile-name" required
-                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 focus:bg-white transition-all"
+                        class="w-full px-4 py-3 bg-[#F5F5F7] border border-transparent rounded-xl text-[#1D1D1F] focus:bg-white focus:border-[#007AFF] focus:ring-4 focus:ring-[#007AFF]/10 transition-all outline-none"
                         placeholder="如：墙板、地板">
                 </div>
             </div>
 
             <div class="space-y-2">
-                <label for="profile-display-name" class="block text-sm font-medium text-slate-700">显示名称</label>
+                <label for="profile-display-name" class="block text-sm font-semibold text-[#1D1D1F]">显示名称</label>
                 <input type="text" id="profile-display-name"
-                    class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 focus:bg-white transition-all"
+                    class="w-full px-4 py-3 bg-[#F5F5F7] border border-transparent rounded-xl text-[#1D1D1F] focus:bg-white focus:border-[#007AFF] focus:ring-4 focus:ring-[#007AFF]/10 transition-all outline-none"
                     placeholder="如：墙板经销商画像">
             </div>
 
             <div class="space-y-2">
-                <label for="profile-description" class="block text-sm font-medium text-slate-700">描述</label>
+                <label for="profile-description" class="block text-sm font-semibold text-[#1D1D1F]">描述</label>
                 <textarea id="profile-description" rows="2"
-                    class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 focus:bg-white transition-all resize-none"
+                    class="w-full px-4 py-3 bg-[#F5F5F7] border border-transparent rounded-xl text-[#1D1D1F] focus:bg-white focus:border-[#007AFF] focus:ring-4 focus:ring-[#007AFF]/10 transition-all outline-none resize-none"
                     placeholder="画像的详细说明..."></textarea>
             </div>
 
             <div class="space-y-2">
-                <label class="block text-sm font-medium text-slate-700">
+                <label class="block text-sm font-semibold text-[#1D1D1F]">
                     匹配关键词 <span class="text-rose-500">*</span>
-                    <span class="text-slate-400 font-normal text-xs ml-2">用于从任务名称识别客户画像</span>
+                    <span class="text-[#86868b] font-normal text-xs ml-2">用于从任务名称识别客户画像</span>
                 </label>
                 <div
-                    class="p-4 bg-slate-50 border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-400 focus-within:bg-white transition-all">
+                    class="p-4 bg-[#F5F5F7] rounded-xl focus-within:bg-white focus-within:ring-4 focus-within:ring-[#007AFF]/10 transition-all border border-transparent focus-within:border-[#007AFF]">
                     <div id="keywords-list" class="flex flex-wrap gap-2 mb-3 min-h-[32px]"></div>
                     <input type="text" id="keyword-input"
-                        class="w-full bg-transparent border-none p-0 text-slate-700 placeholder:text-slate-400 focus:ring-0 focus:outline-none text-sm"
+                        class="w-full bg-transparent border-none p-0 text-[#1D1D1F] placeholder-[#86868b] focus:ring-0 focus:outline-none text-sm"
                         placeholder="输入关键词后按 Enter 添加">
                 </div>
             </div>
 
             <div class="space-y-2">
-                <label for="profile-rating-prompt" class="block text-sm font-medium text-slate-700">
+                <label for="profile-rating-prompt" class="block text-sm font-semibold text-[#1D1D1F]">
                     评级提示词 <span class="text-rose-500">*</span>
-                    <span class="text-slate-400 font-normal text-xs ml-2">用于 AI 评分的提示词</span>
+                    <span class="text-[#86868b] font-normal text-xs ml-2">用于 AI 评分的提示词</span>
                 </label>
                 <textarea id="profile-rating-prompt" required rows="10"
-                    class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono text-slate-600 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 focus:bg-white transition-all"
+                    class="w-full px-4 py-3 bg-[#F5F5F7] border border-transparent rounded-xl text-sm font-mono text-[#1D1D1F] focus:bg-white focus:border-[#007AFF] focus:ring-4 focus:ring-[#007AFF]/10 transition-all outline-none"
                     placeholder="输入评级规则..."></textarea>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
                 <div class="space-y-2">
-                    <label for="profile-sort-order" class="block text-sm font-medium text-slate-700">排序权重</label>
+                    <label for="profile-sort-order" class="block text-sm font-semibold text-[#1D1D1F]">排序权重</label>
                     <input type="number" id="profile-sort-order" value="0" min="0"
-                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 focus:bg-white transition-all">
+                        class="w-full px-4 py-3 bg-[#F5F5F7] border border-transparent rounded-xl text-[#1D1D1F] focus:bg-white focus:border-[#007AFF] focus:ring-4 focus:ring-[#007AFF]/10 transition-all outline-none">
                 </div>
                 <div class="py-3">
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="profile-is-active" class="sr-only peer" checked>
                         <div
-                            class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-500/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600">
+                            class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#34C759]">
                         </div>
-                        <span class="ms-3 text-sm font-medium text-slate-700">启用该画像</span>
+                        <span class="ms-3 text-sm font-medium text-[#1D1D1F]">启用该画像</span>
                     </label>
                 </div>
             </div>
 
-            <div class="flex justify-end gap-3 pt-6 border-t border-slate-100">
+            <div class="flex justify-end gap-3 pt-6 border-t border-gray-100">
                 <button type="button" onclick="closeProfileModal()"
-                    class="px-6 py-3 text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-all duration-200 hover:shadow-sm">取消</button>
+                    class="px-6 py-3 text-sm font-medium text-[#1D1D1F] bg-[#F5F5F7] hover:bg-[#E8E8ED] rounded-full transition-all">取消</button>
                 <button type="submit"
-                    class="px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 rounded-xl transition-all duration-200 shadow-lg shadow-indigo-500/25 hover:shadow-xl">保存配置</button>
+                    class="px-6 py-3 text-sm font-semibold text-white bg-[#007AFF] hover:bg-[#0071E3] rounded-full shadow-lg shadow-[#007AFF]/30 transition-all hover:scale-105 active:scale-95">保存配置</button>
             </div>
         </form>
     </div>
@@ -206,16 +258,15 @@
 
 <!-- Business Line Modal -->
 <div id="business-line-modal"
-    class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm hidden" role="dialog"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm hidden" role="dialog"
     aria-modal="true">
-    <div
-        class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl m-4 max-h-[90vh] overflow-y-auto border border-slate-200/50">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl m-4 max-h-[90vh] overflow-y-auto">
         <div
-            class="sticky top-0 bg-white/95 backdrop-blur-sm flex justify-between items-center px-8 py-5 border-b border-slate-100 z-10">
-            <h2 class="text-xl font-bold text-slate-800">业务线管理</h2>
+            class="sticky top-0 bg-white/95 backdrop-blur-sm flex justify-between items-center px-8 py-5 border-b border-gray-100 z-10">
+            <h2 class="text-xl font-bold text-[#1D1D1F]">业务线管理</h2>
             <button onclick="closeBusinessLineModal()"
-                class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                class="p-2 text-[#86868b] hover:text-[#1D1D1F] hover:bg-gray-100 rounded-full transition-all">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
@@ -224,35 +275,31 @@
         <div class="p-8 space-y-8">
             <!-- Business Line List -->
             <div class="space-y-3 max-h-64 overflow-y-auto pr-1" id="business-line-list">
-                <div class="text-center py-10 text-slate-400">
-                    <svg class="w-8 h-8 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor"
-                        viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
+                <div class="text-center py-10 text-gray-400">
+                    <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400 mb-2"></div>
                     <p class="text-sm">加载中...</p>
                 </div>
             </div>
 
             <!-- Form Section -->
-            <div class="pt-6 border-t border-slate-100">
-                <h4 id="business-line-form-title" class="text-base font-semibold text-slate-800 mb-5">新建业务线</h4>
+            <div class="pt-6 border-t border-gray-100">
+                <h4 id="business-line-form-title" class="text-base font-bold text-[#1D1D1F] mb-5">新建业务线</h4>
                 <form id="business-line-form" onsubmit="saveBusinessLine(event)" class="space-y-5">
                     <input type="hidden" id="business-line-id" value="">
 
                     <div class="grid grid-cols-2 gap-5">
                         <div class="space-y-2">
                             <label for="business-line-name"
-                                class="block text-xs font-medium text-slate-500 uppercase tracking-wide">名称标识 *</label>
+                                class="block text-xs font-bold text-[#86868b] uppercase tracking-wide">名称标识 *</label>
                             <input type="text" id="business-line-name" required
-                                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 focus:bg-white transition-all"
+                                class="w-full px-4 py-2.5 bg-[#F5F5F7] border border-transparent rounded-xl text-[#1D1D1F] text-sm focus:bg-white focus:border-[#007AFF] focus:ring-4 focus:ring-[#007AFF]/10 transition-all outline-none"
                                 placeholder="如：建材">
                         </div>
                         <div class="space-y-2">
                             <label for="business-line-display-name"
-                                class="block text-xs font-medium text-slate-500 uppercase tracking-wide">显示名称 *</label>
+                                class="block text-xs font-bold text-[#86868b] uppercase tracking-wide">显示名称 *</label>
                             <input type="text" id="business-line-display-name" required
-                                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 focus:bg-white transition-all"
+                                class="w-full px-4 py-2.5 bg-[#F5F5F7] border border-transparent rounded-xl text-[#1D1D1F] text-sm focus:bg-white focus:border-[#007AFF] focus:ring-4 focus:ring-[#007AFF]/10 transition-all outline-none"
                                 placeholder="如：建材">
                         </div>
                     </div>
@@ -260,33 +307,32 @@
                     <div class="grid grid-cols-2 gap-5">
                         <div class="space-y-2">
                             <label for="business-line-api-key"
-                                class="block text-xs font-medium text-slate-500 uppercase tracking-wide">API 密钥
-                                ID</label>
+                                class="block text-xs font-bold text-[#86868b] uppercase tracking-wide">API 密钥 ID</label>
                             <input type="number" id="business-line-api-key"
-                                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 focus:bg-white transition-all"
+                                class="w-full px-4 py-2.5 bg-[#F5F5F7] border border-transparent rounded-xl text-[#1D1D1F] text-sm focus:bg-white focus:border-[#007AFF] focus:ring-4 focus:ring-[#007AFF]/10 transition-all outline-none"
                                 placeholder="可选">
                         </div>
                         <div class="space-y-2">
                             <label for="business-line-sort-order"
-                                class="block text-xs font-medium text-slate-500 uppercase tracking-wide">排序权重</label>
+                                class="block text-xs font-bold text-[#86868b] uppercase tracking-wide">排序权重</label>
                             <input type="number" id="business-line-sort-order" value="0" min="0"
-                                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 focus:bg-white transition-all">
+                                class="w-full px-4 py-2.5 bg-[#F5F5F7] border border-transparent rounded-xl text-[#1D1D1F] text-sm focus:bg-white focus:border-[#007AFF] focus:ring-4 focus:ring-[#007AFF]/10 transition-all outline-none">
                         </div>
                     </div>
 
                     <div class="space-y-2">
                         <label for="business-line-description"
-                            class="block text-xs font-medium text-slate-500 uppercase tracking-wide">描述</label>
+                            class="block text-xs font-bold text-[#86868b] uppercase tracking-wide">描述</label>
                         <input type="text" id="business-line-description"
-                            class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 focus:bg-white transition-all"
+                            class="w-full px-4 py-2.5 bg-[#F5F5F7] border border-transparent rounded-xl text-[#1D1D1F] text-sm focus:bg-white focus:border-[#007AFF] focus:ring-4 focus:ring-[#007AFF]/10 transition-all outline-none"
                             placeholder="业务线描述">
                     </div>
 
                     <div class="flex justify-end gap-3 pt-3">
                         <button type="button" onclick="resetBusinessLineForm()"
-                            class="px-4 py-2 text-sm text-slate-500 hover:text-slate-700 transition-colors">重置</button>
+                            class="px-4 py-2 text-sm text-[#86868b] hover:text-[#1D1D1F] transition-colors font-medium">重置</button>
                         <button type="submit"
-                            class="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 rounded-xl transition-all shadow-lg shadow-indigo-500/25">保存业务线</button>
+                            class="px-5 py-2.5 text-sm font-semibold text-white bg-[#007AFF] hover:bg-[#0071E3] rounded-full shadow-lg shadow-[#007AFF]/30 transition-all hover:scale-105 active:scale-95">保存业务线</button>
                     </div>
                 </form>
             </div>

@@ -47,14 +47,15 @@ function renderBusinessLineTabs() {
     const tabsContainer = document.getElementById('business-line-tabs');
     if (!tabsContainer) return;
 
-    const baseClass = "px-5 py-2 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap";
-    const activeClass = "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/25";
-    const inactiveClass = "bg-white text-slate-600 border border-slate-200 hover:border-indigo-200 hover:text-indigo-600 hover:bg-indigo-50/50 hover:shadow-sm";
+    // Apple-style: Simple, text-based navigation or very subtle pills
+    const baseClass = "px-4 py-2 rounded-lg text-[15px] font-medium transition-all duration-200 whitespace-nowrap";
+    const activeClass = "text-[#1D1D1F] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.08)]";
+    const inactiveClass = "text-[#86868b] hover:text-[#1D1D1F] hover:bg-black/5";
 
     let html = `
         <button class="${baseClass} ${!currentBusinessLineId ? activeClass : inactiveClass}" 
                 data-business-line="" onclick="switchBusinessLine(null)">
-            全部
+            All Profiles
         </button>
     `;
 
@@ -89,11 +90,13 @@ function renderBusinessLineList() {
 
     if (businessLines.length === 0) {
         container.innerHTML = `
-            <div class="text-center py-10 text-slate-400">
-                <svg class="w-8 h-8 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-                </svg>
-                <p class="text-sm">暂无业务线，请先导入默认配置或手动创建</p>
+            <div class="text-center py-10 text-gray-400">
+                <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                    </svg>
+                </div>
+                <p class="text-[13px] text-[#86868b]">No business lines found.</p>
             </div>`;
         return;
     }
@@ -101,16 +104,19 @@ function renderBusinessLineList() {
     let html = '';
     businessLines.forEach(bl => {
         html += `
-            <div class="flex justify-between items-center p-4 bg-gradient-to-r from-slate-50 to-white rounded-xl border border-slate-100 hover:border-indigo-200 hover:shadow-sm transition-all duration-200 group">
+            <div class="flex justify-between items-center p-4 bg-white hover:bg-gray-50 rounded-2xl border border-gray-100 transition-all duration-200 group">
                 <div class="flex flex-col gap-1">
-                    <strong class="text-sm font-semibold text-slate-700 group-hover:text-indigo-600 transition-colors">${bl.displayName}</strong>
-                    <span class="text-xs text-slate-400">标识: ${bl.name} | API Key: ${bl.apiKey || '-'} | 排序: ${bl.sortOrder}</span>
+                    <strong class="text-sm font-semibold text-[#1D1D1F]">${bl.displayName}</strong>
+                    <div class="flex items-center gap-2 text-[11px] text-[#86868b]">
+                        <span class="bg-gray-100 px-1.5 py-0.5 rounded text-[#1D1D1F] font-mono">${bl.name}</span>
+                        <span>Sort: ${bl.sortOrder}</span>
+                    </div>
                 </div>
-                <div class="flex gap-2 opacity-70 group-hover:opacity-100 transition-opacity">
-                    <button class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 bg-white hover:bg-indigo-50 rounded-lg border border-slate-200 hover:border-indigo-200 transition-all" onclick="editBusinessLine('${bl.id}')">编辑</button>
+                <div class="flex gap-2">
+                    <button class="px-3 py-1.5 text-[11px] font-semibold text-[#1D1D1F] bg-white border border-gray-200 rounded-full hover:bg-gray-50 transition-colors" onclick="editBusinessLine('${bl.id}')">Edit</button>
                     ${bl.isActive
-                ? `<button class="px-3 py-1.5 text-xs font-medium text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg border border-rose-200 transition-all" onclick="deleteBusinessLine('${bl.id}')">停用</button>`
-                : `<button class="px-3 py-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-all" onclick="enableBusinessLine('${bl.id}')">启用</button>`
+                ? `<button class="px-3 py-1.5 text-[11px] font-semibold text-rose-600 bg-rose-50 border border-rose-100 rounded-full hover:bg-rose-100 transition-colors" onclick="deleteBusinessLine('${bl.id}')">Disable</button>`
+                : `<button class="px-3 py-1.5 text-[11px] font-semibold text-[#1D1D1F] bg-green-50 border border-green-100 rounded-full hover:bg-green-100 transition-colors" onclick="enableBusinessLine('${bl.id}')">Enable</button>`
             }
                 </div>
             </div>
@@ -232,13 +238,9 @@ async function loadProfiles() {
     if (!container) return;
 
     container.innerHTML = `
-        <div class="col-span-full py-16 text-center text-slate-400">
-            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-100 mb-4">
-                <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                </svg>
-            </div>
-            <p class="text-sm">加载中...</p>
+        <div class="col-span-full py-16 text-center text-[#86868b]">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mb-4"></div>
+            <p class="text-[13px] font-medium">Loading profiles...</p>
         </div>
     `;
 
@@ -253,11 +255,11 @@ async function loadProfiles() {
         if (response && response.success) {
             renderProfiles(response.data, response.total);
         } else {
-            container.innerHTML = '<div class="empty-state-card">加载失败</div>';
+            container.innerHTML = '<div class="col-span-full text-center text-rose-500 py-10">Failed to load profiles</div>';
         }
     } catch (error) {
         console.error('加载画像失败:', error);
-        container.innerHTML = '<div class="empty-state-card">加载失败</div>';
+        container.innerHTML = '<div class="col-span-full text-center text-rose-500 py-10">Failed to load profiles</div>';
     }
 }
 
@@ -267,16 +269,17 @@ function renderProfiles(profiles, total) {
 
     if (!profiles || profiles.length === 0) {
         container.innerHTML = `
-            <div class="col-span-full py-20 text-center">
-                <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-50 mb-6">
-                    <svg class="w-10 h-10 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+             <div class="col-span-full py-24 text-center">
+                <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gray-50 mb-6">
+                    <svg class="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
                     </svg>
                 </div>
-                <p class="text-slate-500 mb-6 text-base">暂无客户画像</p>
+                <h3 class="text-xl font-bold text-[#1D1D1F] mb-2">No Profiles Found</h3>
+                <p class="text-[#86868b] mb-8 text-[15px]">Get started by creating a new profile or importing defaults</p>
                 <div class="flex justify-center gap-4">
-                    <button class="px-5 py-2.5 text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-all hover:shadow-md" onclick="migrateFromConfig()">导入默认配置</button>
-                    <button class="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 rounded-xl shadow-lg shadow-indigo-500/25 hover:shadow-xl transition-all" onclick="openProfileModal()">新建画像</button>
+                    <button class="apple-btn-secondary px-6 py-3 text-[15px] font-semibold" onclick="migrateFromConfig()">Import Defaults</button>
+                    <button class="apple-btn-primary px-6 py-3 text-[15px] font-semibold" onclick="openProfileModal()">Create Profile</button>
                 </div>
             </div>
         `;
@@ -284,44 +287,59 @@ function renderProfiles(profiles, total) {
     }
 
     let html = '';
-    profiles.forEach(profile => {
-        const keywordsHtml = (profile.keywords || []).slice(0, 5).map(kw =>
-            `<span class="px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200/50 keyword-tag whitespace-nowrap hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-colors cursor-default" data-keyword="${kw.toLowerCase()}">${kw}</span>`
+    profiles.forEach((profile, idx) => {
+        const keywordsHtml = (profile.keywords || []).slice(0, 4).map(kw =>
+            `<span class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-[#F5F5F7] text-[#1D1D1F] keyword-tag whitespace-nowrap" data-keyword="${kw.toLowerCase()}">${kw}</span>`
         ).join('');
-        const moreKeywords = (profile.keywords || []).length > 5
-            ? `<span class="px-2.5 py-1 rounded-lg text-xs font-medium bg-gradient-to-r from-slate-50 to-slate-100 text-slate-400 border border-slate-200/50">+${profile.keywords.length - 5}</span>`
+        const moreKeywords = (profile.keywords || []).length > 4
+            ? `<span class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-[#F5F5F7] text-[#86868b]">+${profile.keywords.length - 4}</span>`
             : '';
 
         const keywordsJson = JSON.stringify((profile.keywords || []).map(k => k.toLowerCase()));
 
+        // Stagger animation delay
+        const delay = idx * 50;
+
         html += `
-            <div class="bg-white rounded-2xl p-6 border border-slate-100 hover:border-indigo-200 shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 transition-all duration-300 group profile-card relative overflow-hidden" data-keywords='${keywordsJson}'>
-                <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-indigo-50 to-violet-50 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <div class="relative">
-                    <div class="flex justify-between items-start mb-4">
-                        <h4 class="text-base font-bold text-slate-800 group-hover:text-indigo-600 transition-colors line-clamp-1 flex-1" title="${profile.displayName || profile.name}">${profile.displayName || profile.name}</h4>
-                        <span class="text-[10px] px-2.5 py-1 rounded-full bg-gradient-to-r from-indigo-50 to-violet-50 text-indigo-600 font-semibold border border-indigo-100 whitespace-nowrap ml-3">${profile.businessLine?.displayName || '-'}</span>
+            <div class="apple-card p-6 flex flex-col h-full bg-white relative overflow-hidden group profile-card animate-fade-in-up" 
+                 style="animation-delay: ${delay}ms; animation-fill-mode: both;"
+                 data-keywords='${keywordsJson}'>
+                
+                <!-- Header -->
+                <div class="flex justify-between items-start mb-5">
+                    <div class="flex-1 min-w-0 pr-3">
+                        <h4 class="text-[17px] font-semibold text-[#1D1D1F] truncate" title="${profile.displayName || profile.name}">
+                            ${profile.displayName || profile.name}
+                        </h4>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-[13px] text-[#86868b]">
+                                ${profile.businessLine?.displayName || 'Unknown'}
+                            </span>
+                            ${!profile.isActive ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-500">DISABLED</span>' : ''}
+                        </div>
                     </div>
-                    <div class="flex flex-wrap gap-2 mb-5 min-h-[44px] content-start">
+                </div>
+
+                <!-- Keywords -->
+                <div class="flex-1">
+                    <div class="flex flex-wrap gap-2 content-start mb-4">
                         ${keywordsHtml}
                         ${moreKeywords}
                     </div>
-                    <div class="flex items-center gap-3 text-xs text-slate-400 mb-5 pt-4 border-t border-slate-100">
-                        <span class="flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full ${profile.isActive ? 'bg-emerald-500 shadow-lg shadow-emerald-500/30' : 'bg-rose-400'}"></span>
-                            <span class="font-medium ${profile.isActive ? 'text-emerald-600' : 'text-rose-500'}">${profile.isActive ? '已启用' : '已停用'}</span>
-                        </span>
-                        <span class="text-slate-200">|</span>
-                        <span>排序: ${profile.sortOrder}</span>
-                    </div>
-                    <div class="flex justify-end gap-2 pt-4 border-t border-slate-100 opacity-100 lg:opacity-60 lg:group-hover:opacity-100 transition-opacity">
-                        <button class="px-4 py-2 text-xs font-medium text-slate-600 hover:text-indigo-600 bg-slate-50 hover:bg-indigo-50 rounded-lg border border-transparent hover:border-indigo-200 transition-all" onclick="viewProfile('${profile.id}')">查看</button>
-                        <button class="px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 rounded-lg shadow-md shadow-indigo-500/20 hover:shadow-lg transition-all" onclick="editProfile('${profile.id}')">编辑</button>
-                        ${profile.isActive
-                ? `<button class="px-4 py-2 text-xs font-medium text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg border border-rose-200 transition-all" onclick="deleteProfile('${profile.id}')">停用</button>`
-                : `<button class="px-4 py-2 text-xs font-medium text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-all" onclick="enableProfile('${profile.id}')">启用</button>`
+                </div>
+
+                <!-- Actions (Visible on Hover/Always visible but subtle) -->
+                <div class="pt-5 mt-auto border-t border-gray-50 flex items-center justify-end gap-2">
+                    <button class="px-3 py-1.5 text-[12px] font-semibold text-[#1D1D1F] hover:bg-gray-100 rounded-full transition-colors" onclick="viewProfile('${profile.id}')">
+                        View
+                    </button>
+                    <button class="px-3 py-1.5 text-[12px] font-semibold text-[#007AFF] hover:bg-blue-50 rounded-full transition-colors" onclick="editProfile('${profile.id}')">
+                        Edit
+                    </button>
+                    ${profile.isActive
+                ? `<button class="p-1.5 text-[#86868b] hover:text-rose-600 transition-all" onclick="deleteProfile('${profile.id}')" title="Disable"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg></button>`
+                : `<button class="p-1.5 text-[#86868b] hover:text-green-600 transition-all" onclick="enableProfile('${profile.id}')" title="Enable"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></button>`
             }
-                    </div>
                 </div>
             </div>
         `;
@@ -338,12 +356,12 @@ function handleMatchTest(value) {
     if (!input) {
         cards.forEach(card => {
             // Reset state
-            card.classList.remove('ring-2', 'ring-emerald-400', 'shadow-xl', 'shadow-emerald-500/20', 'scale-[1.02]');
+            card.classList.remove('ring-2', 'ring-[#007AFF]', 'scale-[1.02]');
             card.classList.remove('opacity-30', 'grayscale', 'scale-95');
             // Reset keywords
             card.querySelectorAll('.keyword-tag').forEach(tag => {
-                tag.classList.remove('bg-emerald-500', '!text-white', 'border-emerald-400', 'ring-2', 'ring-emerald-300/50', 'shadow-md');
-                tag.classList.add('bg-slate-100', 'text-slate-600', 'border-slate-200/50');
+                tag.classList.remove('bg-[#007AFF]', '!text-white');
+                tag.classList.add('bg-[#F5F5F7]', 'text-[#1D1D1F]');
             });
         });
         return;
@@ -358,7 +376,7 @@ function handleMatchTest(value) {
 
             if (matchedKeyword) {
                 // Add Match Styles
-                card.classList.add('ring-2', 'ring-emerald-400', 'shadow-xl', 'shadow-emerald-500/20', 'scale-[1.02]');
+                card.classList.add('ring-2', 'ring-[#007AFF]', 'scale-[1.02]');
                 card.classList.remove('opacity-30', 'grayscale', 'scale-95');
                 hasMatch = true;
 
@@ -366,22 +384,22 @@ function handleMatchTest(value) {
                 card.querySelectorAll('.keyword-tag').forEach(tag => {
                     const tagKw = tag.dataset.keyword;
                     if (tagKw === matchedKeyword) {
-                        tag.classList.remove('bg-slate-100', 'text-slate-600', 'border-slate-200/50');
-                        tag.classList.add('bg-emerald-500', '!text-white', 'border-emerald-400', 'ring-2', 'ring-emerald-300/50', 'shadow-md');
+                        tag.classList.remove('bg-[#F5F5F7]', 'text-[#1D1D1F]');
+                        tag.classList.add('bg-[#007AFF]', '!text-white');
                     } else {
-                        tag.classList.remove('bg-emerald-500', '!text-white', 'border-emerald-400', 'ring-2', 'ring-emerald-300/50', 'shadow-md');
-                        tag.classList.add('bg-slate-100', 'text-slate-600', 'border-slate-200/50');
+                        tag.classList.remove('bg-[#007AFF]', '!text-white');
+                        tag.classList.add('bg-[#F5F5F7]', 'text-[#1D1D1F]');
                     }
                 });
             } else {
                 // Add Dimmed Styles
-                card.classList.remove('ring-2', 'ring-emerald-400', 'shadow-xl', 'shadow-emerald-500/20', 'scale-[1.02]');
+                card.classList.remove('ring-2', 'ring-[#007AFF]', 'scale-[1.02]');
                 card.classList.add('opacity-30', 'grayscale', 'scale-95');
 
                 // Reset Keyword highlights
                 card.querySelectorAll('.keyword-tag').forEach(tag => {
-                    tag.classList.remove('bg-emerald-500', '!text-white', 'border-emerald-400', 'ring-2', 'ring-emerald-300/50', 'shadow-md');
-                    tag.classList.add('bg-slate-100', 'text-slate-600', 'border-slate-200/50');
+                    tag.classList.remove('bg-[#007AFF]', '!text-white');
+                    tag.classList.add('bg-[#F5F5F7]', 'text-[#1D1D1F]');
                 });
             }
         } catch (e) {
@@ -405,35 +423,35 @@ function renderPagination(total) {
     // 上一页
     html += `<button onclick="goToPage(${currentPage - 1})"
                 ${currentPage === 1 ? 'disabled' : ''}
-                class="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-medium hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow">
-            上一页
+                class="w-10 h-10 rounded-full flex items-center justify-center bg-white border border-gray-100 text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
         </button>`;
 
     // 页码
     for (let i = 1; i <= totalPages; i++) {
         if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
             const isActive = i === currentPage;
-            const activeClass = "bg-gradient-to-r from-indigo-600 to-violet-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/25";
-            const inactiveClass = "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 shadow-sm hover:shadow";
+            const activeClass = "bg-[#1D1D1F] text-white shadow-lg shadow-black/20 scale-110";
+            const inactiveClass = "text-[#86868b] hover:text-[#1D1D1F]";
 
             html += `<button onclick="goToPage(${i})"
-                        class="px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${isActive ? activeClass : inactiveClass}">
+                        class="w-8 h-8 rounded-full text-sm font-medium transition-all flex items-center justify-center ${isActive ? activeClass : inactiveClass}">
                     ${i}
                 </button>`;
         } else if (i === currentPage - 3 || i === currentPage + 3) {
-            html += '<span class="px-2 text-slate-300">...</span>';
+            html += '<span class="w-8 text-center text-gray-300">...</span>';
         }
     }
 
     // 下一页
     html += `<button onclick="goToPage(${currentPage + 1})"
                 ${currentPage === totalPages ? 'disabled' : ''}
-                class="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-medium hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow">
-            下一页
+                class="w-10 h-10 rounded-full flex items-center justify-center bg-white border border-gray-100 text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
         </button>`;
 
-    html += `<span class="ml-6 text-sm text-slate-400">共 ${total} 条 · 第 ${currentPage}/${totalPages} 页</span>`;
     html += '</div>';
+    html += `<div class="mt-4 text-center text-[11px] font-medium text-[#86868b] uppercase tracking-wide">Total ${total} items</div>`;
 
     container.innerHTML = html;
 }
@@ -508,9 +526,9 @@ function renderKeywords(isReadOnly = false) {
     if (!container) return;
 
     container.innerHTML = currentKeywords.map((kw, index) => `
-        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-sm ring-1 ring-white/10">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#007AFF] text-white shadow-sm ring-1 ring-white/10">
             ${kw}
-            ${!isReadOnly ? `<button type="button" onclick="removeKeyword(${index})" class="hover:text-red-200 transition-colors bg-white/10 rounded-full w-4 h-4 flex items-center justify-center -mr-1">×</button>` : ''}
+            ${!isReadOnly ? `<button type="button" onclick="removeKeyword(${index})" class="hover:text-red-200 transition-colors bg-white/20 rounded-full w-4 h-4 flex items-center justify-center -mr-1">×</button>` : ''}
         </span>
     `).join('');
 }
