@@ -651,10 +651,12 @@ export function getRatingPromptBySubCategory(businessType: BusinessType, subCate
 
 /**
  * 兼容旧接口：仅返回评级标准字符串
+ * 优先从数据库缓存读取，回退到硬编码配置
  * @param taskName 任务名称
  */
 export function getDynamicRatingContext(taskName: string): string | null {
-   const context = getBusinessContextFromHardcoded(taskName);
+   // 使用同步版本，它会优先使用缓存，缓存失效时回退到硬编码
+   const context = getBusinessContextSync(taskName);
    return context ? context.ratingPrompt : null;
 }
 
