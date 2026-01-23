@@ -1,523 +1,295 @@
-<div class="section-card">
-    <div class="section-header">
-        <h3>客户画像管理</h3>
-        <div class="header-actions">
-            <button class="btn-secondary btn-sm" onclick="migrateFromConfig()">导入默认配置</button>
-            <button class="btn-primary btn-sm" onclick="openProfileModal()">新建画像</button>
+<div
+    class="bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 rounded-2xl border border-slate-200/60 shadow-xl shadow-slate-200/50">
+    <!-- Header -->
+    <div class="px-8 py-6 border-b border-slate-100 flex justify-between items-center">
+        <div>
+            <h3 class="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+                客户画像管理</h3>
+            <p class="text-sm text-slate-500 mt-1">Configure customer profiles for AI lead scoring</p>
         </div>
-    </div>
-
-    <!-- 业务线标签页 -->
-    <div class="profile-tabs">
-        <div class="tab-list" id="business-line-tabs">
-            <button class="tab-item active" data-business-line="" onclick="switchBusinessLine(null)">
-                全部
+        <div class="flex gap-3">
+            <button onclick="migrateFromConfig()"
+                class="px-4 py-2.5 text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-all duration-200 hover:shadow-md hover:border-slate-300 active:scale-[0.98]">
+                <span class="flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    导入配置
+                </span>
             </button>
-            <!-- 动态生成业务线标签 -->
+            <button onclick="openProfileModal()"
+                class="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 rounded-xl transition-all duration-200 shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30 active:scale-[0.98]">
+                <span class="flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    新建画像
+                </span>
+            </button>
         </div>
-        <button class="btn-icon btn-sm" onclick="openBusinessLineModal()" title="管理业务线">
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd"
-                    d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
-                    clip-rule="evenodd" />
-            </svg>
-        </button>
     </div>
 
-    <!-- 画像列表 -->
-    <div class="profile-grid" id="profile-grid">
-        <div class="loading-state">加载中...</div>
-    </div>
+    <div class="p-8">
+        <!-- Match Tester -->
+        <div
+            class="mb-10 p-6 rounded-2xl bg-gradient-to-r from-violet-50 via-indigo-50 to-purple-50 border border-indigo-100/50 relative overflow-hidden">
+            <div
+                class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-200/30 to-violet-200/30 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2">
+            </div>
+            <div class="relative">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="p-2 bg-white rounded-xl shadow-sm border border-indigo-100">
+                        <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <span class="font-semibold text-slate-700">画像匹配测试</span>
+                        <p class="text-xs text-slate-500">输入线索名称，实时预览匹配结果</p>
+                    </div>
+                </div>
+                <div class="relative">
+                    <input type="text" id="match-tester-input"
+                        class="w-full pl-12 pr-5 py-4 bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl text-slate-700 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all shadow-sm"
+                        placeholder="在此输入线索名称（如：Searching for PVC Wall Panel distributor...）"
+                        oninput="handleMatchTest(this.value)">
+                    <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+            </div>
+        </div>
 
-    <!-- 分页 -->
-    <div id="profile-pagination"></div>
+        <!-- Business Line Tabs -->
+        <div class="flex items-center gap-4 mb-8 pb-6 border-b border-slate-100">
+            <div class="flex gap-2 flex-1 overflow-x-auto pb-1" id="business-line-tabs">
+                <button
+                    class="px-5 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/25"
+                    data-business-line="" onclick="switchBusinessLine(null)">
+                    全部
+                </button>
+            </div>
+            <button onclick="openBusinessLineModal()" title="管理业务线"
+                class="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all duration-200 border border-transparent hover:border-indigo-100">
+                <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd"
+                        d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
+                        clip-rule="evenodd" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Profile Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="profile-grid">
+            <div class="col-span-full py-16 text-center text-slate-400">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-100 mb-4">
+                    <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                </div>
+                <p class="text-sm">加载中...</p>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div id="profile-pagination" class="mt-10 flex justify-center"></div>
+    </div>
 </div>
 
-<!-- 客户画像编辑弹窗 -->
-<div id="profile-modal" class="modal-dark-overlay" style="display: none;">
-    <div class="modal-dark-container" style="max-width: 900px;">
-        <div class="modal-dark-header">
-            <h2 id="profile-modal-title">新建客户画像</h2>
-            <button onclick="closeProfileModal()" class="btn-dark">关闭</button>
+<!-- Profile Modal -->
+<div id="profile-modal"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm hidden" role="dialog"
+    aria-modal="true">
+    <div
+        class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl m-4 max-h-[90vh] overflow-y-auto border border-slate-200/50">
+        <div
+            class="sticky top-0 bg-white/95 backdrop-blur-sm flex justify-between items-center px-8 py-5 border-b border-slate-100 z-10">
+            <h2 id="profile-modal-title" class="text-xl font-bold text-slate-800">新建客户画像</h2>
+            <button onclick="closeProfileModal()"
+                class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
         </div>
-        <form id="profile-form" onsubmit="saveProfile(event)">
+
+        <form id="profile-form" onsubmit="saveProfile(event)" class="p-8 space-y-6">
             <input type="hidden" id="profile-id" value="">
 
-            <div class="form-grid">
-                <div class="form-group">
-                    <label for="profile-business-line">所属业务线 *</label>
-                    <select id="profile-business-line" required class="filter-select">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-2">
+                    <label for="profile-business-line" class="block text-sm font-medium text-slate-700">所属业务线 <span
+                            class="text-rose-500">*</span></label>
+                    <select id="profile-business-line" required
+                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 focus:bg-white transition-all">
                         <option value="">请选择业务线</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label for="profile-name">画像名称 *</label>
-                    <input type="text" id="profile-name" required class="filter-input" placeholder="如：墙板、地板">
+                <div class="space-y-2">
+                    <label for="profile-name" class="block text-sm font-medium text-slate-700">画像名称 <span
+                            class="text-rose-500">*</span></label>
+                    <input type="text" id="profile-name" required
+                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 focus:bg-white transition-all"
+                        placeholder="如：墙板、地板">
                 </div>
             </div>
 
-            <div class="form-group">
-                <label for="profile-display-name">显示名称</label>
-                <input type="text" id="profile-display-name" class="filter-input" placeholder="如：墙板经销商画像">
+            <div class="space-y-2">
+                <label for="profile-display-name" class="block text-sm font-medium text-slate-700">显示名称</label>
+                <input type="text" id="profile-display-name"
+                    class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 focus:bg-white transition-all"
+                    placeholder="如：墙板经销商画像">
             </div>
 
-            <div class="form-group">
-                <label for="profile-description">描述</label>
-                <textarea id="profile-description" class="filter-input" rows="2" placeholder="画像的详细说明..."></textarea>
+            <div class="space-y-2">
+                <label for="profile-description" class="block text-sm font-medium text-slate-700">描述</label>
+                <textarea id="profile-description" rows="2"
+                    class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 focus:bg-white transition-all resize-none"
+                    placeholder="画像的详细说明..."></textarea>
             </div>
 
-            <div class="form-group">
-                <label>匹配关键词 * <span class="label-hint">（用于从任务名称识别客户画像）</span></label>
-                <div class="keyword-input-container">
-                    <div id="keywords-list" class="keywords-list"></div>
-                    <input type="text" id="keyword-input" class="filter-input" placeholder="输入关键词后按 Enter 添加">
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-slate-700">
+                    匹配关键词 <span class="text-rose-500">*</span>
+                    <span class="text-slate-400 font-normal text-xs ml-2">用于从任务名称识别客户画像</span>
+                </label>
+                <div
+                    class="p-4 bg-slate-50 border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-400 focus-within:bg-white transition-all">
+                    <div id="keywords-list" class="flex flex-wrap gap-2 mb-3 min-h-[32px]"></div>
+                    <input type="text" id="keyword-input"
+                        class="w-full bg-transparent border-none p-0 text-slate-700 placeholder:text-slate-400 focus:ring-0 focus:outline-none text-sm"
+                        placeholder="输入关键词后按 Enter 添加">
                 </div>
             </div>
 
-            <div class="form-group">
-                <label for="profile-rating-prompt">评级提示词 * <span class="label-hint">（用于 AI 评分的提示词）</span></label>
-                <textarea id="profile-rating-prompt" required class="filter-input code-textarea" rows="15"
+            <div class="space-y-2">
+                <label for="profile-rating-prompt" class="block text-sm font-medium text-slate-700">
+                    评级提示词 <span class="text-rose-500">*</span>
+                    <span class="text-slate-400 font-normal text-xs ml-2">用于 AI 评分的提示词</span>
+                </label>
+                <textarea id="profile-rating-prompt" required rows="10"
+                    class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono text-slate-600 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 focus:bg-white transition-all"
                     placeholder="输入评级规则..."></textarea>
             </div>
 
-            <div class="form-grid">
-                <div class="form-group">
-                    <label for="profile-sort-order">排序权重</label>
-                    <input type="number" id="profile-sort-order" class="filter-input" value="0" min="0">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                <div class="space-y-2">
+                    <label for="profile-sort-order" class="block text-sm font-medium text-slate-700">排序权重</label>
+                    <input type="number" id="profile-sort-order" value="0" min="0"
+                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 focus:bg-white transition-all">
                 </div>
-                <div class="form-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="profile-is-active" checked>
-                        <span>启用</span>
+                <div class="py-3">
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="profile-is-active" class="sr-only peer" checked>
+                        <div
+                            class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-500/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600">
+                        </div>
+                        <span class="ms-3 text-sm font-medium text-slate-700">启用该画像</span>
                     </label>
                 </div>
             </div>
 
-            <div class="form-actions">
-                <button type="button" onclick="closeProfileModal()" class="btn-secondary">取消</button>
-                <button type="submit" class="btn-primary">保存</button>
+            <div class="flex justify-end gap-3 pt-6 border-t border-slate-100">
+                <button type="button" onclick="closeProfileModal()"
+                    class="px-6 py-3 text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-all duration-200 hover:shadow-sm">取消</button>
+                <button type="submit"
+                    class="px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 rounded-xl transition-all duration-200 shadow-lg shadow-indigo-500/25 hover:shadow-xl">保存配置</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- 业务线管理弹窗 -->
-<div id="business-line-modal" class="modal-dark-overlay" style="display: none;">
-    <div class="modal-dark-container" style="max-width: 700px;">
-        <div class="modal-dark-header">
-            <h2>业务线管理</h2>
-            <button onclick="closeBusinessLineModal()" class="btn-dark">关闭</button>
+<!-- Business Line Modal -->
+<div id="business-line-modal"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm hidden" role="dialog"
+    aria-modal="true">
+    <div
+        class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl m-4 max-h-[90vh] overflow-y-auto border border-slate-200/50">
+        <div
+            class="sticky top-0 bg-white/95 backdrop-blur-sm flex justify-between items-center px-8 py-5 border-b border-slate-100 z-10">
+            <h2 class="text-xl font-bold text-slate-800">业务线管理</h2>
+            <button onclick="closeBusinessLineModal()"
+                class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
         </div>
 
-        <!-- 业务线列表 -->
-        <div class="business-line-list" id="business-line-list">
-            <div class="loading-state">加载中...</div>
-        </div>
+        <div class="p-8 space-y-8">
+            <!-- Business Line List -->
+            <div class="space-y-3 max-h-64 overflow-y-auto pr-1" id="business-line-list">
+                <div class="text-center py-10 text-slate-400">
+                    <svg class="w-8 h-8 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <p class="text-sm">加载中...</p>
+                </div>
+            </div>
 
-        <!-- 新建/编辑表单 -->
-        <div class="business-line-form-section">
-            <h4 id="business-line-form-title">新建业务线</h4>
-            <form id="business-line-form" onsubmit="saveBusinessLine(event)">
-                <input type="hidden" id="business-line-id" value="">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="business-line-name">名称标识 *</label>
-                        <input type="text" id="business-line-name" required class="filter-input" placeholder="如：建材">
+            <!-- Form Section -->
+            <div class="pt-6 border-t border-slate-100">
+                <h4 id="business-line-form-title" class="text-base font-semibold text-slate-800 mb-5">新建业务线</h4>
+                <form id="business-line-form" onsubmit="saveBusinessLine(event)" class="space-y-5">
+                    <input type="hidden" id="business-line-id" value="">
+
+                    <div class="grid grid-cols-2 gap-5">
+                        <div class="space-y-2">
+                            <label for="business-line-name"
+                                class="block text-xs font-medium text-slate-500 uppercase tracking-wide">名称标识 *</label>
+                            <input type="text" id="business-line-name" required
+                                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 focus:bg-white transition-all"
+                                placeholder="如：建材">
+                        </div>
+                        <div class="space-y-2">
+                            <label for="business-line-display-name"
+                                class="block text-xs font-medium text-slate-500 uppercase tracking-wide">显示名称 *</label>
+                            <input type="text" id="business-line-display-name" required
+                                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 focus:bg-white transition-all"
+                                placeholder="如：建材">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="business-line-display-name">显示名称 *</label>
-                        <input type="text" id="business-line-display-name" required class="filter-input"
-                            placeholder="如：建材">
+
+                    <div class="grid grid-cols-2 gap-5">
+                        <div class="space-y-2">
+                            <label for="business-line-api-key"
+                                class="block text-xs font-medium text-slate-500 uppercase tracking-wide">API 密钥
+                                ID</label>
+                            <input type="number" id="business-line-api-key"
+                                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 focus:bg-white transition-all"
+                                placeholder="可选">
+                        </div>
+                        <div class="space-y-2">
+                            <label for="business-line-sort-order"
+                                class="block text-xs font-medium text-slate-500 uppercase tracking-wide">排序权重</label>
+                            <input type="number" id="business-line-sort-order" value="0" min="0"
+                                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 focus:bg-white transition-all">
+                        </div>
                     </div>
-                </div>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="business-line-api-key">API 密钥 ID</label>
-                        <input type="number" id="business-line-api-key" class="filter-input" placeholder="可选">
+
+                    <div class="space-y-2">
+                        <label for="business-line-description"
+                            class="block text-xs font-medium text-slate-500 uppercase tracking-wide">描述</label>
+                        <input type="text" id="business-line-description"
+                            class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 focus:bg-white transition-all"
+                            placeholder="业务线描述">
                     </div>
-                    <div class="form-group">
-                        <label for="business-line-sort-order">排序权重</label>
-                        <input type="number" id="business-line-sort-order" class="filter-input" value="0" min="0">
+
+                    <div class="flex justify-end gap-3 pt-3">
+                        <button type="button" onclick="resetBusinessLineForm()"
+                            class="px-4 py-2 text-sm text-slate-500 hover:text-slate-700 transition-colors">重置</button>
+                        <button type="submit"
+                            class="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 rounded-xl transition-all shadow-lg shadow-indigo-500/25">保存业务线</button>
                     </div>
-                </div>
-                <div class="form-group">
-                    <label for="business-line-description">描述</label>
-                    <input type="text" id="business-line-description" class="filter-input" placeholder="业务线描述">
-                </div>
-                <div class="form-actions">
-                    <button type="button" onclick="resetBusinessLineForm()" class="btn-secondary">重置</button>
-                    <button type="submit" class="btn-primary">保存</button>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     </div>
 </div>
-
-<style>
-    /* 标签页样式 */
-    .modal-dark-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.75);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
-        backdrop-filter: blur(4px);
-    }
-
-    .modal-dark-container {
-        background-color: #1e293b;
-        /* Ensure opaque dark background */
-        border: 1px solid #334155;
-        border-radius: 16px;
-        padding: 24px;
-        width: 100%;
-        margin: 20px;
-        max-height: 90vh;
-        overflow-y: auto;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        color: #f1f5f9;
-    }
-
-    .modal-dark-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 24px;
-        padding-bottom: 16px;
-        border-bottom: 1px solid #334155;
-    }
-
-    .modal-dark-header h2 {
-        font-size: 20px;
-        font-weight: 600;
-        color: #f1f5f9;
-        margin: 0;
-    }
-
-    /* Ensure inputs in modal have solid background */
-    .modal-dark-container .filter-input,
-    .modal-dark-container .filter-select,
-    .modal-dark-container textarea {
-        background-color: #0f172a !important;
-        border: 1px solid #334155 !important;
-        color: #f1f5f9 !important;
-    }
-
-    .modal-dark-container label {
-        color: #cbd5e1 !important;
-    }
-
-    .btn-dark {
-        background: var(--bg-secondary);
-        color: var(--text-secondary);
-        border: 1px solid var(--border);
-        padding: 8px 16px;
-        border-radius: 6px;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    .btn-dark:hover {
-        background: var(--border);
-        color: var(--text-primary);
-    }
-
-    .profile-tabs {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 24px;
-        padding-bottom: 16px;
-        border-bottom: 1px solid var(--border);
-    }
-
-    .tab-list {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        flex: 1;
-    }
-
-    .tab-item {
-        padding: 8px 16px;
-        border-radius: 20px;
-        border: 1px solid var(--border);
-        background: var(--card-bg);
-        color: var(--text-secondary);
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    .tab-item:hover {
-        background: var(--bg-secondary);
-        border-color: var(--primary);
-        color: var(--primary);
-    }
-
-    .tab-item.active {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        border-color: transparent;
-        color: white;
-        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-    }
-
-    /* 画像网格 */
-    .profile-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-        gap: 20px;
-    }
-
-    /* 画像卡片 */
-    .profile-card {
-        background: var(--card-bg);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 20px;
-        transition: all 0.2s;
-    }
-
-    .profile-card:hover {
-        border-color: var(--primary);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        transform: translateY(-2px);
-    }
-
-    .profile-card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 12px;
-    }
-
-    .profile-card-title {
-        font-size: 16px;
-        font-weight: 600;
-        color: var(--text-primary);
-        margin: 0;
-    }
-
-    .profile-card-business-line {
-        font-size: 12px;
-        padding: 4px 10px;
-        border-radius: 12px;
-        background: linear-gradient(135deg, #667eea20, #764ba220);
-        color: var(--primary);
-        font-weight: 500;
-    }
-
-    .profile-card-keywords {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        margin: 12px 0;
-    }
-
-    .keyword-tag {
-        font-size: 12px;
-        padding: 4px 8px;
-        border-radius: 4px;
-        background: var(--bg-secondary);
-        color: var(--text-secondary);
-    }
-
-    .profile-card-status {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 12px;
-        color: var(--text-secondary);
-    }
-
-    .status-badge {
-        display: inline-block;
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-    }
-
-    .status-badge.active {
-        background: #10b981;
-    }
-
-    .status-badge.inactive {
-        background: #ef4444;
-    }
-
-    .profile-card-actions {
-        display: flex;
-        gap: 8px;
-        margin-top: 16px;
-        padding-top: 16px;
-        border-top: 1px solid var(--border);
-    }
-
-    /* 关键词输入 */
-    .keyword-input-container {
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 8px;
-        background: var(--card-bg);
-    }
-
-    .keywords-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        margin-bottom: 8px;
-        min-height: 32px;
-    }
-
-    .keyword-item {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 10px;
-        border-radius: 16px;
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-        font-size: 13px;
-    }
-
-    .keyword-item button {
-        background: transparent;
-        border: none;
-        color: white;
-        cursor: pointer;
-        padding: 0;
-        font-size: 16px;
-        line-height: 1;
-        opacity: 0.7;
-    }
-
-    .keyword-item button:hover {
-        opacity: 1;
-    }
-
-    .keyword-input-container input {
-        border: none;
-        padding: 8px;
-        width: 100%;
-        background: transparent;
-    }
-
-    /* 表单样式 */
-    .form-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
-    }
-
-    .form-group {
-        margin-bottom: 16px;
-    }
-
-    .form-group label {
-        display: block;
-        margin-bottom: 6px;
-        font-weight: 500;
-        color: var(--text-primary);
-    }
-
-    .label-hint {
-        font-weight: 400;
-        color: var(--text-secondary);
-        font-size: 12px;
-    }
-
-    .code-textarea {
-        font-family: 'Courier New', monospace;
-        font-size: 13px;
-        line-height: 1.5;
-    }
-
-    .checkbox-label {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        cursor: pointer;
-        height: 100%;
-    }
-
-    .form-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 12px;
-        margin-top: 24px;
-        padding-top: 24px;
-        border-top: 1px solid var(--border);
-    }
-
-    /* 业务线列表 */
-    .business-line-list {
-        max-height: 300px;
-        overflow-y: auto;
-        margin-bottom: 24px;
-    }
-
-    .business-line-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 12px 16px;
-        background: var(--bg-secondary);
-        border-radius: 8px;
-        margin-bottom: 8px;
-    }
-
-    .business-line-info {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-
-    .business-line-info strong {
-        font-size: 14px;
-        color: var(--text-primary);
-    }
-
-    .business-line-info span {
-        font-size: 12px;
-        color: var(--text-secondary);
-    }
-
-    .business-line-actions {
-        display: flex;
-        gap: 8px;
-    }
-
-    .business-line-form-section {
-        padding-top: 20px;
-        border-top: 1px solid var(--border);
-    }
-
-    .business-line-form-section h4 {
-        margin: 0 0 16px 0;
-        color: var(--text-primary);
-    }
-
-    .header-actions {
-        display: flex;
-        gap: 8px;
-    }
-
-    .loading-state {
-        text-align: center;
-        padding: 40px;
-        color: var(--text-secondary);
-    }
-
-    .empty-state-card {
-        text-align: center;
-        padding: 60px 40px;
-        color: var(--text-secondary);
-        grid-column: 1 / -1;
-    }
-</style>
