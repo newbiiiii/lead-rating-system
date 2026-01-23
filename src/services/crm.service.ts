@@ -287,7 +287,7 @@ export async function syncLeadToCrm(leadId: string): Promise<CrmSyncResult> {
         }
 
         // 检查业务线配置
-        const businessContext = getBusinessContext(lead.taskName);
+        const businessContext = await getBusinessContext(lead.taskName);
         if (!businessContext || !businessContext.apiKey) {
             logger.warn(`[CRM同步] 待配置规则: 无法识别任务 "${lead.taskName}" 的业务线`);
             // 标记为待配置规则状态
