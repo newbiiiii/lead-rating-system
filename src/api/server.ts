@@ -21,6 +21,7 @@ import crmRoutes from './routes/crm.routes';
 import enrichRoutes from './routes/enrich.routes';
 import monitoringRoutes from './routes/monitoring.routes';
 import profileRoutes from './routes/profile.routes';
+import leadsQueryRoutes from './routes/leads.routes';
 
 const app = express();
 const httpServer = createServer(app);
@@ -129,7 +130,9 @@ app.use('/api/leads', (req, res, next) => {
     // 只处理不属于 rating 路由的请求
     if (req.url.startsWith('/pending-config') ||
         req.url.startsWith('/by-status') ||
-        req.url.startsWith('/retry-rating')) {
+        req.url.startsWith('/retry-rating') ||
+        req.url.startsWith('/query') ||
+        req.url.startsWith('/filters')) {
         return next();
     }
     req.url = '/leads' + req.url;
@@ -142,6 +145,8 @@ app.use('/api/import', (req, res, next) => {
 });
 
 // 评分管理
+app.use('/api/leads', leadsQueryRoutes);
+
 app.use('/api/leads/pending-config', (req, res, next) => {
     req.url = '/pending-config' + req.url;
     ratingRoutes(req, res, next);
