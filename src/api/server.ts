@@ -132,7 +132,8 @@ app.use('/api/leads', (req, res, next) => {
         req.url.startsWith('/by-status') ||
         req.url.startsWith('/retry-rating') ||
         req.url.startsWith('/query') ||
-        req.url.startsWith('/filters')) {
+        req.url.startsWith('/filters') ||
+        req.url.startsWith('/export')) {
         return next();
     }
     req.url = '/leads' + req.url;

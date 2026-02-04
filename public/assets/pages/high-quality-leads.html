@@ -20,19 +20,15 @@
 
     .apple-input {
         background-color: rgba(118, 118, 128, 0.08);
-        /* Slightly lighter for density */
         border: none;
         border-radius: 8px;
-        /* High to medium */
         font-size: 13px;
-        /* Smaller font */
         transition: all 0.2s;
     }
 
     .apple-input:focus {
         background-color: rgba(118, 118, 128, 0.12);
         box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.3);
-        /* Thinner ring */
         outline: none;
     }
 
@@ -44,6 +40,7 @@
         margin-bottom: 4px;
         text-transform: uppercase;
         letter-spacing: 0.02em;
+        white-space: nowrap;
     }
 
     .badge {
@@ -53,6 +50,7 @@
         border-radius: 6px;
         font-size: 0.7rem;
         font-weight: 600;
+        white-space: nowrap;
     }
 
     .badge-S {
@@ -84,19 +82,54 @@
         color: #9CA3AF;
         border: 1px solid #F3F4F6;
     }
+
+    /* 表格文字不换行 */
+    .table-cell-nowrap {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* 按钮文字不换行 */
+    .btn-nowrap {
+        white-space: nowrap;
+    }
+
+    /* 高级筛选展开动画 */
+    .advanced-filters {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease-out;
+    }
+
+    .advanced-filters.expanded {
+        max-height: 500px;
+    }
+
+    /* 联系人信息样式 */
+    .contact-item {
+        padding: 6px 0;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .contact-item:last-child {
+        border-bottom: none;
+    }
 </style>
 
 <div class="h-full flex flex-col p-6 max-w-[1800px] mx-auto overflow-hidden">
-    <!-- Header (Compact) -->
+    <!-- Header -->
     <div class="flex justify-between items-center mb-4 shrink-0 px-1">
         <div>
             <h1 class="text-2xl font-bold tracking-tight text-[#1D1D1F]">优质线索查询</h1>
+            <p class="text-sm text-[#86868b] mt-1">多维度筛选、智能评分、一键导出</p>
         </div>
     </div>
 
-    <!-- Filter Section (Dense) -->
+    <!-- Filter Section -->
     <div class="apple-card p-4 mb-4 shrink-0">
-        <div class="grid grid-cols-12 gap-3 items-end">
+        <!-- 基础筛选 -->
+        <div class="grid grid-cols-12 gap-3 items-end mb-3">
             <!-- Search -->
             <div class="col-span-3">
                 <label class="form-label">关键字</label>
@@ -113,10 +146,11 @@
             </div>
 
             <!-- Rating -->
-            <div class="col-span-1">
+            <div class="col-span-2">
                 <label class="form-label">评分</label>
                 <select id="filter-rating" multiple
-                    class="w-full px-2 h-9 apple-input bg-transparent text-[#1D1D1F] cursor-pointer appearance-none">
+                    class="w-full px-2 h-9 apple-input bg-transparent text-[#1D1D1F] cursor-pointer">
+                    <option value="S">S - 顶级</option>
                     <option value="A">A - 高</option>
                     <option value="B">B - 中</option>
                     <option value="C">C - 低</option>
@@ -128,54 +162,44 @@
             <div class="col-span-2">
                 <label class="form-label">行业</label>
                 <select id="filter-industry"
-                    class="w-full px-2 h-9 apple-input bg-transparent text-[#1D1D1F] cursor-pointer appearance-none truncate">
+                    class="w-full px-2 h-9 apple-input bg-transparent text-[#1D1D1F] cursor-pointer">
                     <option value="">全部行业</option>
-                    <option disabled>加载中...</option>
                 </select>
             </div>
 
             <!-- Region -->
-            <div class="col-span-1">
+            <div class="col-span-2">
                 <label class="form-label">地区</label>
                 <select id="filter-region"
-                    class="w-full px-2 h-9 apple-input bg-transparent text-[#1D1D1F] cursor-pointer appearance-none truncate">
-                    <option value="">全部</option>
-                    <option disabled>加载中...</option>
+                    class="w-full px-2 h-9 apple-input bg-transparent text-[#1D1D1F] cursor-pointer">
+                    <option value="">全部地区</option>
                 </select>
-            </div>
-
-            <!-- Source -->
-            <div class="col-span-1">
-                <label class="form-label">来源</label>
-                <select id="filter-source"
-                    class="w-full px-2 h-9 apple-input bg-transparent text-[#1D1D1F] cursor-pointer appearance-none truncate">
-                    <option value="">全部</option>
-                    <option disabled>加载中...</option>
-                </select>
-            </div>
-
-            <!-- Date Range -->
-            <div class="col-span-2 flex gap-2">
-                <div class="flex-1">
-                    <label class="form-label">开始日期</label>
-                    <input type="date" id="filter-start-date"
-                        class="w-full px-2 h-9 apple-input text-[#1D1D1F] cursor-pointer text-xs">
-                </div>
-                <div class="flex-1">
-                    <label class="form-label">结束日期</label>
-                    <input type="date" id="filter-end-date"
-                        class="w-full px-2 h-9 apple-input text-[#1D1D1F] cursor-pointer text-xs">
-                </div>
             </div>
 
             <!-- Actions -->
-            <div class="col-span-2 flex justify-end gap-2">
+            <div class="col-span-3 flex justify-end gap-2">
+                <button onclick="window.toggleAdvancedFilters()"
+                    class="btn-nowrap h-9 px-4 text-xs font-semibold text-[#555] bg-gray-100 hover:bg-gray-200 rounded-full transition-all flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+                    </svg>
+                    高级筛选
+                </button>
                 <button onclick="window.resetFilters()"
-                    class="h-9 px-4 text-xs font-semibold text-[#555] bg-gray-100 hover:bg-gray-200 rounded-full transition-all">
+                    class="btn-nowrap h-9 px-4 text-xs font-semibold text-[#555] bg-gray-100 hover:bg-gray-200 rounded-full transition-all">
                     重置
                 </button>
+                <button id="btn-export" onclick="window.exportLeads()"
+                    class="btn-nowrap h-9 px-4 text-xs font-semibold text-[#1D1D1F] bg-[#F5F5F7] hover:bg-[#E8E8ED] border border-[#E5E5E5] rounded-full transition-all flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    导出
+                </button>
                 <button onclick="window.searchLeads()"
-                    class="h-9 px-6 text-xs font-semibold text-white bg-[#007AFF] hover:bg-[#0071E3] rounded-full shadow-md shadow-[#007AFF]/20 transition-all flex items-center gap-1.5">
+                    class="btn-nowrap h-9 px-6 text-xs font-semibold text-white bg-[#007AFF] hover:bg-[#0071E3] rounded-full shadow-md shadow-[#007AFF]/20 transition-all flex items-center gap-1.5">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
                             d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -184,33 +208,88 @@
                 </button>
             </div>
         </div>
+
+        <!-- 高级筛选（可展开） -->
+        <div id="advanced-filters" class="advanced-filters">
+            <div class="border-t border-gray-100 pt-3 mt-1">
+                <div class="grid grid-cols-12 gap-3 items-end">
+                    <!-- Source -->
+                    <div class="col-span-2">
+                        <label class="form-label">数据来源</label>
+                        <select id="filter-source"
+                            class="w-full px-2 h-9 apple-input bg-transparent text-[#1D1D1F] cursor-pointer">
+                            <option value="">全部来源</option>
+                        </select>
+                    </div>
+
+                    <!-- Date Range -->
+                    <div class="col-span-2">
+                        <label class="form-label">开始日期</label>
+                        <input type="date" id="filter-start-date"
+                            class="w-full px-2 h-9 apple-input text-[#1D1D1F] cursor-pointer text-xs">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="form-label">结束日期</label>
+                        <input type="date" id="filter-end-date"
+                            class="w-full px-2 h-9 apple-input text-[#1D1D1F] cursor-pointer text-xs">
+                    </div>
+
+                    <!-- CRM Sync Status -->
+                    <div class="col-span-2">
+                        <label class="form-label">CRM同步状态</label>
+                        <select id="filter-crm-status"
+                            class="w-full px-2 h-9 apple-input bg-transparent text-[#1D1D1F] cursor-pointer">
+                            <option value="">全部</option>
+                            <option value="synced">已同步</option>
+                            <option value="pending">待同步</option>
+                            <option value="failed">失败</option>
+                        </select>
+                    </div>
+
+                    <!-- Rating Status -->
+                    <div class="col-span-2">
+                        <label class="form-label">评分状态</label>
+                        <select id="filter-rating-status"
+                            class="w-full px-2 h-9 apple-input bg-transparent text-[#1D1D1F] cursor-pointer">
+                            <option value="">全部</option>
+                            <option value="completed">已完成</option>
+                            <option value="pending">待评分</option>
+                            <option value="failed">失败</option>
+                        </select>
+                    </div>
+
+                    <!-- Task Name -->
+                    <div class="col-span-2">
+                        <label class="form-label">任务名称</label>
+                        <input type="text" id="filter-task-name"
+                            class="w-full px-2 h-9 apple-input text-[#1D1D1F] placeholder-[#86868b]"
+                            placeholder="任务名称">
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Results Table -->
     <div class="apple-card flex-1 flex flex-col overflow-hidden min-h-0">
         <div class="flex-1 overflow-auto">
-            <table class="w-full text-left border-collapse relative">
+            <table class="w-full text-left border-collapse relative" style="table-layout: fixed;">
                 <thead class="sticky top-0 z-10 bg-white">
                     <tr class="border-b border-gray-100 shadow-sm">
-                        <th class="py-3 px-4 text-[11px] font-bold text-[#86868b] uppercase tracking-wider w-[30%]">公司信息
-                        </th>
-                        <th class="py-3 px-4 text-[11px] font-bold text-[#86868b] uppercase tracking-wider w-[8%]">评分
-                        </th>
-                        <th class="py-3 px-4 text-[11px] font-bold text-[#86868b] uppercase tracking-wider w-[18%]">业务信息
-                        </th>
-                        <th class="py-3 px-4 text-[11px] font-bold text-[#86868b] uppercase tracking-wider w-[20%]">联系人
-                        </th>
-                        <th class="py-3 px-4 text-[11px] font-bold text-[#86868b] uppercase tracking-wider w-[20%]">AI
-                            建议</th>
-                        <th
-                            class="py-3 px-4 text-[11px] font-bold text-[#86868b] uppercase tracking-wider text-right w-[15%]">
-                            来源/时间</th>
+                        <th class="py-3 px-3 text-[11px] font-bold text-[#86868b] uppercase tracking-wider" style="width: 18%">公司信息</th>
+                        <th class="py-3 px-3 text-[11px] font-bold text-[#86868b] uppercase tracking-wider" style="width: 8%">评分</th>
+                        <th class="py-3 px-3 text-[11px] font-bold text-[#86868b] uppercase tracking-wider" style="width: 12%">业务信息</th>
+                        <th class="py-3 px-3 text-[11px] font-bold text-[#86868b] uppercase tracking-wider" style="width: 18%">联系人</th>
+                        <th class="py-3 px-3 text-[11px] font-bold text-[#86868b] uppercase tracking-wider" style="width: 20%">AI建议</th>
+                        <th class="py-3 px-3 text-[11px] font-bold text-[#86868b] uppercase tracking-wider" style="width: 12%">任务/来源</th>
+                        <th class="py-3 px-3 text-[11px] font-bold text-[#86868b] uppercase tracking-wider text-center" style="width: 8%">CRM</th>
+                        <th class="py-3 px-3 text-[11px] font-bold text-[#86868b] uppercase tracking-wider text-right" style="width: 10%">日期</th>
                     </tr>
                 </thead>
                 <tbody id="leads-table-body">
                     <!-- Rows rendered by JS -->
                     <tr>
-                        <td colspan="5" class="py-20 text-center text-[#86868b]">
+                        <td colspan="8" class="py-20 text-center text-[#86868b]">
                             请设置过滤条件并点击查询
                         </td>
                     </tr>
@@ -218,7 +297,7 @@
             </table>
         </div>
 
-        <!-- Pagination (Compact) -->
+        <!-- Pagination -->
         <div id="pagination"
             class="p-3 border-t border-gray-100 flex justify-center items-center gap-2 bg-white shrink-0">
             <!-- Pagination rendered by JS -->
