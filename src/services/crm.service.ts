@@ -173,6 +173,7 @@ export async function callCrmApi(lead: CrmLead, productLine: number): Promise<{ 
             "phone": lead.phone?.replace(/\s+/g, ""),                               // 联系人电话
             "comment": lead.allContacts,                                            // 备注
             "Product_Line__c": productLine,                                           // 业务线
+            "ownerId": "3438849759559775",
         }
     }
     logger.info(`[CRM同步] 封装推送数据: ${JSON.stringify(createLeadBody)}`);
